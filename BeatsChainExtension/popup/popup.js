@@ -33,6 +33,14 @@ class BeatsChainApp {
 
     async initialize() {
         try {
+            // Debug script loading
+            console.log('🔍 Script loading check:', {
+                MetadataWriter: !!window.MetadataWriter,
+                AudioTaggingManager: !!window.AudioTaggingManager,
+                ImageTaggingManager: !!window.ImageTaggingManager,
+                AdminDashboardManager: !!window.AdminDashboardManager
+            });
+            
             this.setupEventListeners();
             
             // Initialize managers with error handling
@@ -2315,6 +2323,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 
                 // Write metadata to audio file
                 let audioFileWithMetadata = this.beatFile;
+                console.log('🔍 MetadataWriter available:', !!window.MetadataWriter);
                 if (window.MetadataWriter) {
                     try {
                         const writer = new MetadataWriter();
@@ -2344,6 +2353,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 
                 // Write metadata to image file
                 let imageWithMetadata = this.beatMetadata.coverImage;
+                console.log('🔍 MetadataWriter available:', !!window.MetadataWriter);
                 if (window.MetadataWriter) {
                     try {
                         const writer = new MetadataWriter();
@@ -3173,6 +3183,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 
                 // Write metadata to radio audio file
                 let radioFileWithMetadata = this.radioAudioFile;
+                console.log('🔍 MetadataWriter available:', !!window.MetadataWriter);
                 if (window.MetadataWriter) {
                     try {
                         const writer = new MetadataWriter();
@@ -3236,6 +3247,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 
                 // Write metadata to cover image
                 let coverWithMetadata = coverFile;
+                console.log('🔍 MetadataWriter available:', !!window.MetadataWriter);
                 if (window.MetadataWriter) {
                     try {
                         const writer = new MetadataWriter();
