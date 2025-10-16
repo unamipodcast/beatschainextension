@@ -392,62 +392,20 @@ class EnhancedAuthenticationManager {
             this.basicAuth = new AuthenticationManager();
         }
         
-        try {
-            const result = await this.basicAuth.signInWithGoogle();
+        const result = await this.basicAuth.signInWithGoogle();
+        
+        if (result.success) {
+            await this.enhanceAuthentication();
+            await this.logSecurityEvent('login', { method: 'google_oauth' });
             
-            if (result.success) {
-                await this.enhanceAuthentication();
-                await this.logSecurityEvent('login', { method: 'google_oauth' });
-                
-                // Add enhanced security info to result
-                result.role = this.userRole;
-                result.securityLevel = this.securityLevel;
-                result.mfaRequired = this.mfaEnabled;
-                result.enhanced = this.isEnhanced;
-            }
-            
-            return result;
-        } catch (error) {
-            console.error('Google sign-in failed:', error);
-            return { success: false, error: error.message };
+            // Add enhanced security info to result
+            result.role = this.userRole;
+            result.securityLevel = this.securityLevel;
+            result.mfaRequired = this.mfaEnabled;
+            result.enhanced = this.isEnhanced;
         }
-    }
-    
-    // Bypass authentication for development/testing
-    async bypassAuth() {
-        console.log('⚠️ Using authentication bypass for development');
         
-        const mockProfile = {
-            id: 'dev_user_' + Date.now(),
-            email: 'developer@beatschain.com',
-            name: 'BeatsChain Developer',
-            verified_email: true,
-            picture: null
-        };
-        
-        // Set mock authentication state
-        this.userRole = 'admin';
-        this.securityLevel = 'premium';
-        this.mfaEnabled = false;
-        this.isEnhanced = true;
-        
-        // Generate wallet for bypass user
-        await this.generateEnhancedWallet();
-        
-        // Store mock profile
-        await chrome.storage.local.set({
-            'user_profile': mockProfile,
-            'access_token': 'dev_token_' + Date.now(),
-            'auth_bypass': true
-        });
-        
-        return {
-            success: true,
-            user: mockProfile,
-            role: this.userRole,
-            securityLevel: this.securityLevel,
-            bypass: true
-        };
+        return result;
     }
 
     async signOut() {
@@ -493,20 +451,7 @@ class EnhancedAuthenticationManager {
         return '0.0000';
     }
 
-    async getUserProfile() {
-        // Check for bypass mode first
-        const bypassData = await chrome.storage.local.get(['auth_bypass', 'user_profile']);
-        if (bypassData.auth_bypass && bypassData.user_profile) {
-            return {
-                ...bypassData.user_profile,
-                role: this.userRole,
-                securityLevel: this.securityLevel,
-                mfaEnabled: this.mfaEnabled,
-                enhanced: true,
-                bypass: true
-            };
-        }
-        
+    getUserProfile() {
         if (this.basicAuth) {
             const profile = this.basicAuth.getUserProfile();
             if (profile && this.isEnhanced) {

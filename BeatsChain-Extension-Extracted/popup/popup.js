@@ -602,18 +602,7 @@ Verification: Check Chrome extension storage for transaction details`;
         try {
             // Authentication is MANDATORY for minting
             if (!this.authManager || !this.authManager.isAuthenticated || !this.authManager.isAuthenticated()) {
-                // Try bypass authentication for development
-                try {
-                    const bypassResult = await this.authManager.bypassAuth();
-                    if (bypassResult.success) {
-                        console.log('✅ Using development authentication bypass');
-                        this.authManager.isAuthenticated = () => true;
-                    } else {
-                        throw new Error('Authentication required: Please sign in with Google to mint NFTs');
-                    }
-                } catch (error) {
-                    throw new Error('Authentication required: Please sign in with Google to mint NFTs');
-                }
+                throw new Error('Authentication required: Please sign in with Google to mint NFTs');
             }
             
             const walletAddress = await this.authManager.getWalletAddress();
@@ -4159,7 +4148,7 @@ Verification: Check Chrome extension storage for transaction details`;
         
         try {
             // Create invitation content with enhanced features
-            const defaultMessage = 'Hey! I\'ve been using BeatsChain to mint my music as NFTs and prepare radio submission packages. You should check it out!';
+            const defaultMessage = 'Hey! I\'ve been using BeatsChain to mint my music as NFTs and submit to radio stations. You should check it out!';
             const personalMessage = message || defaultMessage;
             
             // Get user info for personalization
@@ -4171,7 +4160,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 }
             }
             
-            const invitationText = `${personalMessage}\n\n🎵 BeatsChain Chrome Extension\nInvited by: ${senderName}\n\nDownload: https://chrome.google.com/webstore/detail/beatschain\n\n✨ Features:\n• Mint music as NFTs on blockchain\n• Prepare radio submission packages\n• Professional metadata management\n• AI-powered licensing\n• SAMRO compliance for South Africa\n• ISRC generation (80G registrant)\n• Professional metadata embedding\n\n🚀 Join the music revolution!\n\n---\nThis invitation was sent through BeatsChain's artist invitation system.`;
+            const invitationText = `${personalMessage}\n\n🎵 BeatsChain Chrome Extension\nInvited by: ${senderName}\n\nDownload: https://chrome.google.com/webstore/detail/beatschain\n\n✨ Features:\n• Mint music as NFTs on blockchain\n• Submit tracks to radio stations\n• Professional metadata management\n• AI-powered licensing\n• SAMRO compliance for South Africa\n• ISRC generation (80G registrant)\n• Professional metadata embedding\n\n🚀 Join the music revolution!\n\n---\nThis invitation was sent through BeatsChain's artist invitation system.`;
             
             // Create mailto link (browser will handle email client)
             const subject = encodeURIComponent(`🎵 ${senderName} invited you to join BeatsChain`);
