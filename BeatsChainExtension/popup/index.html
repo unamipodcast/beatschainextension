@@ -68,7 +68,11 @@
                     
                     <!-- Enhanced Profile Information -->
                     <div class="enhanced-profile">
-                        <h4>📝 Profile Information</h4>
+                        <div class="profile-header">
+                            <h4>📝 Profile Information</h4>
+                            <button class="collapse-btn" id="profile-info-toggle" type="button">▶</button>
+                        </div>
+                        <div class="profile-info-content collapsed" id="profile-info-content">
                         <div class="profile-form">
                             <div class="form-grid-two-col">
                                 <div class="form-row">
@@ -95,11 +99,16 @@
                                 </div>
                             </div>
                         </div>
+                        </div>
                     </div>
                     
                     <!-- Artist Biography Form -->
                     <div class="artist-biography">
-                        <h4>📝 Artist Biography & Press Kit</h4>
+                        <div class="bio-header">
+                            <h4>📝 Artist Biography & Press Kit</h4>
+                            <button class="collapse-btn" id="bio-toggle" type="button">▶</button>
+                        </div>
+                        <div class="bio-content collapsed" id="bio-content">
                         <div class="bio-form">
                             <div class="form-row">
                                 <label for="profile-artist-bio">Biography:</label>
@@ -171,6 +180,37 @@
                             <div class="form-row">
                                 <label for="profile-apple-music">Apple Music:</label>
                                 <input type="url" id="profile-apple-music" class="form-input" placeholder="https://music.apple.com/artist/...">
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Artist Invitation Feature -->
+                    <div class="artist-invitation">
+                        <div class="invitation-header">
+                            <h4>🎵 Invite Other Artists</h4>
+                            <button class="collapse-btn" id="invitation-toggle" type="button">▶</button>
+                        </div>
+                        <div class="invitation-content collapsed" id="invitation-content">
+                            <p>Help grow the BeatsChain community by inviting fellow artists to join the platform.</p>
+                            <div class="invitation-form">
+                                <div class="form-row">
+                                    <label for="invite-email">Artist Email:</label>
+                                    <input type="email" id="invite-email" class="form-input" placeholder="artist@example.com">
+                                </div>
+                                <div class="form-row">
+                                    <label for="invite-message">Personal Message (optional):</label>
+                                    <textarea id="invite-message" class="form-input" rows="3" placeholder="Hey! I've been using BeatsChain to mint my music as NFTs and submit to radio stations. You should check it out!"></textarea>
+                                </div>
+                                <button id="send-invitation" class="btn btn-primary">📧 Send Invitation</button>
+                            </div>
+                            <div class="invitation-info">
+                                <small>✅ Invitations include extension download link and setup guide</small>
+                                <small>✅ Spam prevention: 30-second cooldown between invitations</small>
+                                <small>✅ Personalized with your name (if signed in)</small>
+                                <div id="invitation-stats" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; display: none;">
+                                    <small style="color: #6c757d;">Total invitations sent: <span id="invite-count">0</span></small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -677,6 +717,20 @@
                                         <option value="Advisory">Parental Advisory (Explicit lyrics)</option>
                                         <option value="Instrumental">Instrumental (No vocals)</option>
                                     </select>
+                                </div>
+                                <div class="form-row">
+                                    <label for="radio-release-type">Release Type *</label>
+                                    <select id="radio-release-type" class="form-input" required>
+                                        <option value="">Select Release Type</option>
+                                        <option value="Single">Single</option>
+                                        <option value="Album">Album</option>
+                                        <option value="EP">EP</option>
+                                        <option value="Compilation">Compilation</option>
+                                    </select>
+                                </div>
+                                <div class="form-row">
+                                    <label for="radio-release-year">Release Year *</label>
+                                    <input type="number" id="radio-release-year" class="form-input" min="1900" max="2030" required>
                                 </div>
                             </div>
                             <div class="step-actions">

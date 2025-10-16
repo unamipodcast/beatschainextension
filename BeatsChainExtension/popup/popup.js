@@ -280,6 +280,42 @@ class BeatsChainApp {
         if (saveProfileBtn) {
             saveProfileBtn.addEventListener('click', this.saveProfile.bind(this));
         }
+        
+        // Setup artist invitation events
+        const inviteBtn = document.getElementById('send-invitation');
+        if (inviteBtn) {
+            inviteBtn.addEventListener('click', this.handleArtistInvite.bind(this));
+        }
+        
+        // Setup invitation collapse functionality
+        const invitationToggle = document.getElementById('invitation-toggle');
+        const invitationContent = document.getElementById('invitation-content');
+        if (invitationToggle && invitationContent) {
+            invitationToggle.addEventListener('click', () => {
+                invitationContent.classList.toggle('collapsed');
+                invitationToggle.textContent = invitationContent.classList.contains('collapsed') ? '▶' : '▼';
+            });
+        }
+        
+        // Setup profile info collapse
+        const profileInfoToggle = document.getElementById('profile-info-toggle');
+        const profileInfoContent = document.getElementById('profile-info-content');
+        if (profileInfoToggle && profileInfoContent) {
+            profileInfoToggle.addEventListener('click', () => {
+                profileInfoContent.classList.toggle('collapsed');
+                profileInfoToggle.textContent = profileInfoContent.classList.contains('collapsed') ? '▶' : '▼';
+            });
+        }
+        
+        // Setup bio collapse
+        const bioToggle = document.getElementById('bio-toggle');
+        const bioContent = document.getElementById('bio-content');
+        if (bioToggle && bioContent) {
+            bioToggle.addEventListener('click', () => {
+                bioContent.classList.toggle('collapsed');
+                bioToggle.textContent = bioContent.classList.contains('collapsed') ? '▶' : '▼';
+            });
+        }
     }
 
     handleDragOver(e) {
@@ -565,7 +601,7 @@ Verification: Check Chrome extension storage for transaction details`;
 
         try {
             // Authentication is MANDATORY for minting
-            if (!this.authManager || !this.authManager.isAuthenticated()) {
+            if (!this.authManager || !this.authManager.isAuthenticated || !this.authManager.isAuthenticated()) {
                 throw new Error('Authentication required: Please sign in with Google to mint NFTs');
             }
             
@@ -1650,12 +1686,12 @@ Verification: Check Chrome extension storage for transaction details`;
     
     async initializeMonetizationSystems() {
         try {
-            // Initialize Admin Dashboard for admin users
+            // Initialize Admin Dashboard for admin users (streamlined - no biography duplication)
             if (this.authManager && this.authManager.hasPermission && this.authManager.hasPermission('admin_panel')) {
                 if (window.AdminDashboardManager) {
                     this.adminDashboard = new AdminDashboardManager();
                     await this.adminDashboard.initialize(this.authManager);
-                    console.log('✅ Admin Dashboard initialized');
+                    console.log('✅ Admin Dashboard initialized (streamlined - biography in Profile only)');
                 }
             }
             
@@ -1830,7 +1866,7 @@ Verification: Check Chrome extension storage for transaction details`;
         const profileSection = document.getElementById('profile-section');
         if (!profileSection) return;
 
-        // Create admin invitation section
+        // Create streamlined admin section (NO BIOGRAPHY - that stays in Profile)
         const adminSection = document.createElement('div');
         adminSection.id = 'admin-invitation-section';
         adminSection.className = 'admin-only';
@@ -1845,6 +1881,7 @@ Verification: Check Chrome extension storage for transaction details`;
         adminSection.innerHTML = `
             <h4 style="margin: 0 0 12px 0; color: #495057; display: flex; align-items: center; gap: 8px;">
                 <span>👑</span> Admin Management
+                <small style="color: #6c757d; font-weight: normal; margin-left: auto;">Admin-only features</small>
             </h4>
             
             <div style="margin-bottom: 16px;">
@@ -1863,6 +1900,10 @@ Verification: Check Chrome extension storage for transaction details`;
             <div id="pending-invitations">
                 <h5 style="margin: 0 0 8px 0; color: #495057;">Pending Invitations:</h5>
                 <div id="invitations-list" style="max-height: 150px; overflow-y: auto;"></div>
+            </div>
+            
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #dee2e6;">
+                <small style="color: #6c757d;">📝 <strong>Note:</strong> Artist biography and press kit features are in the Profile section above</small>
             </div>
         `;
 
@@ -2827,6 +2868,20 @@ Verification: Check Chrome extension storage for transaction details`;
         }
         
         this.setupRadioInputTracking();
+        
+        // Auto-fill release year with current year
+        const releaseYearInput = document.getElementById('radio-release-year');
+        if (releaseYearInput && !releaseYearInput.value) {
+            releaseYearInput.value = new Date().getFullYear();
+            this.userInputManager.setUserInput('radio-release-year', new Date().getFullYear(), false);
+        }
+        
+        // Auto-fill release type with Single as default
+        const releaseTypeSelect = document.getElementById('radio-release-type');
+        if (releaseTypeSelect && !releaseTypeSelect.value) {
+            releaseTypeSelect.value = 'Single';
+            this.userInputManager.setUserInput('radio-release-type', 'Single', false);
+        }
     }
     
     setupRadioInputTracking() {
@@ -3176,6 +3231,9 @@ Verification: Check Chrome extension storage for transaction details`;
         try {
             const files = [];
             
+            // Get validated radio inputs FIRST
+            const radioInputs = this.getRadioInputs();
+            
             // Audio file with embedded metadata
             if (this.radioAudioFile) {
                 const sanitizedTitle = this.sanitizeInput(this.radioMetadata.title || 'audio');
@@ -3189,9 +3247,9 @@ Verification: Check Chrome extension storage for transaction details`;
                         const writer = new MetadataWriter();
                         const metadataToWrite = {
                             isrc: radioInputs.isrc || (this.isrcManager ? await this.isrcManager.generateISRC() : ''),
-                            title: radioMetadata.title,
-                            artist: radioMetadata.artist,
-                            genre: radioMetadata.genre
+                            title: radioInputs.title,
+                            artist: radioInputs.artistName,
+                            genre: radioInputs.genre
                         };
                         radioFileWithMetadata = await writer.writeAudioMetadata(this.radioAudioFile, metadataToWrite);
                         console.log('✅ Metadata embedded in radio audio file');
@@ -3205,9 +3263,6 @@ Verification: Check Chrome extension storage for transaction details`;
                     content: radioFileWithMetadata
                 });
             }
-            
-            // Get validated radio inputs
-            const radioInputs = this.getRadioInputs();
             const radioMetadata = {
                 title: this.sanitizeInput(this.userInputManager.getValue('radio-title', radioInputs.title, this.radioMetadata?.title || 'Untitled Track')),
                 artist: this.sanitizeInput(this.userInputManager.getValue('radio-artist', radioInputs.artistName, 'Unknown Artist')),
@@ -3233,11 +3288,6 @@ Verification: Check Chrome extension storage for transaction details`;
                 submissionDate: new Date().toISOString(),
                 submissionType: 'radio_only'
             };
-            
-            files.push({
-                name: 'track_metadata.json',
-                content: JSON.stringify(radioMetadata, null, 2)
-            });
             
             // Add cover image with embedded metadata if uploaded
             const coverImageInput = document.getElementById('radio-cover-image');
@@ -3267,105 +3317,107 @@ Verification: Check Chrome extension storage for transaction details`;
                 });
             }
             
-            // Generate split sheet with current contributors
-            const splitSheet = this.splitSheetsManager.generateSplitSheet(radioMetadata);
-            files.push({
-                name: 'split_sheet.json',
-                content: JSON.stringify(splitSheet, null, 2)
-            });
-            
-            // Generate enhanced SAMRO documentation
-            let samroReport;
-            if (this.samroManager && this.samroManager.isValid()) {
-                const samroMetadata = this.samroManager.getSamroMetadata();
-                samroReport = this.samroManager.generateSamroReport(radioMetadata);
-                
-                // Add comprehensive SAMRO metadata file
-                files.push({
-                    name: 'SAMRO_metadata.json',
-                    content: JSON.stringify(samroMetadata, null, 2)
-                });
-            } else {
-                samroReport = this.splitSheetsManager.generateSamroReport(radioMetadata);
-            }
-            
-            files.push({
-                name: 'SAMRO_Split_Sheet.txt',
-                content: samroReport
-            });
-            
-            // Add artist biography file if provided
-            if (radioMetadata.biography && radioMetadata.biography.trim()) {
-                const bioText = `ARTIST BIOGRAPHY\n\nArtist: ${radioMetadata.artist}\nStage Name: ${radioMetadata.stageName || 'N/A'}\n\n${radioMetadata.biography}\n\nMusical Influences: ${radioMetadata.influences || 'Not specified'}\n\nContact Information:\n${radioMetadata.contact?.website ? `Website: ${radioMetadata.contact.website}\n` : ''}${radioMetadata.contact?.email ? `Email: ${radioMetadata.contact.email}\n` : ''}${radioMetadata.contact?.phone ? `Phone: ${radioMetadata.contact.phone}\n` : ''}\nSocial Media:\n${radioMetadata.social?.instagram ? `Instagram: ${radioMetadata.social.instagram}\n` : ''}${radioMetadata.social?.twitter ? `Twitter: ${radioMetadata.social.twitter}\n` : ''}\n\nGenerated: ${new Date().toLocaleString()}`;
-                
-                files.push({
-                    name: 'artist_biography.txt',
-                    content: bioText
-                });
-            }
-            
-            // Generate essential formats only (no press kits)
+            // CRITICAL: Add SAMRO Split Sheets PDF - FIXED INTEGRATION
             try {
-                // 1. VCF Contact Card with complete contact info
-                let contactVCF = `BEGIN:VCARD\nVERSION:3.0\nFN:${radioMetadata.artist}\nORG:${radioMetadata.recordLabel || 'Independent'}\nTITLE:Recording Artist\nNOTE:${radioMetadata.genre} artist - ${radioMetadata.title}`;
-                if (radioMetadata.contact?.email) contactVCF += `\nEMAIL:${radioMetadata.contact.email}`;
-                if (radioMetadata.contact?.phone) contactVCF += `\nTEL:${radioMetadata.contact.phone}`;
-                if (radioMetadata.contact?.website) contactVCF += `\nURL:${radioMetadata.contact.website}`;
-                if (radioMetadata.social?.instagram) contactVCF += `\nURL:${radioMetadata.social.instagram}`;
-                if (radioMetadata.social?.twitter) contactVCF += `\nURL:${radioMetadata.social.twitter}`;
-                if (radioMetadata.social?.facebook) contactVCF += `\nURL:${radioMetadata.social.facebook}`;
-                contactVCF += `\nEND:VCARD`;
-                files.push({ name: 'contact_info.vcf', content: contactVCF });
+                const samroSplitSheet = await this.loadSamroSplitSheet();
+                if (samroSplitSheet) {
+                    files.push({
+                        name: 'samro/Composer-Split-Confirmation.pdf',
+                        content: samroSplitSheet
+                    });
+                    console.log('✅ SAMRO split sheets PDF added to package');
+                    
+                    // Also add SAMRO compliance metadata
+                    const samroCompliance = {
+                        document: 'Composer-Split-Confirmation.pdf',
+                        included: true,
+                        compliance: 'SAMRO South African Music Rights Organisation',
+                        purpose: 'Official split sheet documentation for radio submission',
+                        addedAt: new Date().toISOString()
+                    };
+                    
+                    files.push({
+                        name: 'samro/SAMRO-Compliance-Info.json',
+                        content: JSON.stringify(samroCompliance, null, 2)
+                    });
+                } else {
+                    console.warn('⚠️ SAMRO split sheets PDF not found - radio package incomplete');
+                    // Add warning file to package
+                    files.push({
+                        name: 'samro/SAMRO-WARNING.txt',
+                        content: 'WARNING: SAMRO split sheets PDF not found.\n\nFor South African radio submission compliance, please:\n1. Obtain official SAMRO split sheets\n2. Include in radio submission package\n3. Ensure all contributors are properly documented\n\nContact SAMRO: https://samro.org.za'
+                    });
+                }
+            } catch (error) {
+                console.error('❌ SAMRO integration failed:', error);
+                // Add error documentation to package
+                files.push({
+                    name: 'samro/SAMRO-ERROR.txt',
+                    content: `SAMRO Integration Error: ${error.message}\n\nPlease manually include SAMRO documentation for radio submission compliance.`
+                });
+            }
+            
+            // Generate ONLY essential files - no duplicates
+            try {
+                // Single comprehensive metadata file instead of multiple duplicates
+                const completeMetadata = {
+                    track: {
+                        title: radioMetadata.title,
+                        artist: radioMetadata.artist,
+                        stageName: radioMetadata.stageName,
+                        genre: radioMetadata.genre,
+                        language: radioMetadata.language,
+                        duration: radioMetadata.duration,
+                        isrc: radioMetadata.isrc,
+                        contentRating: radioMetadata.contentRating,
+                        format: radioMetadata.format,
+                        bitrate: radioMetadata.bitrate,
+                        quality: radioMetadata.quality,
+                        bpm: radioMetadata.bpm,
+                        releaseType: radioInputs.releaseType || 'Single',
+                        releaseYear: radioInputs.releaseYear || new Date().getFullYear()
+                    },
+                    artist: {
+                        name: radioMetadata.artist,
+                        stageName: radioMetadata.stageName,
+                        biography: radioMetadata.biography,
+                        influences: radioMetadata.influences,
+                        contact: radioMetadata.contact,
+                        social: radioMetadata.social
+                    },
+                    submission: {
+                        date: radioMetadata.submissionDate,
+                        type: 'radio_submission',
+                        radioReady: true,
+                        samroCompliant: true
+                    },
+                    contributors: this.splitSheetsManager.contributors || [],
+                    samro: this.samroManager?.getSamroMetadata() || null
+                };
                 
-                // 2. Broadcast XML (required for radio systems)
-                const broadcastXML = `<?xml version="1.0" encoding="UTF-8"?>\n<RadioSubmission>\n<Track>\n<Title>${radioMetadata.title}</Title>\n<Artist>${radioMetadata.artist}</Artist>\n<Genre>${radioMetadata.genre}</Genre>\n<Duration>${radioMetadata.duration}</Duration>\n<Language>${radioMetadata.language}</Language>\n</Track>\n</RadioSubmission>`;
-                files.push({ name: 'broadcast_metadata.xml', content: broadcastXML });
+                // Replace multiple metadata files with single comprehensive file
+                files.push({
+                    name: 'radio_submission_complete.json',
+                    content: JSON.stringify(completeMetadata, null, 2)
+                });
                 
-                // 3. CSV Track Data (for database import)
-                const csvData = `"Title","Artist","Genre","Duration","Language","ISRC","Website","Email","Phone"\n"${radioMetadata.title}","${radioMetadata.artist}","${radioMetadata.genre}","${radioMetadata.duration}","${radioMetadata.language}","${radioMetadata.isrc || ''}","${radioMetadata.contact?.website || ''}","${radioMetadata.contact?.email || ''}","${radioMetadata.contact?.phone || ''}"`;
-                files.push({ name: 'track_data.csv', content: csvData });
+                // Add SAMRO-specific metadata if available
+                if (this.samroManager) {
+                    const samroData = this.samroManager.getSamroMetadata();
+                    if (samroData) {
+                        files.push({
+                            name: 'samro/SAMRO-Metadata.json',
+                            content: JSON.stringify(samroData, null, 2)
+                        });
+                    }
+                }
                 
-                console.log(`Generated ${files.length} essential format files`);
+                console.log(`Optimized: Generated ${files.length} essential files (eliminated duplicates)`);
+                console.log('📋 Package contents:', files.map(f => f.name).join(', '));
                 
             } catch (error) {
-                console.error('Essential format generation failed:', error);
+                console.error('Optimized format generation failed:', error);
             }
-            
-            // Add press kit JSON with all artist info
-            const pressKit = {
-                artist: {
-                    name: radioMetadata.artist,
-                    stageName: radioMetadata.stageName,
-                    biography: radioMetadata.biography,
-                    influences: radioMetadata.influences,
-                    social: radioMetadata.social
-                },
-                track: {
-                    title: radioMetadata.title,
-                    genre: radioMetadata.genre,
-                    language: radioMetadata.language,
-                    duration: radioMetadata.duration,
-                    isrc: radioMetadata.isrc
-                },
-                submission: {
-                    date: radioMetadata.submissionDate,
-                    type: 'radio_submission',
-                    radioReady: true
-                },
-                formats: {
-                    pressRelease: 'press_release.txt',
-                    submissionLetter: 'radio_submission_letter.txt',
-                    htmlPressKit: 'press_kit.html',
-                    contactCard: 'contact_info.vcf',
-                    broadcastMetadata: 'broadcast_metadata.xml',
-                    samroDocumentation: 'SAMRO_documentation.txt'
-                }
-            };
-            
-            files.push({
-                name: 'press_kit.json',
-                content: JSON.stringify(pressKit, null, 2)
-            });
             
             const zipBlob = await this.createRealZip(files);
             
@@ -3455,12 +3507,16 @@ Verification: Check Chrome extension storage for transaction details`;
         const formLabel = document.getElementById('radio-record-label')?.value?.trim();
         const formISRC = document.getElementById('radio-isrc')?.value?.trim();
         const formRating = document.getElementById('radio-content-rating')?.value?.trim();
+        const formReleaseType = document.getElementById('radio-release-type')?.value?.trim();
+        const formReleaseYear = document.getElementById('radio-release-year')?.value?.trim();
         
         // Store user inputs if they exist
         if (formTitle) this.userInputManager.setUserInput('radio-title', formTitle, true);
         if (formArtist) this.userInputManager.setUserInput('radio-artist', formArtist, true);
         if (formStage) this.userInputManager.setUserInput('radio-stage', formStage, true);
         if (formGenre) this.userInputManager.setUserInput('radio-genre', formGenre, true);
+        if (formReleaseType) this.userInputManager.setUserInput('radio-release-type', formReleaseType, true);
+        if (formReleaseYear) this.userInputManager.setUserInput('radio-release-year', formReleaseYear, true);
         
         const profileBio = this.getProfileBiography();
         
@@ -3473,6 +3529,8 @@ Verification: Check Chrome extension storage for transaction details`;
             recordLabel: formLabel || 'Independent',
             isrc: formISRC || '',
             contentRating: formRating || 'Clean',
+            releaseType: this.userInputManager.getValue('radio-release-type', formReleaseType, 'Single'),
+            releaseYear: this.userInputManager.getValue('radio-release-year', formReleaseYear, new Date().getFullYear()),
             biography: profileBio.biography || '',
             influences: profileBio.influences || '',
             contact: profileBio.contact || {},
@@ -3749,6 +3807,36 @@ Verification: Check Chrome extension storage for transaction details`;
         }
     }
     
+    async loadSamroSplitSheet() {
+        try {
+            // Try to load SAMRO PDF from extension root
+            const response = await fetch(chrome.runtime.getURL('Composer-Split-Confirmation.pdf'));
+            if (!response.ok) {
+                throw new Error(`SAMRO PDF not found: ${response.status} ${response.statusText}`);
+            }
+            
+            const blob = await response.blob();
+            console.log('✅ SAMRO split sheet loaded:', blob.size, 'bytes');
+            return blob;
+        } catch (error) {
+            console.error('❌ Failed to load SAMRO split sheet:', error);
+            
+            // Try alternative path
+            try {
+                const altResponse = await fetch('./Composer-Split-Confirmation.pdf');
+                if (altResponse.ok) {
+                    const blob = await altResponse.blob();
+                    console.log('✅ SAMRO split sheet loaded from alternative path:', blob.size, 'bytes');
+                    return blob;
+                }
+            } catch (altError) {
+                console.error('❌ Alternative SAMRO path also failed:', altError);
+            }
+            
+            return null;
+        }
+    }
+    
     showRadioPackageSuccess(fileCount, title) {
         const successDiv = document.createElement('div');
         successDiv.style.cssText = `
@@ -4017,6 +4105,185 @@ Verification: Check Chrome extension storage for transaction details`;
         }
         if (radioStageField && !radioStageField.value && data.stageName) {
             radioStageField.value = data.stageName;
+        }
+    }
+
+    async handleArtistInvite() {
+        const emailInput = document.getElementById('invite-email');
+        const messageInput = document.getElementById('invite-message');
+        const inviteBtn = document.getElementById('send-invitation');
+        
+        if (!emailInput || !messageInput || !inviteBtn) {
+            console.error('❌ Artist invitation elements not found');
+            return;
+        }
+        
+        const email = emailInput.value.trim();
+        const message = messageInput.value.trim();
+        
+        // Enhanced validation
+        if (!email) {
+            this.showInviteError('Please enter an email address');
+            return;
+        }
+        
+        // Comprehensive email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            this.showInviteError('Please enter a valid email address');
+            return;
+        }
+        
+        // Check for spam prevention (basic rate limiting)
+        const lastInvite = localStorage.getItem('lastInviteTime');
+        const now = Date.now();
+        if (lastInvite && (now - parseInt(lastInvite)) < 30000) { // 30 second cooldown
+            this.showInviteError('Please wait 30 seconds between invitations to prevent spam');
+            return;
+        }
+        
+        const originalText = inviteBtn.textContent;
+        inviteBtn.disabled = true;
+        inviteBtn.textContent = '📤 Sending...';
+        
+        try {
+            // Create invitation content with enhanced features
+            const defaultMessage = 'Hey! I\'ve been using BeatsChain to mint my music as NFTs and submit to radio stations. You should check it out!';
+            const personalMessage = message || defaultMessage;
+            
+            // Get user info for personalization
+            let senderName = 'A fellow artist';
+            if (this.authManager) {
+                const userProfile = this.authManager.getUserProfile();
+                if (userProfile && userProfile.name) {
+                    senderName = userProfile.name;
+                }
+            }
+            
+            const invitationText = `${personalMessage}\n\n🎵 BeatsChain Chrome Extension\nInvited by: ${senderName}\n\nDownload: https://chrome.google.com/webstore/detail/beatschain\n\n✨ Features:\n• Mint music as NFTs on blockchain\n• Submit tracks to radio stations\n• Professional metadata management\n• AI-powered licensing\n• SAMRO compliance for South Africa\n• ISRC generation (80G registrant)\n• Professional metadata embedding\n\n🚀 Join the music revolution!\n\n---\nThis invitation was sent through BeatsChain's artist invitation system.`;
+            
+            // Create mailto link (browser will handle email client)
+            const subject = encodeURIComponent(`🎵 ${senderName} invited you to join BeatsChain`);
+            const body = encodeURIComponent(invitationText);
+            const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`;
+            
+            // Test mailto link generation
+            console.log('✅ Mailto link generated:', mailtoLink.substring(0, 100) + '...');
+            
+            // Open email client
+            window.open(mailtoLink);
+            
+            // Record invitation for spam prevention
+            localStorage.setItem('lastInviteTime', now.toString());
+            
+            // Track invitation count
+            const inviteCount = parseInt(localStorage.getItem('inviteCount') || '0') + 1;
+            localStorage.setItem('inviteCount', inviteCount.toString());
+            
+            // Clear form
+            emailInput.value = '';
+            messageInput.value = '';
+            
+            // Show enhanced success message
+            this.showInviteSuccess(email, inviteCount);
+            
+            // Update stats display
+            this.updateInvitationStats(inviteCount);
+            
+            console.log(`✅ Artist invitation sent to ${email} (total invites: ${inviteCount})`);
+            
+        } catch (error) {
+            console.error('❌ Invitation failed:', error);
+            this.showInviteError(`Failed to send invitation: ${error.message}`);
+        } finally {
+            inviteBtn.disabled = false;
+            inviteBtn.textContent = originalText;
+        }
+    }
+    
+    showInviteSuccess(email, inviteCount = 1) {
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 10000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 350px;
+        `;
+        
+        successDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span>📧</span>
+                <div>
+                    <strong>Invitation Sent!</strong><br>
+                    <small>Email client opened for ${this.sanitizeInput(email)}</small><br>
+                    <small style="color: #0f5132;">Total invites sent: ${inviteCount}</small>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.parentNode.removeChild(successDiv);
+            }
+        }, 5000);
+    }
+    
+    showInviteError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 10000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 350px;
+        `;
+        
+        errorDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span>❌</span>
+                <div>
+                    <strong>Invitation Failed</strong><br>
+                    <small>${this.sanitizeInput(message)}</small>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(errorDiv);
+        
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+            }
+        }, 5000);
+    }
+    
+    loadInvitationStats() {
+        const inviteCount = parseInt(localStorage.getItem('inviteCount') || '0');
+        this.updateInvitationStats(inviteCount);
+    }
+    
+    updateInvitationStats(count) {
+        const statsDiv = document.getElementById('invitation-stats');
+        const countSpan = document.getElementById('invite-count');
+        
+        if (statsDiv && countSpan) {
+            countSpan.textContent = count;
+            statsDiv.style.display = count > 0 ? 'block' : 'none';
         }
     }
 

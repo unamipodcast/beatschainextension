@@ -105,14 +105,36 @@ class AdminDashboardManager {
         adminSection.id = 'admin-dashboard-section';
         adminSection.className = 'admin-dashboard admin-only';
         
+        // Create collapsible admin section
+        adminSection.innerHTML = `
+            <div class="admin-header">
+                <h3>👑 Admin Dashboard</h3>
+                <button class="collapse-btn" id="admin-toggle" type="button">▶</button>
+            </div>
+            <div class="admin-content collapsed" id="admin-content">
+                <!-- Admin content will be populated here -->
+            </div>
+        `;
+        
         profileSection.appendChild(adminSection);
+        
+        // Setup collapse functionality
+        const toggleBtn = adminSection.querySelector('#admin-toggle');
+        const content = adminSection.querySelector('#admin-content');
+        
+        toggleBtn.addEventListener('click', () => {
+            content.classList.toggle('collapsed');
+            toggleBtn.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+        });
+        
         return adminSection;
     }
 
     populateDashboard(container) {
         if (!container) return;
 
-        container.innerHTML = `
+        const adminContent = container.querySelector('#admin-content') || container;
+        adminContent.innerHTML = `
             <div class="admin-dashboard-header">
                 <h3>👑 Admin Dashboard</h3>
                 <div class="dashboard-stats">
@@ -157,7 +179,7 @@ class AdminDashboardManager {
             </div>
         `;
 
-        this.setupDashboardEvents(container);
+        this.setupDashboardEvents(adminContent);
     }
 
     createSponsorPanel() {
