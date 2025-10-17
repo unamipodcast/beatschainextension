@@ -109,6 +109,9 @@ class BeatsChainApp {
             // Initialize Monetization Systems
             await this.initializeMonetizationSystems();
             
+            // Initialize Enhanced Sponsor Integration
+            await this.initializeSponsorIntegration();
+            
             // Initialize production systems
             if (window.productionMonitor) {
                 await window.productionMonitor.initialize();
@@ -1731,6 +1734,18 @@ Verification: Check Chrome extension storage for transaction details`;
             
         } catch (error) {
             console.log('Monetization systems initialization failed:', error);
+        }
+    }
+    
+    async initializeSponsorIntegration() {
+        try {
+            // Initialize Enhanced Sponsor Integration
+            if (window.EnhancedSponsorIntegration) {
+                this.enhancedSponsorIntegration = EnhancedSponsorIntegration.enhanceApp(this);
+                console.log('✅ Enhanced Sponsor Integration initialized');
+            }
+        } catch (error) {
+            console.log('Sponsor integration initialization failed:', error);
         }
     }
     
@@ -3820,8 +3835,8 @@ Verification: Check Chrome extension storage for transaction details`;
     
     async loadSamroSplitSheet() {
         try {
-            // Try to load SAMRO PDF from extension root
-            const response = await fetch(chrome.runtime.getURL('Composer-Split-Confirmation.pdf'));
+            // Try to load SAMRO PDF from assets directory
+            const response = await fetch(chrome.runtime.getURL('assets/Composer-Split-Confirmation.pdf'));
             if (!response.ok) {
                 throw new Error(`SAMRO PDF not found: ${response.status} ${response.statusText}`);
             }
@@ -3834,7 +3849,7 @@ Verification: Check Chrome extension storage for transaction details`;
             
             // Try alternative path
             try {
-                const altResponse = await fetch('./Composer-Split-Confirmation.pdf');
+                const altResponse = await fetch('./assets/Composer-Split-Confirmation.pdf');
                 if (altResponse.ok) {
                     const blob = await altResponse.blob();
                     console.log('✅ SAMRO split sheet loaded from alternative path:', blob.size, 'bytes');
