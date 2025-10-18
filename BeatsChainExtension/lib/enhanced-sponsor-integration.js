@@ -44,14 +44,25 @@ class EnhancedSponsorIntegration {
     }
 
     enhanceISRCGeneration(app) {
-        if (!app.isrcManager) return;
-
-        const originalHandleGeneration = app.isrcManager.handleISRCGeneration;
-        if (originalHandleGeneration) {
+        // Hook into ISRC generation button click
+        const isrcButton = document.getElementById('generate-isrc-btn');
+        if (isrcButton) {
+            const originalClick = isrcButton.onclick;
+            isrcButton.addEventListener('click', () => {
+                // Show sponsor after ISRC generation
+                setTimeout(() => {
+                    this.displaySponsorAfterISRC();
+                }, 1500);
+            });
+        }
+        
+        // Also hook into the ISRC manager method if available
+        if (app.isrcManager && app.isrcManager.handleISRCGeneration) {
+            const originalMethod = app.isrcManager.handleISRCGeneration.bind(app.isrcManager);
             app.isrcManager.handleISRCGeneration = async function() {
-                const result = await originalHandleGeneration.call(this);
+                const result = await originalMethod();
                 
-                // Show Google Drive sponsor content after ISRC generation
+                // Show sponsor after ISRC generation
                 setTimeout(() => {
                     app.enhancedSponsorIntegration?.displaySponsorAfterISRC();
                 }, 1500);
@@ -102,11 +113,24 @@ class EnhancedSponsorIntegration {
     }
 
     async displaySponsorAfterISRC() {
+        console.log('🎯 Attempting to display sponsor after ISRC...');
+        
         const container = document.querySelector('.isrc-input-group') || 
-                         document.getElementById('radio-isrc')?.parentElement;
+                         document.getElementById('radio-isrc')?.parentElement ||
+                         document.querySelector('.form-row');
+        
+        console.log('📍 Container found:', !!container, container?.id || container?.className);
+        console.log('📊 Google Drive Manager:', !!this.googleDriveManager);
         
         if (container && this.googleDriveManager) {
-            await this.googleDriveManager.displaySponsorContent('after_isrc', container);
+            try {
+                await this.googleDriveManager.displaySponsorContent('after_isrc', container);
+                console.log('✅ Sponsor content displayed successfully');
+            } catch (error) {
+                console.error('❌ Sponsor display failed:', error);
+            }
+        } else {
+            console.warn('⚠️ Missing container or Google Drive manager for sponsor display');
         }
     }
 
@@ -229,10 +253,49 @@ class EnhancedSponsorIntegration {
         }
     }
 
+    // Manual trigger for testing
+    async testSponsorDisplay(placement = 'after_isrc') {
+        console.log(`🧪 Testing sponsor display for placement: ${placement}`);
+        
+        if (!this.googleDriveManager) {
+            console.error('❌ Google Drive manager not available');
+            return false;
+        }
+        
+        // Find any suitable container
+        const containers = [
+            document.querySelector('.isrc-input-group'),
+            document.getElementById('radio-isrc')?.parentElement,
+            document.querySelector('.form-row'),
+            document.getElementById('radio-step-2'),
+            document.querySelector('.radio-step.active')
+        ].filter(Boolean);
+        
+        if (containers.length === 0) {
+            console.error('❌ No suitable container found for sponsor display');
+            return false;
+        }
+        
+        const container = containers[0];
+        console.log(`📍 Using container:`, container.id || container.className);
+        
+        try {
+            await this.googleDriveManager.displaySponsorContent(placement, container);
+            console.log('✅ Test sponsor display successful');
+            return true;
+        } catch (error) {
+            console.error('❌ Test sponsor display failed:', error);
+            return false;
+        }
+    }
+    
     // Static integration method
     static enhanceApp(app) {
         const integration = new EnhancedSponsorIntegration();
         app.enhancedSponsorIntegration = integration;
+        
+        // Make available globally for testing
+        window.testSponsorDisplay = () => integration.testSponsorDisplay();
         
         // Initialize when app is ready
         if (app.isInitialized) {

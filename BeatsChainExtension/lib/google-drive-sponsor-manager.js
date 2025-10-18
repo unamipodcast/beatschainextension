@@ -27,9 +27,13 @@ class GoogleDriveSponsorManager {
 
     // Fetch sponsor manifest from Google Drive
     async fetchSponsorManifest() {
+        console.log('🔍 fetchSponsorManifest called, manifestUrl:', this.manifestUrl);
+        
         if (!this.manifestUrl) {
             console.warn('⚠️ No Google Drive manifest URL configured');
-            return null;
+            // Use default manifest URL if not set
+            this.manifestUrl = 'https://drive.google.com/uc?id=1HVUsr945s8-yksHHhA1MXoMJNzCT-ODC&export=download';
+            console.log('🔧 Using default manifest URL:', this.manifestUrl);
         }
 
         try {
@@ -48,11 +52,14 @@ class GoogleDriveSponsorManager {
                 }
             });
 
+            console.log('📡 Response status:', response.status, response.statusText);
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const manifest = await response.json();
+            console.log('📋 Manifest loaded:', manifest.version, `${manifest.sponsors?.length || 0} sponsors`);
             
             // Validate manifest structure
             if (!this.validateManifest(manifest)) {
@@ -81,6 +88,7 @@ class GoogleDriveSponsorManager {
                 return offlineData;
             }
             
+            console.error('💥 No sponsor data available (online or offline)');
             return null;
         }
     }
@@ -226,18 +234,39 @@ class GoogleDriveSponsorManager {
 
     // Display sponsor content at placement
     async displaySponsorContent(placement, container) {
-        if (!container) return;
+        console.log(`🎯 GoogleDriveSponsorManager.displaySponsorContent called:`, { placement, container: !!container });
+        
+        if (!container) {
+            console.warn('⚠️ No container provided for sponsor display');
+            return;
+        }
 
         try {
             // Ensure we have fresh sponsor data
+            console.log('🔄 Fetching sponsor manifest...');
             await this.fetchSponsorManifest();
             
+            console.log('📊 Sponsor data available:', !!this.sponsorData);
+            if (this.sponsorData) {
+                console.log('📊 Sponsors in manifest:', this.sponsorData.sponsors?.length || 0);
+            }
+            
             const sponsors = this.getActiveSponsors(placement);
-            if (sponsors.length === 0) return;
+            console.log(`🎯 Active sponsors for '${placement}':`, sponsors.length);
+            
+            if (sponsors.length === 0) {
+                console.warn(`⚠️ No active sponsors found for placement: ${placement}`);
+                return;
+            }
 
             // Select sponsor (rotate or random)
             const sponsor = this.selectSponsor(sponsors, placement);
-            if (!sponsor) return;
+            if (!sponsor) {
+                console.warn('⚠️ No sponsor selected');
+                return;
+            }
+            
+            console.log('🎯 Selected sponsor:', sponsor.name);
 
             // Create and display card
             const card = this.createSponsorCard(sponsor, placement);
@@ -247,6 +276,8 @@ class GoogleDriveSponsorManager {
             card.style.transform = 'translateY(-10px)';
             container.appendChild(card);
             
+            console.log('✅ Sponsor card added to container');
+            
             // Animate in
             setTimeout(() => {
                 card.style.transition = 'all 0.3s ease';
@@ -255,7 +286,7 @@ class GoogleDriveSponsorManager {
             }, 100);
 
         } catch (error) {
-            console.error('Failed to display sponsor content:', error);
+            console.error('❌ Failed to display sponsor content:', error);
         }
     }
 
