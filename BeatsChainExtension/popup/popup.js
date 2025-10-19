@@ -4248,10 +4248,12 @@ Verification: Check Chrome extension storage for transaction details`;
             }
         }, 5000);
         
-        // Show sponsored content after success message
-        setTimeout(() => {
-            this.displayPostPackageSponsor(fileCount, title);
-        }, 2000);
+        // Show sponsored content after success message (only once)
+        if (!document.querySelector('.post-package-sponsor-container')) {
+            setTimeout(() => {
+                this.displayPostPackageSponsor(fileCount, title);
+            }, 2000);
+        }
     }
     
     async loadHistory() {
