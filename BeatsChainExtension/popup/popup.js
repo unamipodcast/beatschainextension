@@ -3011,9 +3011,6 @@ Verification: Check Chrome extension storage for transaction details`;
             this.userInputManager.setUserInput('radio-title', this.radioMetadata.title, false);
         }
         
-        // Auto-fill from shared profile data
-        const sharedData = this.getSharedProfileData();
-        
         const artistInput = document.getElementById('radio-artist-name');
         if (artistInput && !artistInput.value && sharedData.artistName) {
             artistInput.value = sharedData.artistName;
