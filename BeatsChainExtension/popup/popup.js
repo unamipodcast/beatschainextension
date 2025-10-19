@@ -3019,9 +3019,10 @@ Verification: Check Chrome extension storage for transaction details`;
             this.userInputManager.setUserInput('radio-artist', enhancedProfile.legalName, false);
         }
         
-        // Auto-fill display name from profile
+        // Auto-fill display name only if different from legal name
         const stageInput = document.getElementById('radio-stage-name');
-        if (stageInput && !stageInput.value && enhancedProfile.displayName) {
+        if (stageInput && !stageInput.value && enhancedProfile.displayName && 
+            enhancedProfile.displayName !== enhancedProfile.legalName) {
             stageInput.value = enhancedProfile.displayName;
             this.userInputManager.setUserInput('radio-stage', enhancedProfile.displayName, false);
         }
