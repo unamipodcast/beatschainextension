@@ -74,8 +74,31 @@ class BeatsChainApp {
                 }
             } catch (error) {
                 console.error('Authentication manager initialization failed:', error);
-                this.authManager = null;
-                this.showAuthenticationRequired();
+                // PRODUCTION: Auto-bypass for end users until Chrome Web Store approval
+                console.log('🔧 Production Mode: Auto-bypass active for end users');
+                // Production bypass for end users
+                console.log('🔧 OAuth2 pending Chrome Web Store approval - using bypass');
+                
+                // Initialize bypass authentication
+                if (window.EnhancedAuthenticationManager) {
+                    this.authManager = new EnhancedAuthenticationManager();
+                } else {
+                    this.authManager = new AuthenticationManager();
+                }
+                
+                try {
+                    const bypassResult = await this.authManager.bypassAuth();
+                    if (bypassResult.success) {
+                        console.log('✅ Production bypass successful');
+                        await this.updateAuthenticatedUI(bypassResult);
+                        this.hideAuthenticationRequired();
+                    } else {
+                        this.showAuthenticationRequired();
+                    }
+                } catch (bypassError) {
+                    console.error('Bypass failed:', bypassError);
+                    this.showAuthenticationRequired();
+                }
             }
             
             try {
@@ -111,6 +134,9 @@ class BeatsChainApp {
             
             // Initialize Enhanced Sponsor Integration
             await this.initializeSponsorIntegration();
+            
+            // Initialize Analytics Manager
+            await this.initializeAnalytics();
             
             // Initialize production systems
             if (window.productionMonitor) {
@@ -260,6 +286,11 @@ class BeatsChainApp {
         const generateRadioBtn = document.getElementById('generate-radio-package');
         if (generateRadioBtn) {
             generateRadioBtn.addEventListener('click', this.generateRadioPackage.bind(this));
+        }
+        
+        const validateRadioBtn = document.getElementById('validate-radio');
+        if (validateRadioBtn) {
+            validateRadioBtn.addEventListener('click', this.validateForRadio.bind(this));
         }
         
         // AI Insights events
@@ -1749,6 +1780,18 @@ Verification: Check Chrome extension storage for transaction details`;
         }
     }
     
+    async initializeAnalytics() {
+        try {
+            if (window.AnalyticsManager) {
+                this.analyticsManager = new AnalyticsManager();
+                await this.analyticsManager.initialize();
+                console.log('✅ Analytics Manager initialized');
+            }
+        } catch (error) {
+            console.log('Analytics initialization failed:', error);
+        }
+    }
+    
     async loadAIInsights() {
         if (!this.smartTreesAI) {
             console.log('Smart Trees AI not available');
@@ -2375,6 +2418,88 @@ Verification: Check Chrome extension storage for transaction details`;
         div.textContent = text;
         return div.innerHTML.replace(/\n/g, '<br>');
     }
+    
+    displayPostPackageSponsor(fileCount, title) {
+        // Try Google Drive integration first
+        if (this.enhancedSponsorIntegration?.displayPostPackageSponsor) {
+            this.enhancedSponsorIntegration.displayPostPackageSponsor(fileCount, title);
+            return;
+        }
+        
+        // Fallback to hardcoded content if Google Drive unavailable
+        this.displayFallbackPostPackageSponsor(fileCount, title);
+    }
+    
+    displayFallbackPostPackageSponsor(fileCount, title) {
+        const sponsorDiv = document.createElement('div');
+        sponsorDiv.className = 'post-package-sponsor';
+        sponsorDiv.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            background: #f8f9fa; border: 1px solid #dee2e6;
+            border-radius: 8px; padding: 16px; max-width: 320px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10001;
+            font-size: 13px;
+        `;
+        
+        sponsorDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span>🎵</span>
+                <strong>Next Steps for Your Music</strong>
+                <span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span>
+            </div>
+            <p style="margin: 0 0 12px 0; color: #666;">
+                Your ${fileCount}-file radio package is ready! Consider these next steps:
+            </p>
+            <div style="font-size: 12px; line-height: 1.4;">
+                <div>📻 Radio submission services</div>
+                <div>📈 Airplay tracking tools</div>
+                <div>🎯 Music promotion platforms</div>
+            </div>
+            <button id="dismiss-sponsor" style="position: absolute; top: 4px; right: 8px; border: none; background: none; cursor: pointer; font-size: 16px;">×</button>
+        `;
+        
+        // Track display
+        this.trackSponsorDisplay('post-package');
+        
+        // Dismiss functionality
+        sponsorDiv.querySelector('#dismiss-sponsor').addEventListener('click', () => {
+            this.trackSponsorInteraction('dismissed', 'post-package');
+            sponsorDiv.remove();
+        });
+        
+        // Auto-dismiss after 8 seconds
+        setTimeout(() => {
+            if (sponsorDiv.parentNode) {
+                sponsorDiv.remove();
+            }
+        }, 8000);
+        
+        document.body.appendChild(sponsorDiv);
+    }
+    
+    recordPackageSuccess(packageData) {
+        if (this.analyticsManager) {
+            this.analyticsManager.recordPackageSuccess(packageData);
+        }
+    }
+    
+    trackSponsorDisplay(location) {
+        if (this.analyticsManager) {
+            this.analyticsManager.recordSponsorDisplay(location);
+        }
+    }
+    
+    trackSponsorInteraction(action, location) {
+        if (this.analyticsManager) {
+            this.analyticsManager.recordSponsorInteraction(action, location);
+        }
+    }
+    
+    recordISRCInPackage(isrcCode) {
+        if (this.analyticsManager) {
+            this.analyticsManager.recordISRCInPackage();
+        }
+    }
 
     async generateDownloadPackage(result) {
         try {
@@ -2446,6 +2571,25 @@ Verification: Check Chrome extension storage for transaction details`;
                 name: 'LICENSE.txt',
                 content: licenseContent
             });
+            
+            files.push({
+                name: 'README.md',
+                content: `# BeatsChain Chrome Extension\n\nThis package was generated by BeatsChain Chrome Extension v${chrome.runtime?.getManifest()?.version || '2.1.0'}\n\nFor more information, visit: https://chrome.google.com/webstore/detail/beatschain`
+            });
+            
+            // Add extension README
+            try {
+                const readmeResponse = await fetch(chrome.runtime.getURL('README.md'));
+                if (readmeResponse.ok) {
+                    const readmeContent = await readmeResponse.text();
+                    files.push({
+                        name: 'README.md',
+                        content: readmeContent
+                    });
+                }
+            } catch (error) {
+                console.log('README not found, skipping');
+            }
             
             // 4. NFT Metadata (JSON) - Use user inputs, not AI suggestions
             const artistInputs = this.getArtistInputs();
@@ -2642,6 +2786,12 @@ Verification: Check Chrome extension storage for transaction details`;
             this.radioValidator = new RadioValidator(this.chromeAI);
             this.splitSheetsManager = new SplitSheetsManager();
             this.radioMetadataManager = new RadioMetadataManager();
+            
+            // Initialize SAMRO PDF Manager
+            if (window.SAMROPDFManager) {
+                this.samroPDFManager = new SAMROPDFManager();
+                console.log('✅ SAMRO PDF Manager initialized');
+            }
             
             // Initialize ISRC Manager
             if (window.ISRCManager) {
@@ -3094,6 +3244,13 @@ Verification: Check Chrome extension storage for transaction details`;
                 
                 this.displayRadioValidation(validation, overallScore);
                 
+                // Show sponsor content after validation (Position 2)
+                if (this.enhancedSponsorIntegration) {
+                    setTimeout(() => {
+                        this.enhancedSponsorIntegration.displayValidationSponsor();
+                    }, 500);
+                }
+                
                 const generateBtn = document.getElementById('generate-radio-package');
                 if (generateBtn) generateBtn.disabled = overallScore < 60;
             } else {
@@ -3111,6 +3268,11 @@ Verification: Check Chrome extension storage for transaction details`;
     
     displayRadioValidation(validation, overallScore) {
         const resultsDiv = document.getElementById('radio-results');
+        if (!resultsDiv) {
+            console.error('❌ Radio results element not found');
+            return;
+        }
+        
         resultsDiv.innerHTML = '';
         
         // Secure DOM creation for validation results
@@ -3130,11 +3292,12 @@ Verification: Check Chrome extension storage for transaction details`;
         const itemsDiv = document.createElement('div');
         itemsDiv.className = 'validation-items';
         
+        // Safe validation with null checks
         const validationItems = [
-            { label: 'Duration', message: validation.duration.message },
-            { label: 'Quality', message: validation.quality.message },
-            { label: 'Format', message: validation.format.message },
-            { label: 'Content', message: validation.profanity.message }
+            { label: 'Duration', message: validation?.duration?.message || 'Not validated' },
+            { label: 'Quality', message: validation?.quality?.message || 'Not validated' },
+            { label: 'Format', message: validation?.format?.message || 'Not validated' },
+            { label: 'Content', message: validation?.profanity?.message || 'Not validated' }
         ];
         
         validationItems.forEach(item => {
@@ -3146,6 +3309,9 @@ Verification: Check Chrome extension storage for transaction details`;
         
         resultsDiv.appendChild(summaryDiv);
         resultsDiv.appendChild(itemsDiv);
+        
+        // Make results visible
+        resultsDiv.style.display = 'block';
     }
     
     addContributor() {
@@ -3254,6 +3420,11 @@ Verification: Check Chrome extension storage for transaction details`;
         generateBtn.disabled = true;
         generateBtn.textContent = 'Generating...';
         
+        // Show sponsor before package generation (Position 3)
+        if (this.enhancedSponsorIntegration) {
+            this.enhancedSponsorIntegration.displayPackageSponsor();
+        }
+        
         try {
             const files = [];
             
@@ -3343,106 +3514,209 @@ Verification: Check Chrome extension storage for transaction details`;
                 });
             }
             
-            // CRITICAL: Add SAMRO Split Sheets PDF - FIXED INTEGRATION
+            // ENHANCED: Add SAMRO Split Sheets PDF with Auto-Fill
             try {
-                const samroSplitSheet = await this.loadSamroSplitSheet();
-                if (samroSplitSheet) {
+                // Initialize SAMRO PDF Manager
+                if (window.SAMROPDFManager) {
+                    const samroPDFManager = new SAMROPDFManager();
+                    await samroPDFManager.initialize();
+                    
+                    // Create SAMRO package with user data
+                    const samroPackage = await samroPDFManager.createSAMROPackage(
+                        radioInputs,
+                        this.splitSheetsManager.contributors
+                    );
+                    
+                    // Add filled PDF to package
                     files.push({
                         name: 'samro/Composer-Split-Confirmation.pdf',
-                        content: samroSplitSheet
+                        content: samroPackage.pdf.pdfBlob
                     });
-                    console.log('✅ SAMRO split sheets PDF added to package');
                     
-                    // Also add SAMRO compliance metadata
+                    // Add completion instructions
+                    files.push({
+                        name: 'samro/SAMRO-Completion-Instructions.txt',
+                        content: samroPackage.instructions.content
+                    });
+                    
+                    // Add SAMRO compliance metadata with proper attribution
+                    const createdBy = `BeatsChain Chrome Extension v${chrome.runtime?.getManifest()?.version || '2.1.0'}`;
                     const samroCompliance = {
                         document: 'Composer-Split-Confirmation.pdf',
                         included: true,
+                        autoFilled: true,
                         compliance: 'SAMRO South African Music Rights Organisation',
                         purpose: 'Official split sheet documentation for radio submission',
-                        addedAt: new Date().toISOString()
+                        contributors: this.splitSheetsManager.contributors.length,
+                        totalPercentage: this.splitSheetsManager.getTotalPercentage(),
+                        addedAt: new Date().toISOString(),
+                        instructions: 'See SAMRO-Completion-Instructions.txt for form completion steps',
+                        createdBy: createdBy,
+                        packageType: 'Radio Submission Package',
+                        website: 'https://chrome.google.com/webstore/detail/beatschain'
                     };
                     
                     files.push({
                         name: 'samro/SAMRO-Compliance-Info.json',
                         content: JSON.stringify(samroCompliance, null, 2)
                     });
+                    
+                    console.log('✅ SAMRO split sheets PDF with auto-fill added to package');
+                    
                 } else {
-                    console.warn('⚠️ SAMRO split sheets PDF not found - radio package incomplete');
-                    // Add warning file to package
-                    files.push({
-                        name: 'samro/SAMRO-WARNING.txt',
-                        content: 'WARNING: SAMRO split sheets PDF not found.\n\nFor South African radio submission compliance, please:\n1. Obtain official SAMRO split sheets\n2. Include in radio submission package\n3. Ensure all contributors are properly documented\n\nContact SAMRO: https://samro.org.za'
-                    });
+                    // Fallback to original PDF without auto-fill
+                    const samroSplitSheet = await this.loadSamroSplitSheet();
+                    if (samroSplitSheet) {
+                        files.push({
+                            name: 'samro/Composer-Split-Confirmation.pdf',
+                            content: samroSplitSheet
+                        });
+                        
+                        // Add manual completion instructions
+                        files.push({
+                            name: 'samro/SAMRO-Manual-Instructions.txt',
+                            content: `SAMRO COMPOSER SPLIT CONFIRMATION - MANUAL COMPLETION\n\nPlease fill out the PDF form manually with the following information:\n\nTrack: "${radioInputs.title}"\nArtist: ${radioInputs.artistName}\nDate: ${new Date().toLocaleDateString()}\n\nContributors:\n${this.splitSheetsManager.contributors.map((c, i) => `${i+1}. ${c.name} - ${c.percentage}% (${c.role})`).join('\n')}\n\nTotal: ${this.splitSheetsManager.getTotalPercentage()}%\n\nSubmit completed form to SAMRO with your music registration.`
+                        });
+                        
+                        console.log('✅ SAMRO split sheets PDF (manual) added to package');
+                    } else {
+                        throw new Error('SAMRO PDF not found');
+                    }
                 }
             } catch (error) {
                 console.error('❌ SAMRO integration failed:', error);
-                // Add error documentation to package
+                // Add error documentation to package with proper attribution
+                const createdBy = `BeatsChain Chrome Extension v${chrome.runtime?.getManifest()?.version || '2.1.0'}`;
                 files.push({
                     name: 'samro/SAMRO-ERROR.txt',
-                    content: `SAMRO Integration Error: ${error.message}\n\nPlease manually include SAMRO documentation for radio submission compliance.`
+                    content: `SAMRO Integration Error: ${error.message}\n\nPlease manually include SAMRO documentation for radio submission compliance.\n\nRequired Information:\nTrack: "${radioInputs.title}"\nArtist: ${radioInputs.artistName}\nContributors: ${this.splitSheetsManager.contributors.length}\nTotal Percentage: ${this.splitSheetsManager.getTotalPercentage()}%\n\nContact SAMRO: https://samro.org.za\n\nGenerated by: ${createdBy}\nPackage Type: Radio Submission Package`
                 });
             }
             
-            // Generate ONLY essential files - no duplicates
+            // RESTRUCTURED: Generate organized file structure - separate files by purpose
             try {
-                // Single comprehensive metadata file instead of multiple duplicates
-                const completeMetadata = {
-                    track: {
-                        title: radioMetadata.title,
-                        artist: radioMetadata.artist,
-                        stageName: radioMetadata.stageName,
-                        genre: radioMetadata.genre,
-                        language: radioMetadata.language,
-                        duration: radioMetadata.duration,
-                        isrc: radioMetadata.isrc,
-                        contentRating: radioMetadata.contentRating,
-                        format: radioMetadata.format,
-                        bitrate: radioMetadata.bitrate,
-                        quality: radioMetadata.quality,
-                        bpm: radioMetadata.bpm,
-                        releaseType: radioInputs.releaseType || 'Single',
-                        releaseYear: radioInputs.releaseYear || new Date().getFullYear()
-                    },
-                    artist: {
-                        name: radioMetadata.artist,
-                        stageName: radioMetadata.stageName,
-                        biography: radioMetadata.biography,
-                        influences: radioMetadata.influences,
-                        contact: radioMetadata.contact,
-                        social: radioMetadata.social
-                    },
-                    submission: {
-                        date: radioMetadata.submissionDate,
-                        type: 'radio_submission',
-                        radioReady: true,
-                        samroCompliant: true
-                    },
-                    contributors: this.splitSheetsManager.contributors || [],
-                    samro: this.samroManager?.getSamroMetadata() || null
-                };
+                const createdBy = `BeatsChain Chrome Extension v${chrome.runtime?.getManifest()?.version || '2.0.0'}`;
+                const timestamp = new Date().toISOString();
                 
-                // Replace multiple metadata files with single comprehensive file
+                // Add extension README
+                const readmeContent = await this.loadExtensionReadme();
                 files.push({
-                    name: 'radio_submission_complete.json',
-                    content: JSON.stringify(completeMetadata, null, 2)
+                    name: 'documentation/README.md',
+                    content: readmeContent
                 });
                 
-                // Add SAMRO-specific metadata if available
-                if (this.samroManager) {
-                    const samroData = this.samroManager.getSamroMetadata();
-                    if (samroData) {
-                        files.push({
-                            name: 'samro/SAMRO-Metadata.json',
-                            content: JSON.stringify(samroData, null, 2)
-                        });
-                    }
+                // 📁 audio/ - Audio file with embedded metadata (already added above)
+                
+                // 📁 images/ - Cover image with embedded ISRC (already added above)
+                
+                // 📁 metadata/ - Professional metadata files
+                
+                // 1. Track Metadata (JSON) - Essential track info only
+                const trackMetadata = {
+                    title: radioMetadata.title,
+                    artist: radioMetadata.artist,
+                    stageName: radioMetadata.stageName,
+                    genre: radioMetadata.genre,
+                    language: radioMetadata.language,
+                    duration: radioMetadata.duration,
+                    isrc: radioMetadata.isrc,
+                    contentRating: radioMetadata.contentRating,
+                    format: radioMetadata.format,
+                    bitrate: radioMetadata.bitrate,
+                    quality: radioMetadata.quality,
+                    bpm: radioMetadata.bpm,
+                    releaseType: radioInputs.releaseType || 'Single',
+                    releaseYear: radioInputs.releaseYear || new Date().getFullYear(),
+                    createdBy: createdBy,
+                    generated: timestamp
+                };
+                
+                files.push({
+                    name: 'metadata/track_metadata.json',
+                    content: JSON.stringify(trackMetadata, null, 2)
+                });
+                
+                // 2. Broadcast Metadata (XML) - Radio station format
+                const broadcastXML = `<?xml version="1.0" encoding="UTF-8"?>
+<broadcast_metadata>
+  <track>
+    <title>${this.sanitizeInput(radioMetadata.title)}</title>
+    <artist>${this.sanitizeInput(radioMetadata.artist)}</artist>
+    <duration>${this.sanitizeInput(radioMetadata.duration)}</duration>
+    <genre>${this.sanitizeInput(radioMetadata.genre)}</genre>
+    <isrc>${this.sanitizeInput(radioMetadata.isrc)}</isrc>
+    <language>${this.sanitizeInput(radioMetadata.language)}</language>
+    <content_rating>${this.sanitizeInput(radioMetadata.contentRating)}</content_rating>
+  </track>
+  <metadata>
+    <created_by>${createdBy}</created_by>
+    <generated>${timestamp}</generated>
+  </metadata>
+</broadcast_metadata>`;
+                
+                files.push({
+                    name: 'metadata/broadcast_metadata.xml',
+                    content: broadcastXML
+                });
+                
+                // 3. Track Data (CSV) - Spreadsheet format with contact
+                const csvContent = `Title,Artist,Duration,Genre,ISRC,Language,Contact_Email,Contact_Phone,Website,Created_By\n"${this.sanitizeInput(radioMetadata.title)}","${this.sanitizeInput(radioMetadata.artist)}","${this.sanitizeInput(radioMetadata.duration)}","${this.sanitizeInput(radioMetadata.genre)}","${this.sanitizeInput(radioMetadata.isrc)}","${this.sanitizeInput(radioMetadata.language)}","${this.sanitizeInput(radioMetadata.contact?.email || '')}","${this.sanitizeInput(radioMetadata.contact?.phone || '')}","${this.sanitizeInput(radioMetadata.contact?.website || '')}","${createdBy}"`;
+                
+                files.push({
+                    name: 'metadata/track_data.csv',
+                    content: csvContent
+                });
+                
+                // 📁 contact/ - Professional contact information
+                
+                // 4. Contact Card (VCF) - Industry standard vCard
+                const vcfContent = `BEGIN:VCARD\nVERSION:3.0\nFN:${this.sanitizeInput(radioMetadata.artist)}\nORG:${this.sanitizeInput(radioMetadata.artist)}\nTITLE:Recording Artist\nEMAIL:${this.sanitizeInput(radioMetadata.contact?.email || '')}\nTEL:${this.sanitizeInput(radioMetadata.contact?.phone || '')}\nURL:${this.sanitizeInput(radioMetadata.contact?.website || '')}\nNOTE:Contact for ${this.sanitizeInput(radioMetadata.title)} - Generated by ${createdBy}\nEND:VCARD`;
+                
+                files.push({
+                    name: 'contact/artist_contact.vcf',
+                    content: vcfContent
+                });
+                
+                // 📁 samro/ - SAMRO compliance documentation (already added above)
+                
+                // 📁 biography/ - Artist biography and press kit (if provided)
+                if (radioMetadata.biography && radioMetadata.biography.trim()) {
+                    const biographyContent = `ARTIST BIOGRAPHY\n\nArtist: ${radioMetadata.artist}\nStage Name: ${radioMetadata.stageName || 'N/A'}\n\n${radioMetadata.biography}\n\nMusical Influences: ${radioMetadata.influences || 'Not specified'}\n\nContact Information:\nEmail: ${radioMetadata.contact?.email || 'Not provided'}\nPhone: ${radioMetadata.contact?.phone || 'Not provided'}\nWebsite: ${radioMetadata.contact?.website || 'Not provided'}\n\nSocial Media:\n${radioMetadata.social?.instagram ? `Instagram: ${radioMetadata.social.instagram}\n` : ''}${radioMetadata.social?.twitter ? `Twitter: ${radioMetadata.social.twitter}\n` : ''}${radioMetadata.social?.facebook ? `Facebook: ${radioMetadata.social.facebook}\n` : ''}\n\nGenerated: ${new Date().toLocaleString()}\nCreated by: ${createdBy}`;
+                    
+                    files.push({
+                        name: 'biography/artist_biography.txt',
+                        content: biographyContent
+                    });
+                    
+                    // Press Kit (JSON format)
+                    const pressKit = {
+                        artist: {
+                            name: radioMetadata.artist,
+                            stageName: radioMetadata.stageName,
+                            biography: radioMetadata.biography,
+                            influences: radioMetadata.influences
+                        },
+                        contact: radioMetadata.contact,
+                        social: radioMetadata.social,
+                        track: {
+                            title: radioMetadata.title,
+                            genre: radioMetadata.genre
+                        },
+                        createdBy: createdBy,
+                        generated: timestamp
+                    };
+                    
+                    files.push({
+                        name: 'biography/press_kit.json',
+                        content: JSON.stringify(pressKit, null, 2)
+                    });
                 }
                 
-                console.log(`Optimized: Generated ${files.length} essential files (eliminated duplicates)`);
-                console.log('📋 Package contents:', files.map(f => f.name).join(', '));
+                console.log(`📁 Generated ${files.length} organized files in structured folders`);
+                console.log('📋 Package structure:', files.map(f => f.name).join(', '));
                 
             } catch (error) {
-                console.error('Optimized format generation failed:', error);
+                console.error('File structure generation failed:', error);
             }
             
             const zipBlob = await this.createRealZip(files);
@@ -3456,16 +3730,26 @@ Verification: Check Chrome extension storage for transaction details`;
             
             URL.revokeObjectURL(url);
             
-            // Record package generation for usage limits
+            // Record package generation for usage limits and ISRC tracking
             if (this.usageLimits) {
                 await this.usageLimits.recordPackageGeneration('radio');
             }
             
-            // Show success with format count and download notification
+            // Track ISRC usage in package
+            if (radioInputs.isrc) {
+                this.recordISRCInPackage(radioInputs.isrc);
+            }
+            
+            // Show success with organized file count
             const formatCount = files.length;
             generateBtn.textContent = `✅ ${formatCount} Files Generated!`;
             
-            // Show prominent download success message
+            // Update package contents display with organized structure
+            this.updatePackageContentsDisplay(files, createdBy);
+            
+
+            
+            // Show prominent download success message with sponsored content
             this.showRadioPackageSuccess(formatCount, sanitizedTitle);
             
             // Store radio submission in history
@@ -3863,6 +4147,47 @@ Verification: Check Chrome extension storage for transaction details`;
         }
     }
     
+    updatePackageContentsDisplay(files, createdBy) {
+        const contentsDiv = document.getElementById('package-contents-display');
+        if (!contentsDiv) return;
+        
+        // Group files by folder
+        const folders = {};
+        files.forEach(file => {
+            const parts = file.name.split('/');
+            const folder = parts.length > 1 ? parts[0] : 'root';
+            if (!folders[folder]) folders[folder] = [];
+            folders[folder].push(file.name);
+        });
+        
+        const folderIcons = {
+            'audio': '🎵',
+            'images': '🖼️', 
+            'metadata': '📄',
+            'contact': '📇',
+            'samro': '🏛️',
+            'biography': '📝',
+            'root': '📦'
+        };
+        
+        let html = `<div class="package-structure"><h4>📦 Package Contents (${files.length} files)</h4>`;
+        
+        Object.entries(folders).forEach(([folder, fileList]) => {
+            const icon = folderIcons[folder] || '📁';
+            html += `<div class="folder-group"><strong>${icon} ${folder}/</strong><ul>`;
+            fileList.forEach(fileName => {
+                const displayName = fileName.includes('/') ? fileName.split('/')[1] : fileName;
+                html += `<li>${displayName}</li>`;
+            });
+            html += `</ul></div>`;
+        });
+        
+        html += `<div class="package-footer"><small>Created by: ${createdBy}</small></div></div>`;
+        
+        contentsDiv.innerHTML = html;
+        contentsDiv.style.display = 'block';
+    }
+    
     showRadioPackageSuccess(fileCount, title) {
         const successDiv = document.createElement('div');
         successDiv.style.cssText = `
@@ -3910,11 +4235,23 @@ Verification: Check Chrome extension storage for transaction details`;
         
         document.body.appendChild(successDiv);
         
+        // Record package success
+        this.recordPackageSuccess({
+            type: 'radio',
+            fileCount: fileCount,
+            timestamp: Date.now()
+        });
+        
         setTimeout(() => {
             if (successDiv.parentNode) {
                 successDiv.parentNode.removeChild(successDiv);
             }
         }, 5000);
+        
+        // Show sponsored content after success message
+        setTimeout(() => {
+            this.displayPostPackageSponsor(fileCount, title);
+        }, 2000);
     }
     
     async loadHistory() {

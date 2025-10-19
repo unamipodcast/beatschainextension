@@ -61,19 +61,46 @@ class ISRCManager {
     }
 
     generateISRC(trackTitle = '', artistName = '') {
-        const designation = this.getNextDesignation();
-        const isrc = `${this.territory}-${this.registrantCode}-${this.currentYear}-${designation}`;
-        
-        // Store in registry
-        this.registry.codes[isrc] = {
-            trackTitle: this.sanitizeInput(trackTitle),
-            artistName: this.sanitizeInput(artistName),
-            generated: new Date().toISOString(),
-            used: false
-        };
-        
-        this.saveRegistry();
-        return isrc;
+        try {
+            const designation = this.getNextDesignation();
+            const isrc = `${this.territory}-${this.registrantCode}-${this.currentYear}-${designation}`;
+            
+            // CRITICAL: Validate generated ISRC format
+            if (!this.validateISRC(isrc)) {
+                console.error('Generated ISRC failed validation:', {
+                    isrc,
+                    designation,
+                    territory: this.territory,
+                    registrant: this.registrantCode,
+                    year: this.currentYear
+                });
+                throw new Error(`Generated ISRC invalid format: ${isrc}`);
+            }
+            
+            // Store in registry
+            this.registry.codes[isrc] = {
+                trackTitle: this.sanitizeInput(trackTitle),
+                artistName: this.sanitizeInput(artistName),
+                generated: new Date().toISOString(),
+                used: false,
+                validated: true
+            };
+            
+            this.saveRegistry();
+            
+            console.log('✅ ISRC generated and validated:', {
+                isrc,
+                designation,
+                trackTitle: trackTitle.substring(0, 20),
+                artistName: artistName.substring(0, 20)
+            });
+            
+            return isrc;
+            
+        } catch (error) {
+            console.error('❌ ISRC generation failed:', error);
+            throw error;
+        }
     }
 
     getNextDesignation() {
@@ -84,15 +111,41 @@ class ISRCManager {
             throw new Error(`ISRC limit reached. Maximum ${this.registry.userRange.end - this.registry.userRange.start + 1} codes per year.`);
         }
         
-        return this.registry.lastDesignation.toString().padStart(5, '0');
+        // CRITICAL: Ensure 5-digit format
+        const designation = this.registry.lastDesignation.toString().padStart(5, '0');
+        
+        // Validate designation is exactly 5 digits
+        if (designation.length !== 5 || !/^\d{5}$/.test(designation)) {
+            console.error('Invalid designation format:', {
+                designation,
+                lastDesignation: this.registry.lastDesignation,
+                userRange: this.registry.userRange
+            });
+            throw new Error(`Invalid designation format: ${designation} (must be 5 digits)`);
+        }
+        
+        return designation;
     }
 
     validateISRC(isrc) {
         if (!isrc || typeof isrc !== 'string') return false;
         
-        // ZA-80G-YY-NNNNN format
-        const pattern = /^ZA-80G-\d{2}-\d{5}$/;
-        return pattern.test(isrc.replace(/\s/g, ''));
+        const trimmed = isrc.trim();
+        
+        // FIXED: Strict 5-digit validation - ZA-80G-YY-NNNNN format only
+        const standardPattern = /^ZA-80G-\d{2}-\d{5}$/;
+        
+        const isValid = standardPattern.test(trimmed);
+        
+        if (!isValid) {
+            console.warn('ISRC validation failed:', {
+                input: trimmed,
+                expected: 'ZA-80G-YY-NNNNN (5 digits)',
+                pattern: standardPattern.toString()
+            });
+        }
+        
+        return isValid;
     }
 
     markISRCAsUsed(isrc, context = {}) {
@@ -280,12 +333,20 @@ class ISRCManager {
                 }
             }
             
-            // Generate unique range based on user ID hash
+            // FIXED: Generate unique range with 5-digit limit enforcement
             const hash = await this.hashUserId(userId);
-            const rangeIndex = hash % 900; // Support 900,000 users (900 * 1000)
+            const rangeIndex = hash % 90; // Support 90 users per year (90 * 1000 = 90,000 codes)
             const start = 200 + (rangeIndex * 1000); // Each user gets 1000 numbers
-            const end = start + 999;
+            const end = Math.min(start + 999, 99999); // CRITICAL: Cap at 99999 (5 digits max)
             
+            // Validate 5-digit format compliance
+            if (end > 99999) {
+                console.error('ISRC range exceeded 5-digit limit:', { start, end, rangeIndex });
+                // Fallback to safe range
+                return { start: 200, end: 1199, userId: 'fallback', rangeIndex: 0 };
+            }
+            
+            console.log('ISRC range calculated:', { start, end, userId: userId.substring(0, 8), rangeIndex });
             return { start, end, userId, rangeIndex };
             
         } catch (error) {

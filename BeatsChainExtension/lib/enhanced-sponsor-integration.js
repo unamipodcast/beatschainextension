@@ -115,16 +115,30 @@ class EnhancedSponsorIntegration {
     async displaySponsorAfterISRC() {
         console.log('🎯 Attempting to display sponsor after ISRC...');
         
-        const container = document.querySelector('.isrc-input-group') || 
-                         document.getElementById('radio-isrc')?.parentElement ||
-                         document.querySelector('.form-row');
+        // Find container AFTER the ISRC input group, not inside it
+        let container = document.querySelector('.isrc-input-group')?.parentElement;
+        if (!container) {
+            container = document.getElementById('radio-isrc')?.closest('.form-row')?.parentElement;
+        }
+        if (!container) {
+            container = document.getElementById('radio-step-2');
+        }
         
         console.log('📍 Container found:', !!container, container?.id || container?.className);
         console.log('📊 Google Drive Manager:', !!this.googleDriveManager);
         
         if (container && this.googleDriveManager) {
             try {
-                await this.googleDriveManager.displaySponsorContent('after_isrc', container);
+                // Create separate sponsor section
+                let sponsorSection = container.querySelector('.sponsor-section');
+                if (!sponsorSection) {
+                    sponsorSection = document.createElement('div');
+                    sponsorSection.className = 'sponsor-section';
+                    sponsorSection.style.marginTop = '15px';
+                    container.appendChild(sponsorSection);
+                }
+                
+                await this.googleDriveManager.displaySponsorContent('after_isrc', sponsorSection);
                 console.log('✅ Sponsor content displayed successfully');
             } catch (error) {
                 console.error('❌ Sponsor display failed:', error);
@@ -136,42 +150,105 @@ class EnhancedSponsorIntegration {
 
     async displaySponsorBeforePackage() {
         const container = document.getElementById('radio-step-6') || 
-                         document.querySelector('.package-summary');
+                         document.querySelector('.package-summary') ||
+                         document.getElementById('generate-radio-package')?.parentElement;
         
         if (container && this.googleDriveManager) {
-            await this.googleDriveManager.displaySponsorContent('before_package', container);
+            // Create separate sponsor section
+            let sponsorSection = container.querySelector('.before-package-sponsor-section');
+            if (!sponsorSection) {
+                sponsorSection = document.createElement('div');
+                sponsorSection.className = 'before-package-sponsor-section';
+                sponsorSection.style.marginBottom = '15px';
+                container.insertBefore(sponsorSection, container.firstChild);
+            }
+            
+            await this.googleDriveManager.displaySponsorContent('before_package', sponsorSection);
         }
     }
 
     async displaySponsorAfterPackage() {
-        const container = document.getElementById('package-status') || 
-                         document.querySelector('.package-actions');
+        const container = document.getElementById('radio-step-6') || 
+                         document.querySelector('.package-actions') ||
+                         document.getElementById('generate-radio-package')?.parentElement;
         
         if (container && this.googleDriveManager) {
-            await this.googleDriveManager.displaySponsorContent('after_package', container);
+            // Create separate sponsor section
+            let sponsorSection = container.querySelector('.after-package-sponsor-section');
+            if (!sponsorSection) {
+                sponsorSection = document.createElement('div');
+                sponsorSection.className = 'after-package-sponsor-section';
+                sponsorSection.style.marginTop = '15px';
+                container.appendChild(sponsorSection);
+            }
+            
+            await this.googleDriveManager.displaySponsorContent('after_package', sponsorSection);
         }
     }
 
-    async displayContextualSponsor(context) {
-        let placement = 'after_isrc';
-        let container = null;
-
-        switch (context) {
-            case 'validation':
-                placement = 'validation';
-                container = document.getElementById('radio-validation-results');
-                break;
-            case 'split_sheets':
-                placement = 'split_sheets';
-                container = document.getElementById('split-sheets');
-                break;
-            default:
-                return;
-        }
-
+    // Position 2: After "Validate for Radio" click
+    async displayValidationSponsor() {
+        const container = document.getElementById('radio-results') || document.getElementById('radio-step-4');
+        
         if (container && this.googleDriveManager) {
-            await this.googleDriveManager.displaySponsorContent(placement, container);
+            // Clear any existing validation sponsors
+            const existing = container.querySelector('.validation-sponsor-section');
+            if (existing) existing.remove();
+            
+            const sponsorSection = document.createElement('div');
+            sponsorSection.className = 'validation-sponsor-section';
+            sponsorSection.style.cssText = 'margin: 15px 0; clear: both;';
+            container.appendChild(sponsorSection);
+            
+            await this.googleDriveManager.displaySponsorContent('before_package', sponsorSection);
         }
+    }
+    
+    // Position 3: Before "Generate Radio Package" button
+    async displayPackageSponsor() {
+        const generateBtn = document.getElementById('generate-radio-package');
+        const container = generateBtn?.parentElement;
+        
+        if (container && this.googleDriveManager) {
+            // Clear any existing package sponsors
+            const existing = container.querySelector('.package-sponsor-section');
+            if (existing) existing.remove();
+            
+            const sponsorSection = document.createElement('div');
+            sponsorSection.className = 'package-sponsor-section';
+            sponsorSection.style.cssText = 'margin: 15px 0 10px 0; clear: both;';
+            container.insertBefore(sponsorSection, generateBtn);
+            
+            await this.googleDriveManager.displaySponsorContent('after_package', sponsorSection);
+        }
+    }
+    
+    // Position 4: Post-Package Success (NEW)
+    async displayPostPackageSponsor(fileCount, title) {
+        if (!this.googleDriveManager) {
+            console.warn('⚠️ Google Drive manager not available for post-package sponsor');
+            return;
+        }
+        
+        // Create floating sponsor container
+        const sponsorContainer = document.createElement('div');
+        sponsorContainer.className = 'post-package-sponsor-container';
+        sponsorContainer.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            max-width: 320px; z-index: 10001;
+        `;
+        
+        document.body.appendChild(sponsorContainer);
+        
+        // Display Google Drive sponsor content
+        await this.googleDriveManager.displaySponsorContent('post_package', sponsorContainer);
+        
+        // Auto-remove after 10 seconds if no interaction
+        setTimeout(() => {
+            if (sponsorContainer.parentNode && !sponsorContainer.querySelector('.sponsor-interacted')) {
+                sponsorContainer.remove();
+            }
+        }, 10000);
     }
 
     // Configure Google Drive manifest URL

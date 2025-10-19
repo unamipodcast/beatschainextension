@@ -32,7 +32,7 @@ class GoogleDriveSponsorManager {
         if (!this.manifestUrl) {
             console.warn('⚠️ No Google Drive manifest URL configured');
             // Use default manifest URL if not set
-            this.manifestUrl = 'https://drive.google.com/uc?id=1HVUsr945s8-yksHHhA1MXoMJNzCT-ODC&export=download';
+            this.manifestUrl = 'https://drive.usercontent.google.com/download?id=1HVUsr945s8-yksHHhA1MXoMJNzCT-ODC&export=download';
             console.log('🔧 Using default manifest URL:', this.manifestUrl);
         }
 
@@ -46,10 +46,12 @@ class GoogleDriveSponsorManager {
             console.log('🌐 Fetching sponsor manifest from Google Drive...');
             const response = await fetch(this.manifestUrl, {
                 method: 'GET',
+                mode: 'cors',
                 headers: {
                     'Accept': 'application/json',
                     'Cache-Control': 'no-cache'
-                }
+                },
+                credentials: 'omit'
             });
 
             console.log('📡 Response status:', response.status, response.statusText);
@@ -88,7 +90,63 @@ class GoogleDriveSponsorManager {
                 return offlineData;
             }
             
+            // Load local fallback manifest
+            // Try to use cached data even if expired
+            const cached = await this.getCachedManifest();
+            if (cached) {
+                console.log('📋 Using expired cached sponsor manifest as fallback');
+                return cached.data;
+            }
+            
+            // Load local manifest as last resort
+            return await this.loadLocalManifest();
+            
             console.error('💥 No sponsor data available (online or offline)');
+            return null;
+        }
+    }
+
+    // Get cached manifest
+    async getCachedManifest() {
+        try {
+            const result = await chrome.storage.local.get(['google_drive_sponsor_cache']);
+            return result.google_drive_sponsor_cache || null;
+        } catch (error) {
+            console.warn('Failed to get cached manifest:', error);
+            return null;
+        }
+    }
+
+    // Cache manifest data
+    async cacheManifest(data) {
+        try {
+            const cacheData = {
+                data,
+                timestamp: Date.now()
+            };
+            await chrome.storage.local.set({
+                'google_drive_sponsor_cache': cacheData
+            });
+        } catch (error) {
+            console.warn('Failed to cache manifest:', error);
+        }
+    }
+
+    // Load local manifest file
+    async loadLocalManifest() {
+        try {
+            console.log('📦 Loading local sponsor manifest...');
+            const response = await fetch(chrome.runtime.getURL('assets/fallback-sponsor-manifest.json'));
+            const manifest = await response.json();
+            console.log('✅ Local sponsor manifest loaded');
+            
+            this.sponsorData = manifest;
+            this.cache.data = manifest;
+            this.cache.timestamp = Date.now();
+            
+            return manifest;
+        } catch (error) {
+            console.error('❌ Failed to load local manifest:', error);
             return null;
         }
     }
@@ -167,7 +225,8 @@ class GoogleDriveSponsorManager {
 
         return this.sponsorData.sponsors.filter(sponsor => 
             sponsor.active && 
-            (!sponsor.placement || sponsor.placement === placement)
+            (!sponsor.placement || sponsor.placement === placement || 
+             (placement === 'post_package' && sponsor.placement === 'after_package'))
         );
     }
 
@@ -346,9 +405,11 @@ class GoogleDriveSponsorManager {
     sanitize(text) {
         if (!text) return '';
         return String(text)
-            .replace(/[<>\"'&]/g, match => ({
-                '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '&': '&amp;'
-            }[match]))
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;')
             .trim()
             .substring(0, 200);
     }
@@ -370,7 +431,7 @@ class GoogleDriveSponsorManager {
         app.googleDriveSponsorManager = sponsorManager;
 
         // Set default manifest URL (can be configured)
-        const defaultManifestUrl = 'https://drive.google.com/uc?id=1HVUsr945s8-yksHHhA1MXoMJNzCT-ODC&export=download';
+        const defaultManifestUrl = 'https://drive.usercontent.google.com/download?id=1HVUsr945s8-yksHHhA1MXoMJNzCT-ODC&export=download';
         sponsorManager.setManifestUrl(defaultManifestUrl);
 
         console.log('✅ Google Drive Sponsor Manager integrated');

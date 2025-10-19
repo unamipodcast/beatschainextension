@@ -908,13 +908,13 @@
 
 .sponsor-name {
     font-weight: 600;
-    color: var(--bc-text-primary);
+    color: #000000 !important;
     margin-bottom: 4px;
     font-size: 14px;
 }
 
 .sponsor-message {
-    color: var(--bc-text-secondary);
+    color: #333333 !important;
     font-size: 13px;
     line-height: 1.4;
     margin-bottom: 8px;
@@ -1223,4 +1223,31 @@
     .modal-footer {
         flex-direction: column;
     }
+}
+
+/* Sponsor Content Text Visibility Fix */
+.sponsor-content-display .sponsor-name,
+.google-drive-sponsor-card .sponsor-name,
+.post-package-sponsor-container .sponsor-name {
+    color: #000000 !important;
+    font-weight: 600 !important;
+}
+
+.sponsor-content-display .sponsor-message,
+.google-drive-sponsor-card .sponsor-message,
+.post-package-sponsor-container .sponsor-message {
+    color: #333333 !important;
+}
+
+.sponsor-content-display .sponsor-link,
+.google-drive-sponsor-card .sponsor-link,
+.post-package-sponsor-container .sponsor-link {
+    color: #ffffff !important;
+    background: #007bff !important;
+}
+
+.sponsor-content-display .sponsor-disclosure,
+.google-drive-sponsor-card .sponsor-disclosure,
+.post-package-sponsor-container .sponsor-disclosure {
+    color: #666666 !important;
 }
