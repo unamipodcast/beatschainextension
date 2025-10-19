@@ -2,4 +2,181 @@
  * Analytics Manager - Chrome Web Store Compliant Local Analytics
  * Tracks package generation, ISRC usage, and sponsor engagement
  * All data stored locally - no external transmission
- */\n\nclass AnalyticsManager {\n    constructor() {\n        this.storageKey = 'beatschain_analytics';\n        this.initialized = false;\n    }\n\n    async initialize() {\n        if (this.initialized) return;\n        \n        try {\n            // Ensure analytics structure exists\n            const stats = await this.getStats();\n            if (!stats.version) {\n                await this.initializeStats();\n            }\n            \n            this.initialized = true;\n            console.log('✅ Analytics Manager initialized (local storage only)');\n        } catch (error) {\n            console.error('❌ Analytics Manager initialization failed:', error);\n        }\n    }\n\n    async initializeStats() {\n        const defaultStats = {\n            version: '2.0.0',\n            created: Date.now(),\n            packages: {\n                successful: 0,\n                totalFiles: 0,\n                withSponsored: 0,\n                lastGenerated: null\n            },\n            isrc: {\n                inPackages: 0,\n                lastGenerated: null\n            },\n            sponsor: {\n                displays: 0,\n                interactions: {},\n                locations: {},\n                locationActions: {}\n            }\n        };\n        \n        await this.saveStats(defaultStats);\n    }\n\n    async getStats() {\n        try {\n            const stored = localStorage.getItem(this.storageKey);\n            return stored ? JSON.parse(stored) : {};\n        } catch (error) {\n            console.error('Failed to get analytics stats:', error);\n            return {};\n        }\n    }\n\n    async saveStats(stats) {\n        try {\n            stats.lastUpdated = Date.now();\n            localStorage.setItem(this.storageKey, JSON.stringify(stats));\n        } catch (error) {\n            console.error('Failed to save analytics stats:', error);\n        }\n    }\n\n    // Package Analytics\n    async recordPackageSuccess(packageData) {\n        const stats = await this.getStats();\n        stats.packages = stats.packages || {};\n        stats.packages.successful = (stats.packages.successful || 0) + 1;\n        stats.packages.totalFiles = (stats.packages.totalFiles || 0) + packageData.fileCount;\n        stats.packages.lastGenerated = packageData.timestamp;\n        \n        if (packageData.hasSponsoredContent) {\n            stats.packages.withSponsored = (stats.packages.withSponsored || 0) + 1;\n        }\n        \n        await this.saveStats(stats);\n    }\n\n    // ISRC Analytics\n    async recordISRCInPackage() {\n        const stats = await this.getStats();\n        stats.isrc = stats.isrc || {};\n        stats.isrc.inPackages = (stats.isrc.inPackages || 0) + 1;\n        stats.isrc.lastGenerated = Date.now();\n        \n        await this.saveStats(stats);\n    }\n\n    // Sponsor Analytics\n    async recordSponsorDisplay(location) {\n        const stats = await this.getStats();\n        stats.sponsor = stats.sponsor || {};\n        stats.sponsor.displays = (stats.sponsor.displays || 0) + 1;\n        stats.sponsor.locations = stats.sponsor.locations || {};\n        stats.sponsor.locations[location] = (stats.sponsor.locations[location] || 0) + 1;\n        \n        await this.saveStats(stats);\n    }\n\n    async recordSponsorInteraction(action, location) {\n        const stats = await this.getStats();\n        stats.sponsor = stats.sponsor || {};\n        stats.sponsor.interactions = stats.sponsor.interactions || {};\n        stats.sponsor.interactions[action] = (stats.sponsor.interactions[action] || 0) + 1;\n        \n        const key = `${location}_${action}`;\n        stats.sponsor.locationActions = stats.sponsor.locationActions || {};\n        stats.sponsor.locationActions[key] = (stats.sponsor.locationActions[key] || 0) + 1;\n        \n        await this.saveStats(stats);\n    }\n\n    // Analytics Summary\n    async getAnalyticsSummary() {\n        const stats = await this.getStats();\n        \n        return {\n            packages: {\n                total: stats.packages?.successful || 0,\n                withSponsored: stats.packages?.withSponsored || 0,\n                averageFiles: Math.round((stats.packages?.totalFiles || 0) / Math.max(stats.packages?.successful || 1, 1)),\n                sponsorInclusionRate: Math.round(((stats.packages?.withSponsored || 0) / Math.max(stats.packages?.successful || 1, 1)) * 100)\n            },\n            \n            isrc: {\n                generated: stats.isrc?.inPackages || 0,\n                utilizationRate: Math.round(((stats.isrc?.inPackages || 0) / Math.max(stats.packages?.successful || 1, 1)) * 100)\n            },\n            \n            sponsor: {\n                displays: stats.sponsor?.displays || 0,\n                interactions: stats.sponsor?.interactions || {},\n                engagementRate: this.calculateEngagementRate(stats.sponsor)\n            },\n            \n            lastUpdated: stats.lastUpdated || null\n        };\n    }\n\n    calculateEngagementRate(sponsorStats) {\n        if (!sponsorStats?.displays) return 0;\n        const totalInteractions = Object.values(sponsorStats.interactions || {}).reduce((a, b) => a + b, 0);\n        return Math.round((totalInteractions / sponsorStats.displays) * 100);\n    }\n\n    // Export analytics (for debugging/admin view)\n    async exportAnalytics() {\n        const stats = await this.getStats();\n        const summary = await this.getAnalyticsSummary();\n        \n        return {\n            summary: summary,\n            rawData: stats,\n            exportedAt: new Date().toISOString(),\n            version: '2.0.0'\n        };\n    }\n\n    // Clear analytics (privacy compliance)\n    async clearAnalytics() {\n        try {\n            localStorage.removeItem(this.storageKey);\n            await this.initializeStats();\n            console.log('✅ Analytics cleared and reset');\n        } catch (error) {\n            console.error('❌ Failed to clear analytics:', error);\n        }\n    }\n}\n\n// Export for Chrome extension compatibility\nwindow.AnalyticsManager = AnalyticsManager;
+ */
+
+class AnalyticsManager {
+    constructor() {
+        this.storageKey = 'beatschain_analytics';
+        this.initialized = false;
+    }
+
+    async initialize() {
+        if (this.initialized) return;
+        
+        try {
+            // Ensure analytics structure exists
+            const stats = await this.getStats();
+            if (!stats.version) {
+                await this.initializeStats();
+            }
+            
+            this.initialized = true;
+            console.log('✅ Analytics Manager initialized (local storage only)');
+        } catch (error) {
+            console.error('❌ Analytics Manager initialization failed:', error);
+        }
+    }
+
+    async initializeStats() {
+        const defaultStats = {
+            version: '2.0.0',
+            created: Date.now(),
+            packages: {
+                successful: 0,
+                totalFiles: 0,
+                withSponsored: 0,
+                lastGenerated: null
+            },
+            isrc: {
+                inPackages: 0,
+                lastGenerated: null
+            },
+            sponsor: {
+                displays: 0,
+                interactions: {},
+                locations: {},
+                locationActions: {}
+            }
+        };
+        
+        await this.saveStats(defaultStats);
+    }
+
+    async getStats() {
+        try {
+            const stored = localStorage.getItem(this.storageKey);
+            return stored ? JSON.parse(stored) : {};
+        } catch (error) {
+            console.error('Failed to get analytics stats:', error);
+            return {};
+        }
+    }
+
+    async saveStats(stats) {
+        try {
+            stats.lastUpdated = Date.now();
+            localStorage.setItem(this.storageKey, JSON.stringify(stats));
+        } catch (error) {
+            console.error('Failed to save analytics stats:', error);
+        }
+    }
+
+    // Package Analytics
+    async recordPackageSuccess(packageData) {
+        const stats = await this.getStats();
+        stats.packages = stats.packages || {};
+        stats.packages.successful = (stats.packages.successful || 0) + 1;
+        stats.packages.totalFiles = (stats.packages.totalFiles || 0) + packageData.fileCount;
+        stats.packages.lastGenerated = packageData.timestamp;
+        
+        if (packageData.hasSponsoredContent) {
+            stats.packages.withSponsored = (stats.packages.withSponsored || 0) + 1;
+        }
+        
+        await this.saveStats(stats);
+    }
+
+    // ISRC Analytics
+    async recordISRCInPackage() {
+        const stats = await this.getStats();
+        stats.isrc = stats.isrc || {};
+        stats.isrc.inPackages = (stats.isrc.inPackages || 0) + 1;
+        stats.isrc.lastGenerated = Date.now();
+        
+        await this.saveStats(stats);
+    }
+
+    // Sponsor Analytics
+    async recordSponsorDisplay(location) {
+        const stats = await this.getStats();
+        stats.sponsor = stats.sponsor || {};
+        stats.sponsor.displays = (stats.sponsor.displays || 0) + 1;
+        stats.sponsor.locations = stats.sponsor.locations || {};
+        stats.sponsor.locations[location] = (stats.sponsor.locations[location] || 0) + 1;
+        
+        await this.saveStats(stats);
+    }
+
+    async recordSponsorInteraction(action, location) {
+        const stats = await this.getStats();
+        stats.sponsor = stats.sponsor || {};
+        stats.sponsor.interactions = stats.sponsor.interactions || {};
+        stats.sponsor.interactions[action] = (stats.sponsor.interactions[action] || 0) + 1;
+        
+        const key = `${location}_${action}`;
+        stats.sponsor.locationActions = stats.sponsor.locationActions || {};
+        stats.sponsor.locationActions[key] = (stats.sponsor.locationActions[key] || 0) + 1;
+        
+        await this.saveStats(stats);
+    }
+
+    // Analytics Summary
+    async getAnalyticsSummary() {
+        const stats = await this.getStats();
+        
+        return {
+            packages: {
+                total: stats.packages?.successful || 0,
+                withSponsored: stats.packages?.withSponsored || 0,
+                averageFiles: Math.round((stats.packages?.totalFiles || 0) / Math.max(stats.packages?.successful || 1, 1)),
+                sponsorInclusionRate: Math.round(((stats.packages?.withSponsored || 0) / Math.max(stats.packages?.successful || 1, 1)) * 100)
+            },
+            
+            isrc: {
+                generated: stats.isrc?.inPackages || 0,
+                utilizationRate: Math.round(((stats.isrc?.inPackages || 0) / Math.max(stats.packages?.successful || 1, 1)) * 100)
+            },
+            
+            sponsor: {
+                displays: stats.sponsor?.displays || 0,
+                interactions: stats.sponsor?.interactions || {},
+                engagementRate: this.calculateEngagementRate(stats.sponsor)
+            },
+            
+            lastUpdated: stats.lastUpdated || null
+        };
+    }
+
+    calculateEngagementRate(sponsorStats) {
+        if (!sponsorStats?.displays) return 0;
+        const totalInteractions = Object.values(sponsorStats.interactions || {}).reduce((a, b) => a + b, 0);
+        return Math.round((totalInteractions / sponsorStats.displays) * 100);
+    }
+
+    // Export analytics (for debugging/admin view)
+    async exportAnalytics() {
+        const stats = await this.getStats();
+        const summary = await this.getAnalyticsSummary();
+        
+        return {
+            summary: summary,
+            rawData: stats,
+            exportedAt: new Date().toISOString(),
+            version: '2.0.0'
+        };
+    }
+
+    // Clear analytics (privacy compliance)
+    async clearAnalytics() {
+        try {
+            localStorage.removeItem(this.storageKey);
+            await this.initializeStats();
+            console.log('✅ Analytics cleared and reset');
+        } catch (error) {
+            console.error('❌ Failed to clear analytics:', error);
+        }
+    }
+}
+
+// Export for Chrome extension compatibility
+window.AnalyticsManager = AnalyticsManager;
