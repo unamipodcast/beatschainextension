@@ -3717,6 +3717,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 console.error('File structure generation failed:', error);
             }
             
+            console.log(`📦 Creating zip with ${files.length} files:`, files.map(f => f.name));
             const zipBlob = await this.createRealZip(files);
             
             const url = URL.createObjectURL(zipBlob);
@@ -3727,6 +3728,7 @@ Verification: Check Chrome extension storage for transaction details`;
             a.click();
             
             URL.revokeObjectURL(url);
+            console.log('✅ Radio package download completed successfully');
             
             // Record package generation for usage limits and ISRC tracking
             if (this.usageLimits) {
