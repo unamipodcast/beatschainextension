@@ -3011,20 +3011,19 @@ Verification: Check Chrome extension storage for transaction details`;
             this.userInputManager.setUserInput('radio-title', this.radioMetadata.title, false);
         }
         
-        // Auto-fill legal name from profile
+        // Auto-fill from shared profile data
+        const sharedData = this.getSharedProfileData();
+        
         const artistInput = document.getElementById('radio-artist-name');
-        const enhancedProfile = this.getEnhancedProfileData();
-        if (artistInput && !artistInput.value && enhancedProfile.legalName) {
-            artistInput.value = enhancedProfile.legalName;
-            this.userInputManager.setUserInput('radio-artist', enhancedProfile.legalName, false);
+        if (artistInput && !artistInput.value && sharedData.artistName) {
+            artistInput.value = sharedData.artistName;
+            this.userInputManager.setUserInput('radio-artist', sharedData.artistName, false);
         }
         
-        // Auto-fill display name only if different from legal name
         const stageInput = document.getElementById('radio-stage-name');
-        if (stageInput && !stageInput.value && enhancedProfile.displayName && 
-            enhancedProfile.displayName !== enhancedProfile.legalName) {
-            stageInput.value = enhancedProfile.displayName;
-            this.userInputManager.setUserInput('radio-stage', enhancedProfile.displayName, false);
+        if (stageInput && !stageInput.value && sharedData.stageName) {
+            stageInput.value = sharedData.stageName;
+            this.userInputManager.setUserInput('radio-stage', sharedData.stageName, false);
         }
         
         // Pre-populate genre with AI enhancement
@@ -4429,8 +4428,8 @@ Verification: Check Chrome extension storage for transaction details`;
         const enhanced = this.getEnhancedProfileData();
         
         return {
-            artistName: enhanced.displayName || enhanced.legalName || '',
-            stageName: enhanced.displayName !== enhanced.legalName ? enhanced.displayName : '',
+            artistName: enhanced.legalName || '',
+            stageName: enhanced.displayName || '',
             biography: profile.biography || '',
             social: profile.social || {},
             contact: profile.contact || {}
@@ -4453,6 +4452,7 @@ Verification: Check Chrome extension storage for transaction details`;
         const artistNameField = document.getElementById('artist-name');
         const stageNameField = document.getElementById('stage-name');
         
+        // artistName = legalName, stageName = displayName
         if (artistNameField && !artistNameField.value) {
             artistNameField.value = data.artistName;
         }
@@ -4467,6 +4467,7 @@ Verification: Check Chrome extension storage for transaction details`;
         const radioArtistField = document.getElementById('radio-artist-name');
         const radioStageField = document.getElementById('radio-stage-name');
         
+        // artistName = legalName, stageName = displayName
         if (radioArtistField && !radioArtistField.value) {
             radioArtistField.value = data.artistName;
         }
