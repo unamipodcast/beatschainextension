@@ -3011,18 +3011,19 @@ Verification: Check Chrome extension storage for transaction details`;
             this.userInputManager.setUserInput('radio-title', this.radioMetadata.title, false);
         }
         
-        // Auto-fill artist name from profile
+        // Auto-fill legal name from profile
         const artistInput = document.getElementById('radio-artist-name');
-        if (artistInput && !artistInput.value && sharedData.artistName) {
-            artistInput.value = sharedData.artistName;
-            this.userInputManager.setUserInput('radio-artist', sharedData.artistName, false);
+        const enhancedProfile = this.getEnhancedProfileData();
+        if (artistInput && !artistInput.value && enhancedProfile.legalName) {
+            artistInput.value = enhancedProfile.legalName;
+            this.userInputManager.setUserInput('radio-artist', enhancedProfile.legalName, false);
         }
         
-        // Auto-fill stage name from profile
+        // Auto-fill display name from profile
         const stageInput = document.getElementById('radio-stage-name');
-        if (stageInput && !stageInput.value && sharedData.stageName) {
-            stageInput.value = sharedData.stageName;
-            this.userInputManager.setUserInput('radio-stage', sharedData.stageName, false);
+        if (stageInput && !stageInput.value && enhancedProfile.displayName) {
+            stageInput.value = enhancedProfile.displayName;
+            this.userInputManager.setUserInput('radio-stage', enhancedProfile.displayName, false);
         }
         
         // Pre-populate genre with AI enhancement

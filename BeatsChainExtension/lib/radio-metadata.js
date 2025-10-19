@@ -53,15 +53,15 @@ class RadioMetadataManager {
                 </div>
                 
                 <div class="form-row">
-                    <label for="radio-artist-name">Primary Artist Name *</label>
+                    <label for="radio-artist-name">Legal Name *</label>
                     <input type="text" id="radio-artist-name" class="form-input" 
-                           placeholder="Legal/Real name for SAMRO" maxlength="50" required>
+                           placeholder="Legal name (from profile)" maxlength="50" required>
                 </div>
                 
                 <div class="form-row">
-                    <label for="radio-stage-name">Stage/Performance Name</label>
+                    <label for="radio-stage-name">Display Name</label>
                     <input type="text" id="radio-stage-name" class="form-input" 
-                           placeholder="Stage name (if different)" maxlength="50">
+                           placeholder="Stage/display name (from profile)" maxlength="50">
                 </div>
                 
                 <div class="form-row">
