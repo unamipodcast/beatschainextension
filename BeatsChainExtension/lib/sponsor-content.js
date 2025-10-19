@@ -315,34 +315,74 @@ class SponsorContentManager {
     // Chrome Web Store compliance helpers
     getUserConsent() {
         // Check if user has consented to sponsor content
-        return localStorage.getItem('sponsor_consent') === 'true';
+        const consent = localStorage.getItem('sponsor_consent');
+        if (consent === 'true') return true;
+        if (consent === 'false') return false;
+        return null; // No choice made yet
     }
 
     async requestUserConsent() {
         return new Promise((resolve) => {
             const modal = document.createElement('div');
             modal.className = 'consent-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            `;
+            
             modal.innerHTML = `
-                <div class="modal-overlay">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>📢 Professional Partner Content</h3>
+                <div class="modal-content" style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    max-width: 400px;
+                    width: 100%;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                    text-align: center;
+                ">
+                    <div class="modal-header" style="margin-bottom: 16px;">
+                        <h3 style="margin: 0; color: #333; font-size: 18px;">📢 Professional Partner Content</h3>
+                    </div>
+                    <div class="modal-body" style="margin-bottom: 20px;">
+                        <p style="margin: 0 0 12px 0; color: #666; font-size: 14px; line-height: 1.4;">BeatsChain partners with professional music industry services to provide you with relevant tools and resources.</p>
+                        <p style="margin: 0 0 16px 0; color: #666; font-size: 14px; line-height: 1.4;">We may show you content from our verified partners that could help with your music career.</p>
+                        <div class="consent-options" style="margin: 16px 0;">
+                            <label class="consent-option" style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="consent-checkbox" style="margin: 0;">
+                                <span style="color: #333; font-size: 14px;">I agree to see relevant partner content</span>
+                            </label>
                         </div>
-                        <div class="modal-body">
-                            <p>BeatsChain partners with professional music industry services to provide you with relevant tools and resources.</p>
-                            <p>We may show you content from our verified partners that could help with your music career.</p>
-                            <div class="consent-options">
-                                <label class="consent-option">
-                                    <input type="checkbox" id="consent-checkbox">
-                                    <span>I agree to see relevant partner content</span>
-                                </label>
-                            </div>
-                            <small class="consent-note">You can change this preference anytime in settings. No personal data is shared with partners.</small>
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary consent-decline">No Thanks</button>
-                            <button class="btn btn-primary consent-accept" disabled>Accept</button>
-                        </div>
+                        <small class="consent-note" style="color: #888; font-size: 12px; line-height: 1.3;">You can change this preference anytime in settings. No personal data is shared with partners.</small>
+                    </div>
+                    <div class="modal-footer" style="display: flex; gap: 12px; justify-content: center;">
+                        <button class="btn btn-secondary consent-decline" style="
+                            padding: 8px 16px;
+                            border: 1px solid #ddd;
+                            background: #f8f9fa;
+                            color: #666;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                        ">No Thanks</button>
+                        <button class="btn btn-primary consent-accept" disabled style="
+                            padding: 8px 16px;
+                            border: none;
+                            background: #007bff;
+                            color: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            opacity: 0.5;
+                        ">Accept</button>
                     </div>
                 </div>
             `;
@@ -353,9 +393,12 @@ class SponsorContentManager {
 
             checkbox.addEventListener('change', () => {
                 acceptBtn.disabled = !checkbox.checked;
+                acceptBtn.style.opacity = checkbox.checked ? '1' : '0.5';
+                acceptBtn.style.cursor = checkbox.checked ? 'pointer' : 'not-allowed';
             });
 
             acceptBtn.addEventListener('click', () => {
+                if (!checkbox.checked) return;
                 localStorage.setItem('sponsor_consent', 'true');
                 document.body.removeChild(modal);
                 resolve(true);
@@ -365,6 +408,14 @@ class SponsorContentManager {
                 localStorage.setItem('sponsor_consent', 'false');
                 document.body.removeChild(modal);
                 resolve(false);
+            });
+
+            // Prevent closing by clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    // Don't allow closing by clicking outside - user must make a choice
+                    return;
+                }
             });
 
             document.body.appendChild(modal);
@@ -379,6 +430,16 @@ class SponsorContentManager {
                 this.sponsorConfig = { enabled: false };
             }
         }
+    }
+
+    // Show partner consent at popup initialization
+    async showInitialPartnerConsent() {
+        if (this.getUserConsent() !== null) {
+            return; // User has already made a choice
+        }
+        
+        // Show consent modal immediately when popup loads
+        return this.requestUserConsent();
     }
 }
 
