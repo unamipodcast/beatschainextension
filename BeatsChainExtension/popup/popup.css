@@ -1364,16 +1364,50 @@ textarea:focus {
 
 .analysis-content.collapsed {
     max-height: 0 !important;
-    opacity: 0;
-    padding: 0;
-    margin: 0;
+    opacity: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
     transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
 }
 
 .analysis-content:not(.collapsed) {
-    max-height: 500px;
-    opacity: 1;
+    max-height: 500px !important;
+    opacity: 1 !important;
+    padding: 12px 0 !important;
     transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+/* CRITICAL FIX: Ensure radio analysis is visible by default */
+#radio-analysis-content {
+    max-height: 500px !important;
+    opacity: 1 !important;
+    display: block !important;
+    visibility: visible !important;
+}
+
+#radio-metadata-display {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* CRITICAL FIX: Ensure radio validation results are visible */
+#radio-validation-results {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 100px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.validation-results {
+    display: block !important;
+    visibility: visible !important;
 }
 
 .validation-summary h5 {

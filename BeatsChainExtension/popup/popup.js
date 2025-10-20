@@ -1753,7 +1753,10 @@ Verification: Check Chrome extension storage for transaction details`;
                 await this.sponsorContent.initialize(this.adminDashboard);
                 
                 // Show partner consent modal FIRST - before user can continue
-                await this.sponsorContent.showInitialPartnerConsent();
+                const consentGiven = await this.sponsorContent.showInitialPartnerConsent();
+                if (!consentGiven) {
+                    console.log('User declined partner content');
+                }
                 
                 await this.sponsorContent.ensureCompliance();
                 
@@ -3127,15 +3130,31 @@ Verification: Check Chrome extension storage for transaction details`;
                 }
             }
             
-            // Show the metadata display FIRST
+            // CRITICAL FIX: Force display and visibility
             metadataDisplay.style.display = 'block';
+            metadataDisplay.style.visibility = 'visible';
+            metadataDisplay.style.opacity = '1';
+            metadataDisplay.style.height = 'auto';
+            metadataDisplay.style.maxHeight = 'none';
+            
+            // Ensure analysis content is visible by default (expanded)
+            const analysisContent = document.getElementById('radio-analysis-content');
+            const analysisToggle = document.getElementById('radio-analysis-toggle');
+            if (analysisContent && analysisToggle) {
+                analysisContent.classList.remove('collapsed');
+                analysisContent.style.maxHeight = '500px';
+                analysisContent.style.opacity = '1';
+                analysisContent.style.padding = '';
+                analysisToggle.textContent = '▼';
+                analysisToggle.classList.remove('collapsed');
+            }
             
             // Setup collapse functionality after DOM is visible
             setTimeout(() => {
                 this.setupRadioAnalysisCollapse();
             }, 100);
             
-            console.log('✅ Radio metadata display updated and shown');
+            console.log('✅ Radio metadata display updated and shown with forced visibility');
             
         } catch (error) {
             console.error('❌ Error displaying radio metadata:', error);
@@ -3197,10 +3216,12 @@ Verification: Check Chrome extension storage for transaction details`;
         if (toggleBtn && content && !toggleBtn.hasAttribute('data-radio-setup')) {
             toggleBtn.setAttribute('data-radio-setup', 'true');
             
-            // Start collapsed
-            toggleBtn.textContent = '▶';
-            toggleBtn.classList.add('collapsed');
-            content.classList.add('collapsed');
+            // FIXED: Start EXPANDED (not collapsed) so users can see the analysis immediately
+            toggleBtn.textContent = '▼';
+            toggleBtn.classList.remove('collapsed');
+            content.classList.remove('collapsed');
+            content.style.maxHeight = '500px';
+            content.style.opacity = '1';
             
             toggleBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -3213,6 +3234,8 @@ Verification: Check Chrome extension storage for transaction details`;
                     content.classList.remove('collapsed');
                     toggleBtn.classList.remove('collapsed');
                     toggleBtn.textContent = '▼';
+                    content.style.maxHeight = '500px';
+                    content.style.opacity = '1';
                 } else {
                     content.classList.add('collapsed');
                     toggleBtn.classList.add('collapsed');
@@ -3220,7 +3243,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 }
             });
             
-            console.log('✅ Radio analysis collapse setup complete');
+            console.log('✅ Radio analysis collapse setup complete - starting EXPANDED');
         } else if (toggleBtn && content) {
             console.log('ℹ️ Radio analysis collapse already setup');
         } else {
@@ -3269,9 +3292,9 @@ Verification: Check Chrome extension storage for transaction details`;
     }
     
     displayRadioValidation(validation, overallScore) {
-        const resultsDiv = document.getElementById('radio-results');
+        const resultsDiv = document.getElementById('radio-validation-results');
         if (!resultsDiv) {
-            console.error('❌ Radio results element not found');
+            console.error('❌ Radio validation results element not found');
             return;
         }
         
@@ -3312,8 +3335,17 @@ Verification: Check Chrome extension storage for transaction details`;
         resultsDiv.appendChild(summaryDiv);
         resultsDiv.appendChild(itemsDiv);
         
-        // Make results visible
+        // Make results visible with forced display
         resultsDiv.style.display = 'block';
+        resultsDiv.style.visibility = 'visible';
+        resultsDiv.style.opacity = '1';
+        
+        // Enable next step button if validation passes
+        const nextBtn = document.getElementById('radio-step-4-next');
+        if (nextBtn) {
+            nextBtn.disabled = overallScore < 60;
+            nextBtn.title = overallScore >= 60 ? 'Proceed to split sheets' : `Validation score too low: ${overallScore}/100`;
+        }
     }
     
     addContributor() {
