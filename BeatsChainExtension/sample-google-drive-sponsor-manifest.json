@@ -7,6 +7,20 @@
     "max_sponsors_per_session": 3,
     "rotation_strategy": "priority"
   },
+  "sponsor_tiers": {
+    "basic": {
+      "price_per_month": 50,
+      "features": ["text_only", "website_link", "basic_analytics"]
+    },
+    "premium": {
+      "price_per_month": 150,
+      "features": ["logo_image", "custom_styling", "priority_placement", "detailed_analytics"]
+    },
+    "enterprise": {
+      "price_per_month": 500,
+      "features": ["banner_image", "video_content", "exclusive_placement", "custom_integration"]
+    }
+  },
   "sponsors": [
     {
       "id": "radiomonitor_sa",
@@ -15,11 +29,14 @@
       "placement": "after_isrc",
       "active": true,
       "priority": 10,
+      "tier": "premium",
       "website": "https://radiomonitor.co.za",
-      "logo_url": null,
+      "logo_url": "https://drive.google.com/uc?id=RADIOMONITOR_LOGO_ID",
+      "logo_size": "120x60",
       "target_audience": ["radio", "professional"],
       "campaign_start": "2025-10-17",
-      "campaign_end": "2025-12-31"
+      "campaign_end": "2025-12-31",
+      "monthly_fee": 150
     },
     {
       "id": "samro_official",
@@ -28,11 +45,16 @@
       "placement": "before_package",
       "active": true,
       "priority": 9,
+      "tier": "enterprise",
       "website": "https://samro.org.za",
-      "logo_url": null,
+      "logo_url": "https://drive.google.com/uc?id=SAMRO_LOGO_ID",
+      "banner_url": "https://drive.google.com/uc?id=SAMRO_BANNER_ID",
+      "logo_size": "120x60",
+      "banner_size": "300x100",
       "target_audience": ["composer", "publisher"],
       "campaign_start": "2025-10-17",
-      "campaign_end": "2026-10-17"
+      "campaign_end": "2026-10-17",
+      "monthly_fee": 500
     },
     {
       "id": "beatschain_pro",
@@ -41,11 +63,12 @@
       "placement": "after_package",
       "active": true,
       "priority": 5,
+      "tier": "basic",
       "website": "https://beatschain.com/pro",
-      "logo_url": null,
       "target_audience": ["all"],
       "campaign_start": "2025-10-17",
-      "campaign_end": "2025-12-31"
+      "campaign_end": "2025-12-31",
+      "monthly_fee": 50
     },
     {
       "id": "music_distribution",
@@ -54,11 +77,14 @@
       "placement": "after_isrc",
       "active": false,
       "priority": 7,
+      "tier": "premium",
       "website": "https://example-distribution.com",
-      "logo_url": null,
+      "logo_url": "https://drive.google.com/uc?id=DISTRIBUTION_LOGO_ID",
+      "logo_size": "120x60",
       "target_audience": ["artist", "independent"],
       "campaign_start": "2025-11-01",
-      "campaign_end": "2025-12-31"
+      "campaign_end": "2025-12-31",
+      "monthly_fee": 150
     }
   ],
   "analytics": {
@@ -71,6 +97,20 @@
     "gdpr_compliant": true,
     "clear_labeling": true,
     "user_consent": "optional"
+  },
+  "assets": {
+    "logo_specifications": {
+      "width": 120,
+      "height": 60,
+      "format": "PNG or SVG",
+      "max_size": "50KB",
+      "background": "transparent or white"
+    },
+    "google_drive_base": "https://drive.google.com/uc?id=",
+    "management": {
+      "upload_instructions": "Upload logos to Google Drive, set sharing to 'Anyone with link can view', copy file ID from URL",
+      "naming_convention": "sponsor_logo_[sponsor_id]_120x60.[png|svg]"
+    }
   },
   "metadata": {
     "generated_by": "BeatsChain Sponsor Management System",

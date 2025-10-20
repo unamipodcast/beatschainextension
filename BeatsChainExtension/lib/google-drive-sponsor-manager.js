@@ -243,12 +243,13 @@ class GoogleDriveSponsorManager {
                     <span class="sponsor-label">Sponsored</span>
                     <button class="sponsor-close" title="Hide">&times;</button>
                 </div>
-                <div class="sponsor-content">
-                    ${sponsor.logo_url ? `<img src="${sponsor.logo_url}" alt="${sponsor.name}" class="sponsor-logo">` : ''}
+                <div class="sponsor-content ${sponsor.tier || 'basic'}">
+                    ${this.renderSponsorVisual(sponsor)}
                     <div class="sponsor-info">
                         <h4 class="sponsor-name">${this.sanitize(sponsor.name)}</h4>
                         <p class="sponsor-message">${this.sanitize(sponsor.message)}</p>
                         ${sponsor.website ? `<a href="${sponsor.website}" target="_blank" class="sponsor-link">Learn More</a>` : ''}
+                        ${sponsor.tier === 'enterprise' ? `<div class="tier-badge">Premium Partner</div>` : ''}
                     </div>
                 </div>
                 <div class="sponsor-footer">
@@ -402,6 +403,25 @@ class GoogleDriveSponsorManager {
     }
 
     // Sanitize text content
+    renderSponsorVisual(sponsor) {
+        const tier = sponsor.tier || 'basic';
+        
+        switch (tier) {
+            case 'enterprise':
+                return `
+                    ${sponsor.banner_url ? `<div class="sponsor-banner"><img src="${sponsor.banner_url}" alt="${sponsor.name} Banner"></div>` : ''}
+                    ${sponsor.logo_url ? `<div class="sponsor-logo"><img src="${sponsor.logo_url}" alt="${sponsor.name}"></div>` : `<div class="sponsor-logo-fallback enterprise">${sponsor.name}</div>`}
+                `;
+            case 'premium':
+                return sponsor.logo_url && sponsor.logo_url !== 'null' ? 
+                    `<div class="sponsor-logo"><img src="${sponsor.logo_url}" alt="${sponsor.name}" onerror="this.parentElement.outerHTML='<div class=\"sponsor-logo-fallback premium\">${sponsor.name}</div>'"></div>` : 
+                    `<div class="sponsor-logo-fallback premium">${sponsor.name}</div>`;
+            case 'basic':
+            default:
+                return `<div class="sponsor-logo-fallback basic">${sponsor.name}</div>`;
+        }
+    }
+
     sanitize(text) {
         if (!text) return '';
         return String(text)

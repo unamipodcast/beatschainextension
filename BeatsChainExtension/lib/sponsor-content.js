@@ -434,12 +434,13 @@ class SponsorContentManager {
 
     // Show partner consent at popup initialization
     async showInitialPartnerConsent() {
-        if (this.getUserConsent() !== null) {
-            return; // User has already made a choice
+        const existingConsent = this.getUserConsent();
+        if (existingConsent !== null) {
+            return existingConsent; // User has already made a choice
         }
         
-        // Show consent modal immediately when popup loads
-        return this.requestUserConsent();
+        // Show consent modal immediately when popup loads - blocks all interaction
+        return await this.requestUserConsent();
     }
 }
 
