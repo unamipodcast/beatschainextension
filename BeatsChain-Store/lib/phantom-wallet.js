@@ -21,11 +21,17 @@ class PhantomWalletManager {
                 return true;
             }
             
-            // Wait longer for Phantom to inject
+            // Wait for Phantom to inject with timeout
             let attempts = 0;
-            while (!checkPhantom() && attempts < 50) {
+            const maxAttempts = 15; // Reduced to prevent endless loops
+            while (!checkPhantom() && attempts < maxAttempts) {
                 await new Promise(resolve => setTimeout(resolve, 200));
                 attempts++;
+                
+                // Log progress every 5 attempts
+                if (attempts % 5 === 0) {
+                    console.log(`⏳ Phantom detection attempt ${attempts}/${maxAttempts}...`);
+                }
             }
             
             if (checkPhantom()) {

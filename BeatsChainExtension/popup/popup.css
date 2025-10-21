@@ -2679,14 +2679,7 @@ textarea:focus {
     }
 }
 
-/* Artist Invitation Feature */
-.artist-invitation {
-    margin: 20px 0;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
+
 
 .invitation-header {
     display: flex;

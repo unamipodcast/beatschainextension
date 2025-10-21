@@ -187,71 +187,143 @@ class AdminDashboardManager {
         
         return `
             <div class="sponsor-panel">
-                <h4>📢 Sponsor Content Management</h4>
-                
-                <div class="sponsor-status">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="sponsor-enabled" ${this.sponsorConfig.enabled ? 'checked' : ''}>
-                        <span class="toggle-slider"></span>
-                        <span class="toggle-label">Sponsor Content Enabled</span>
-                    </label>
+                <!-- Sponsor Status Section -->
+                <div class="samro-enhanced-section">
+                    <div class="samro-header">
+                        <h5>📢 Sponsor Content Management</h5>
+                        <button class="collapse-btn" id="sponsor-status-toggle" type="button">▼</button>
+                    </div>
+                    <div class="samro-content" id="sponsor-status-content">
+                        <div class="form-row">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="sponsor-enabled" ${this.sponsorConfig.enabled ? 'checked' : ''}>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Sponsor Content Enabled</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="sponsor-templates">
-                    <h5>Available Sponsors</h5>
-                    <div class="template-grid">
-                        ${Object.entries(this.sponsorConfig.templates).map(([key, template]) => `
-                            <div class="template-card ${this.sponsorConfig.currentSponsor === key ? 'active' : ''}">
-                                <input type="radio" name="sponsor-template" value="${key}" id="template-${key}" 
-                                       ${this.sponsorConfig.currentSponsor === key ? 'checked' : ''}>
-                                <label for="template-${key}">
-                                    <div class="template-preview">
-                                        <div class="template-logo">${template.logo ? '🖼️' : '📄'}</div>
-                                        <div class="template-info">
-                                            <strong>${template.name}</strong>
-                                            <small>${template.message}</small>
+                <!-- Available Sponsors Section -->
+                <div class="samro-enhanced-section">
+                    <div class="samro-header">
+                        <h5>🏢 Available Sponsors</h5>
+                        <button class="collapse-btn" id="sponsor-templates-toggle" type="button">▼</button>
+                    </div>
+                    <div class="samro-content" id="sponsor-templates-content">
+                        <div class="template-grid">
+                            ${Object.entries(this.sponsorConfig.templates).map(([key, template]) => `
+                                <div class="template-card ${this.sponsorConfig.currentSponsor === key ? 'active' : ''}">
+                                    <input type="radio" name="sponsor-template" value="${key}" id="template-${key}" 
+                                           ${this.sponsorConfig.currentSponsor === key ? 'checked' : ''}>
+                                    <label for="template-${key}">
+                                        <div class="template-preview">
+                                            <div class="template-logo">${template.logo ? '🖼️' : '📄'}</div>
+                                            <div class="template-info">
+                                                <strong>${template.name}</strong>
+                                                <small>${template.message}</small>
+                                            </div>
                                         </div>
-                                    </div>
-                                </label>
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IPFS Asset Management Section -->
+                <div class="samro-enhanced-section">
+                    <div class="samro-header">
+                        <h5>🖼️ IPFS Asset Management</h5>
+                        <button class="collapse-btn" id="sponsor-assets-toggle" type="button">▼</button>
+                    </div>
+                    <div class="samro-content collapsed" id="sponsor-assets-content">
+                        <div class="asset-upload-section">
+                            <div class="form-row">
+                                <label for="sponsor-select">Select Sponsor:</label>
+                                <select id="sponsor-select" class="form-input">
+                                    <option value="">Select Sponsor</option>
+                                    ${Object.entries(this.sponsorConfig.templates).map(([key, template]) => 
+                                        `<option value="${key}">${template.name}</option>`
+                                    ).join('')}
+                                </select>
                             </div>
-                        `).join('')}
+                            
+                            <div class="form-grid-two-col">
+                                <div class="form-row">
+                                    <label for="logo-upload">Logo (120x60px):</label>
+                                    <input type="file" id="logo-upload" accept="image/*" class="form-input">
+                                    <small class="field-help">Max 500KB, PNG/JPG/SVG</small>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <label for="banner-upload">Banner (300x100px):</label>
+                                    <input type="file" id="banner-upload" accept="image/*" class="form-input">
+                                    <small class="field-help">Max 500KB, PNG/JPG/SVG</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <button id="upload-asset-btn" class="btn btn-primary">📤 Upload to IPFS</button>
+                            </div>
+                        </div>
+                        
+                        <div class="asset-library">
+                            <h6>Asset Library</h6>
+                            <div id="asset-grid" class="asset-grid">
+                                <!-- Assets will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="manifest-management">
+                            <h6>Manifest Management</h6>
+                            <div class="form-row">
+                                <button id="generate-manifest-btn" class="btn btn-secondary">🔄 Generate Manifest</button>
+                                <button id="deploy-manifest-btn" class="btn btn-secondary">🚀 Deploy to IPFS</button>
+                            </div>
+                            <div class="manifest-status" id="manifest-status"></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="sponsor-customization">
-                    <h5>Customize Current Sponsor</h5>
-                    <div class="form-row">
-                        <label for="sponsor-message">Message:</label>
-                        <input type="text" id="sponsor-message" class="form-input" 
-                               value="${currentTemplate.message}" maxlength="100">
+                <!-- Sponsor Customization Section -->
+                <div class="samro-enhanced-section">
+                    <div class="samro-header">
+                        <h5>⚙️ Customize Current Sponsor</h5>
+                        <button class="collapse-btn" id="sponsor-custom-toggle" type="button">▼</button>
                     </div>
-                    
-                    <div class="form-row">
-                        <label for="sponsor-placement">Placement:</label>
-                        <select id="sponsor-placement" class="form-input">
-                            <option value="after_isrc" ${this.sponsorConfig.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
-                            <option value="before_package" ${this.sponsorConfig.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
-                            <option value="after_package" ${this.sponsorConfig.placement === 'after_package' ? 'selected' : ''}>After Package Generation</option>
-                        </select>
+                    <div class="samro-content" id="sponsor-custom-content">
+                        <div class="form-grid-two-col">
+                            <div class="form-row">
+                                <label for="sponsor-message">Message:</label>
+                                <input type="text" id="sponsor-message" class="form-input" 
+                                       value="${currentTemplate.message}" maxlength="100">
+                                <small class="field-help">Max 100 characters</small>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="sponsor-placement">Placement:</label>
+                                <select id="sponsor-placement" class="form-input">
+                                    <option value="after_isrc" ${this.sponsorConfig.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
+                                    <option value="before_package" ${this.sponsorConfig.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
+                                    <option value="after_package" ${this.sponsorConfig.placement === 'after_package' ? 'selected' : ''}>After Package Generation</option>
+                                    <option value="after_minting" ${this.sponsorConfig.placement === 'after_minting' ? 'selected' : ''}>After NFT Minting</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="sponsor-preview">
+                            <h6>Preview</h6>
+                            <div class="sponsor-preview-box" id="sponsor-preview">
+                                ${this.generateSponsorPreview()}
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <button id="save-sponsor-config" class="btn btn-primary">💾 Save Configuration</button>
+                            <button id="test-sponsor-display" class="btn btn-secondary">👁️ Test Display</button>
+                        </div>
                     </div>
-
-                    <div class="form-row">
-                        <label for="sponsor-logo">Logo Upload:</label>
-                        <input type="file" id="sponsor-logo" accept="image/*" class="form-input">
-                        <small class="field-help">Max 100KB, PNG/JPG recommended</small>
-                    </div>
-                </div>
-
-                <div class="sponsor-preview">
-                    <h5>Preview</h5>
-                    <div class="sponsor-preview-box" id="sponsor-preview">
-                        ${this.generateSponsorPreview()}
-                    </div>
-                </div>
-
-                <div class="sponsor-actions">
-                    <button id="save-sponsor-config" class="btn btn-primary">💾 Save Configuration</button>
-                    <button id="test-sponsor-display" class="btn btn-secondary">👁️ Test Display</button>
                 </div>
             </div>
         `;
@@ -396,6 +468,9 @@ class AdminDashboardManager {
             });
         });
 
+        // Collapsible sections
+        this.setupCollapsibleSections(container);
+
         // Sponsor content events
         const sponsorEnabled = container.querySelector('#sponsor-enabled');
         if (sponsorEnabled) {
@@ -414,9 +489,30 @@ class AdminDashboardManager {
             });
         });
 
+        // IPFS Asset Management events
+        const uploadAssetBtn = container.querySelector('#upload-asset-btn');
+        if (uploadAssetBtn) {
+            uploadAssetBtn.addEventListener('click', () => this.uploadSponsorAsset());
+        }
+
+        const generateManifestBtn = container.querySelector('#generate-manifest-btn');
+        if (generateManifestBtn) {
+            generateManifestBtn.addEventListener('click', () => this.generateIPFSManifest());
+        }
+
+        const deployManifestBtn = container.querySelector('#deploy-manifest-btn');
+        if (deployManifestBtn) {
+            deployManifestBtn.addEventListener('click', () => this.deployManifest());
+        }
+
         const saveSponsorBtn = container.querySelector('#save-sponsor-config');
         if (saveSponsorBtn) {
             saveSponsorBtn.addEventListener('click', () => this.saveSponsorConfig());
+        }
+
+        const testSponsorBtn = container.querySelector('#test-sponsor-display');
+        if (testSponsorBtn) {
+            testSponsorBtn.addEventListener('click', () => this.testSponsorDisplay());
         }
 
         // System events
@@ -427,6 +523,34 @@ class AdminDashboardManager {
 
         // Load system info
         this.loadSystemInfo();
+    }
+
+    setupCollapsibleSections(container) {
+        const sections = [
+            { toggle: '#sponsor-status-toggle', content: '#sponsor-status-content' },
+            { toggle: '#sponsor-templates-toggle', content: '#sponsor-templates-content' },
+            { toggle: '#sponsor-assets-toggle', content: '#sponsor-assets-content' },
+            { toggle: '#sponsor-custom-toggle', content: '#sponsor-custom-content' }
+        ];
+
+        sections.forEach(({ toggle, content }) => {
+            const toggleBtn = container.querySelector(toggle);
+            const contentEl = container.querySelector(content);
+            
+            if (toggleBtn && contentEl) {
+                toggleBtn.addEventListener('click', () => {
+                    const isCollapsed = contentEl.classList.contains('collapsed');
+                    
+                    if (isCollapsed) {
+                        contentEl.classList.remove('collapsed');
+                        toggleBtn.textContent = '▼';
+                    } else {
+                        contentEl.classList.add('collapsed');
+                        toggleBtn.textContent = '▶';
+                    }
+                });
+            }
+        });
     }
 
     switchTab(tabName) {
@@ -471,6 +595,187 @@ class AdminDashboardManager {
         
         if (messageInput && template) {
             messageInput.value = template.message;
+        }
+    }
+
+    async uploadSponsorAsset() {
+        const sponsorSelect = document.getElementById('sponsor-select');
+        const logoUpload = document.getElementById('logo-upload');
+        const bannerUpload = document.getElementById('banner-upload');
+        
+        if (!sponsorSelect.value) {
+            this.showAdminMessage('Please select a sponsor first', 'error');
+            return;
+        }
+        
+        const files = [];
+        if (logoUpload.files[0]) files.push({ file: logoUpload.files[0], type: 'logo' });
+        if (bannerUpload.files[0]) files.push({ file: bannerUpload.files[0], type: 'banner' });
+        
+        if (files.length === 0) {
+            this.showAdminMessage('Please select at least one file to upload', 'error');
+            return;
+        }
+        
+        try {
+            // Initialize IPFS manager if not available
+            if (!window.IPFSAssetManager) {
+                this.showAdminMessage('IPFS Asset Manager not available', 'error');
+                return;
+            }
+            
+            const ipfsManager = new IPFSAssetManager();
+            
+            for (const { file, type } of files) {
+                const ipfsHash = await ipfsManager.uploadAsset(file, {
+                    sponsorId: sponsorSelect.value,
+                    assetType: type
+                });
+                
+                // Store asset reference
+                await this.storeSponsorAsset(sponsorSelect.value, type, ipfsHash, file.name);
+                
+                this.showAdminMessage(`${type} uploaded successfully: ${ipfsHash}`, 'success');
+            }
+            
+            // Clear file inputs
+            logoUpload.value = '';
+            bannerUpload.value = '';
+            
+            // Refresh asset grid
+            this.refreshAssetGrid();
+            
+        } catch (error) {
+            console.error('Asset upload failed:', error);
+            this.showAdminMessage('Asset upload failed: ' + error.message, 'error');
+        }
+    }
+    
+    async storeSponsorAsset(sponsorId, assetType, ipfsHash, filename) {
+        try {
+            const key = `sponsor_assets_${sponsorId}`;
+            const result = await chrome.storage.local.get([key]);
+            const assets = result[key] || {};
+            
+            assets[assetType] = {
+                ipfsHash,
+                filename,
+                uploadedAt: Date.now()
+            };
+            
+            await chrome.storage.local.set({ [key]: assets });
+        } catch (error) {
+            console.error('Failed to store asset reference:', error);
+        }
+    }
+    
+    async generateIPFSManifest() {
+        try {
+            const manifest = {
+                version: '2.0',
+                generated: Date.now(),
+                sponsors: []
+            };
+            
+            // Get all sponsor assets
+            for (const [sponsorId, template] of Object.entries(this.sponsorConfig.templates)) {
+                const key = `sponsor_assets_${sponsorId}`;
+                const result = await chrome.storage.local.get([key]);
+                const assets = result[key] || {};
+                
+                const sponsor = {
+                    id: sponsorId,
+                    name: template.name,
+                    message: template.message,
+                    website: template.website,
+                    active: true,
+                    placement: this.sponsorConfig.placement,
+                    assets: {}
+                };
+                
+                // Add IPFS asset URLs
+                if (assets.logo) {
+                    sponsor.assets.logo = `ipfs://${assets.logo.ipfsHash}`;
+                }
+                if (assets.banner) {
+                    sponsor.assets.banner = `ipfs://${assets.banner.ipfsHash}`;
+                }
+                
+                manifest.sponsors.push(sponsor);
+            }
+            
+            // Store manifest locally
+            await chrome.storage.local.set({ ipfs_manifest: manifest });
+            
+            this.showAdminMessage(`Manifest generated with ${manifest.sponsors.length} sponsors`, 'success');
+            
+            // Update status
+            const statusEl = document.getElementById('manifest-status');
+            if (statusEl) {
+                statusEl.innerHTML = `<small>Generated: ${new Date().toLocaleString()}</small>`;
+            }
+            
+        } catch (error) {
+            console.error('Manifest generation failed:', error);
+            this.showAdminMessage('Manifest generation failed: ' + error.message, 'error');
+        }
+    }
+    
+    async deployManifest() {
+        try {
+            const result = await chrome.storage.local.get(['ipfs_manifest']);
+            const manifest = result.ipfs_manifest;
+            
+            if (!manifest) {
+                this.showAdminMessage('No manifest to deploy. Generate one first.', 'error');
+                return;
+            }
+            
+            if (!window.IPFSAssetManager) {
+                this.showAdminMessage('IPFS Asset Manager not available', 'error');
+                return;
+            }
+            
+            const ipfsManager = new IPFSAssetManager();
+            const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' });
+            const manifestHash = await ipfsManager.uploadAsset(manifestBlob, { type: 'manifest' });
+            
+            // Store manifest hash
+            await chrome.storage.local.set({ 
+                deployed_manifest_hash: manifestHash,
+                manifest_deployed_at: Date.now()
+            });
+            
+            this.showAdminMessage(`Manifest deployed to IPFS: ${manifestHash}`, 'success');
+            
+            // Update status
+            const statusEl = document.getElementById('manifest-status');
+            if (statusEl) {
+                statusEl.innerHTML = `
+                    <small>Deployed: ${new Date().toLocaleString()}</small><br>
+                    <small>IPFS: ${manifestHash}</small>
+                `;
+            }
+            
+        } catch (error) {
+            console.error('Manifest deployment failed:', error);
+            this.showAdminMessage('Manifest deployment failed: ' + error.message, 'error');
+        }
+    }
+    
+    refreshAssetGrid() {
+        const assetGrid = document.getElementById('asset-grid');
+        if (assetGrid) {
+            assetGrid.innerHTML = '<small>Asset library will be populated here...</small>';
+        }
+    }
+    
+    testSponsorDisplay() {
+        if (window.testSponsorDisplay) {
+            window.testSponsorDisplay();
+            this.showAdminMessage('Sponsor display test triggered', 'info');
+        } else {
+            this.showAdminMessage('Test function not available', 'error');
         }
     }
 

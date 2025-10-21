@@ -406,19 +406,15 @@ class GoogleDriveSponsorManager {
     renderSponsorVisual(sponsor) {
         const tier = sponsor.tier || 'basic';
         
+        // Always use text fallback to avoid CORS issues with Google Drive images
         switch (tier) {
             case 'enterprise':
-                return `
-                    ${sponsor.banner_url ? `<div class="sponsor-banner"><img src="${sponsor.banner_url}" alt="${sponsor.name} Banner"></div>` : ''}
-                    ${sponsor.logo_url ? `<div class="sponsor-logo"><img src="${sponsor.logo_url}" alt="${sponsor.name}"></div>` : `<div class="sponsor-logo-fallback enterprise">${sponsor.name}</div>`}
-                `;
+                return `<div class="sponsor-logo-fallback enterprise">⭐ ${sponsor.name}</div>`;
             case 'premium':
-                return sponsor.logo_url && sponsor.logo_url !== 'null' ? 
-                    `<div class="sponsor-logo"><img src="${sponsor.logo_url}" alt="${sponsor.name}" onerror="this.parentElement.outerHTML='<div class=\"sponsor-logo-fallback premium\">${sponsor.name}</div>'"></div>` : 
-                    `<div class="sponsor-logo-fallback premium">${sponsor.name}</div>`;
+                return `<div class="sponsor-logo-fallback premium">🏆 ${sponsor.name}</div>`;
             case 'basic':
             default:
-                return `<div class="sponsor-logo-fallback basic">${sponsor.name}</div>`;
+                return `<div class="sponsor-logo-fallback basic">📢 ${sponsor.name}</div>`;
         }
     }
 

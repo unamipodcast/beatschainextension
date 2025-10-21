@@ -37,7 +37,7 @@
     "128": "assets/icons/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'unsafe-inline'; object-src 'self'"
   },
   "oauth2": {
     "client_id": "239753403483-58n7vlbvs1nsu9qnf1qmoenh2cjjimbc.apps.googleusercontent.com",

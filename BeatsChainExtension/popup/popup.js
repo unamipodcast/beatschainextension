@@ -227,6 +227,9 @@ class BeatsChainApp {
             // Initialize Enhanced Sponsor Integration
             await this.initializeSponsorIntegration();
             
+            // Initialize Minting Sponsor Integration
+            await this.initializeMintingSponsorIntegration();
+            
             // Initialize Analytics Manager
             await this.initializeAnalytics();
             
@@ -1893,6 +1896,18 @@ Verification: Check Chrome extension storage for transaction details`;
             }
         } catch (error) {
             console.log('Sponsor integration initialization failed:', error);
+        }
+    }
+    
+    async initializeMintingSponsorIntegration() {
+        try {
+            // Initialize Minting Sponsor Integration
+            if (window.MintingSponsorIntegration) {
+                this.mintingSponsorIntegration = MintingSponsorIntegration.enhanceApp(this);
+                console.log('✅ Minting Sponsor Integration initialized');
+            }
+        } catch (error) {
+            console.log('Minting sponsor integration initialization failed:', error);
         }
     }
     
