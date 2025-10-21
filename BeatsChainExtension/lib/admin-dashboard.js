@@ -292,7 +292,7 @@ class AdminDashboardManager {
                                 </div>
                                 
                                 <div class="form-row">
-                                    <label for="banner-upload">Banner (300x100px):</label>
+                                    <label for="banner-upload">Banner (400x200px):</label>
                                     <input type="file" id="banner-upload" accept="image/*" class="form-input">
                                     <small class="field-help">Max 500KB, PNG/JPG/SVG</small>
                                 </div>
