@@ -309,118 +309,39 @@ class SolanaManager {
     async createTestnetTransaction(recipientAddress, metadataUri) {
         const timestamp = Date.now();
         const nonce = Math.floor(Math.random() * 1000000);
-        const dataToHash = `DEMO_${recipientAddress}${metadataUri}${timestamp}${nonce}`;
+        const dataToHash = `SOLANA_${recipientAddress}${metadataUri}${timestamp}${nonce}`;
         
         const encoder = new TextEncoder();
         const data = encoder.encode(dataToHash);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const txHash = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        const txHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 64);
         
         const tokenId = timestamp.toString();
-        const blockNumber = 30000000 + Math.floor(Math.random() * 1000000);
+        const slot = 200000000 + Math.floor(Math.random() * 1000000);
         
-        console.log('✅ Demo transaction created successfully');
-        console.log('📍 Transaction Hash:', txHash);
+        console.log('✅ Solana demo transaction created successfully');
+        console.log('📍 Transaction Signature:', txHash);
         
         await this.storeTransactionDetails({
             transactionHash: txHash,
             tokenId: tokenId,
-            blockNumber: blockNumber,
+            slot: slot,
             recipient: recipientAddress,
             metadataUri: metadataUri,
             timestamp: timestamp,
-            contractAddress: this.contractAddress || '0x742d35Cc6634C0532925a3b8D4C9db96C4b5Da5A',
+            network: 'solana-devnet',
             demo: true
         });
         
         return {
             transactionHash: txHash,
             tokenId: tokenId,
-            blockNumber: blockNumber
+            slot: slot
         };
     }
     
-    async getNonce(address) {
-        if (!this.rpcUrl) {
-            // Try multiple RPC endpoints for reliability
-            const fallbacks = [
-                'https://polygon-mainnet.g.alchemy.com/v2/YourAlchemyKey',
-                'https://rpc.ankr.com/polygon',
-                'https://polygon-rpc.com',
-                'https://rpc-mainnet.matic.network'
-            ];
-            
-            for (const rpc of fallbacks) {
-                try {
-                    const testResponse = await fetch(rpc, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            jsonrpc: '2.0',
-                            method: 'eth_blockNumber',
-                            params: [],
-                            id: 1
-                        })
-                    });
-                    
-                    if (testResponse.ok) {
-                        this.rpcUrl = rpc;
-                        console.log('✅ Connected to RPC:', rpc);
-                        break;
-                    }
-                } catch (error) {
-                    console.warn('RPC endpoint failed:', rpc, error.message);
-                    continue;
-                }
-            }
-            
-            if (!this.rpcUrl) {
-                throw new Error('All RPC endpoints failed - network connectivity issue');
-            }
-        }
-        
-        try {
-            const response = await fetch(this.rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'eth_getTransactionCount',
-                params: [address, 'pending'],
-                id: 1
-            })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`RPC request failed: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            if (result.error) throw new Error(result.error.message);
-            return result.result;
-        } catch (error) {
-            console.error('RPC call failed:', error.message);
-            throw error;
-        }
-    }
-    
-    async getGasPrice() {
-        const response = await fetch(this.rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'eth_gasPrice',
-                params: [],
-                id: 1
-            })
-        });
-        
-        const result = await response.json();
-        if (result.error) throw new Error(result.error.message);
-        return result.result;
-    }
+
     
     async storeTransactionDetails(txDetails) {
         try {
@@ -437,101 +358,12 @@ class SolanaManager {
     
 
 
-    encodeMintFunction(to, tokenURI) {
-        // Thirdweb ERC721Base mintTo(address,string) function
-        const functionSelector = '0x755edd17'; // mintTo function selector
-        const addressParam = to.slice(2).padStart(64, '0');
-        const uriParam = this.encodeString(tokenURI);
-        return functionSelector + addressParam + uriParam;
-    }
-
-    encodeString(str) {
-        const encoder = new TextEncoder();
-        const bytes = encoder.encode(str);
-        const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
-        const length = bytes.length.toString(16).padStart(64, '0');
-        return length + hex.padEnd(Math.ceil(hex.length / 64) * 64, '0');
-    }
-
-    async sendTransaction(txData) {
-        const response = await fetch(this.rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'eth_sendTransaction',
-                params: [txData],
-                id: 1
-            })
-        });
-        
-        const result = await response.json();
-        if (result.error) throw new Error(result.error.message);
-        return result.result;
-    }
-
-    async waitForTransaction(txHash) {
-        for (let i = 0; i < 30; i++) {
-            const response = await fetch(this.rpcUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jsonrpc: '2.0',
-                    method: 'eth_getTransactionReceipt',
-                    params: [txHash],
-                    id: 1
-                })
-            });
-            
-            const result = await response.json();
-            if (result.result) return result.result;
-            
-            await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-        throw new Error('Transaction timeout');
-    }
-
-    extractTokenId(receipt) {
-        // Extract token ID from logs (simplified)
-        if (receipt.logs && receipt.logs.length > 0) {
-            const log = receipt.logs[0];
-            return parseInt(log.topics[3], 16).toString();
-        }
-        return Date.now().toString();
-    }
-
     async getUserNFTs(walletAddress) {
         try {
-            if (!this.isInitialized) {
+            if (!this.solanaIntegration) {
                 return [];
             }
-
-            // Query NFTs owned by address
-            const response = await fetch(this.rpcUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jsonrpc: '2.0',
-                    method: 'eth_call',
-                    params: [{
-                        to: this.contractAddress,
-                        data: '0x8462151c' + walletAddress.slice(2).padStart(64, '0') // balanceOf
-                    }, 'latest'],
-                    id: 1
-                })
-            });
-            
-            const result = await response.json();
-            const balance = parseInt(result.result, 16);
-            
-            const nfts = [];
-            for (let i = 0; i < balance; i++) {
-                const tokenId = await this.getTokenByIndex(walletAddress, i);
-                const metadata = await this.getTokenMetadata(tokenId);
-                nfts.push({ tokenId, ...metadata });
-            }
-            
-            return nfts;
+            return await this.solanaIntegration.getUserNFTs(walletAddress);
         } catch (error) {
             console.error("Failed to fetch user NFTs:", error);
             return [];
@@ -540,85 +372,14 @@ class SolanaManager {
 
     async getWalletBalance(walletAddress) {
         try {
-            const response = await fetch(this.rpcUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jsonrpc: '2.0',
-                    method: 'eth_getBalance',
-                    params: [walletAddress, 'latest'],
-                    id: 1
-                })
-            });
-            
-            const result = await response.json();
-            const balanceWei = parseInt(result.result, 16);
-            return (balanceWei / 1e18).toFixed(4);
+            if (!this.solanaIntegration) {
+                return "0";
+            }
+            return await this.solanaIntegration.getWalletBalance(walletAddress);
         } catch (error) {
             console.error("Failed to get wallet balance:", error);
             return "0";
         }
-    }
-
-    async getTokenByIndex(owner, index) {
-        const response = await fetch(this.rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'eth_call',
-                params: [{
-                    to: this.contractAddress,
-                    data: '0x2f745c59' + owner.slice(2).padStart(64, '0') + index.toString(16).padStart(64, '0')
-                }, 'latest'],
-                id: 1
-            })
-        });
-        
-        const result = await response.json();
-        return parseInt(result.result, 16).toString();
-    }
-
-    async getTokenMetadata(tokenId) {
-        const response = await fetch(this.rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'eth_call',
-                params: [{
-                    to: this.contractAddress,
-                    data: '0xc87b56dd' + parseInt(tokenId).toString(16).padStart(64, '0') // tokenURI
-                }, 'latest'],
-                id: 1
-            })
-        });
-        
-        const result = await response.json();
-        const uri = this.decodeString(result.result);
-        
-        if (uri.startsWith('ipfs://')) {
-            const metadataResponse = await fetch(`https://ipfs.io/ipfs/${uri.slice(7)}`);
-            return await metadataResponse.json();
-        }
-        
-        return { name: `Beat #${tokenId}`, description: 'Music NFT' };
-    }
-
-    decodeString(hex) {
-        const data = hex.slice(2);
-        const length = parseInt(data.slice(64, 128), 16);
-        const content = data.slice(128, 128 + length * 2);
-        const bytes = new Uint8Array(content.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-        return new TextDecoder().decode(bytes);
-    }
-
-    getExplorerUrl(transactionHash) {
-        return `https://polygonscan.com/tx/${transactionHash}`;
-    }
-
-    getNFTUrl(tokenId) {
-        return `https://polygonscan.com/token/${this.contractAddress}?a=${tokenId}`;
     }
 
     async connectWallet() {

@@ -1,0 +1,164 @@
+/* Admin Dashboard Styling - Matches Extension Design */
+
+.admin-only {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    color: #fff;
+}
+
+.profile-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #fff;
+}
+
+.profile-section-header:hover {
+    background: #333;
+    border-color: #555;
+}
+
+.profile-section-content {
+    transition: all 0.3s ease;
+    overflow: hidden;
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.profile-section-content.collapsed {
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+}
+
+.toggle-icon {
+    font-size: 12px;
+    color: #ccc;
+    transition: transform 0.2s ease;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background: #2a2a2a;
+    color: #fff;
+    font-size: 14px;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.form-help {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+    display: block;
+}
+
+.invitations-container {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 8px;
+    background: #2a2a2a;
+    color: #fff;
+}
+
+.invitations-container:empty::after {
+    content: "No pending invitations";
+    color: #999;
+    font-style: italic;
+    display: block;
+    text-align: center;
+    padding: 8px;
+}
+
+/* Artist sections collapsible styling */
+.admin-artist-toggle {
+    background: #2a2a2a !important;
+    border: 1px solid #444 !important;
+    color: #fff !important;
+}
+
+.admin-artist-toggle:hover {
+    background: #333 !important;
+    border-color: #555 !important;
+}
+
+.admin-collapsed {
+    display: none !important;
+}
+
+/* Hide duplicate admin dashboard containers but keep main ones */
+.admin-dashboard-container:not(#admin-dashboard-section) {
+    display: none !important;
+}
+
+/* Ensure admin sections are visible */
+#admin-dashboard-section,
+#admin-invitation-section {
+    display: block !important;
+}
+
+/* Hide original artist profile sections when admin dashboard is active */
+.admin-dashboard ~ .profile-info,
+.admin-dashboard ~ .profile-stats,
+.admin-dashboard ~ .enhanced-profile,
+.admin-dashboard ~ .artist-biography,
+.admin-dashboard ~ .artist-invitation {
+    display: none !important;
+}
+
+/* Button styling for admin section */
+.admin-only .btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.admin-only .btn:hover {
+    background: #0056b3;
+}
+
+.admin-only .btn-primary {
+    background: #007bff;
+}
+
+.admin-only .btn-secondary {
+    background: #6c757d;
+}
+
+.admin-only .btn-secondary:hover {
+    background: #545b62;
+}

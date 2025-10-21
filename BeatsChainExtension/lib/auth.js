@@ -1,7 +1,7 @@
 // Real Google OAuth2 Authentication for Chrome Extension
 class AuthenticationManager {
     constructor() {
-        this.isAuthenticated = false;
+        this.authenticated = false;
         this.userProfile = null;
         this.accessToken = null;
     }
@@ -115,7 +115,7 @@ class AuthenticationManager {
                             picture: userInfo.picture,
                             verified_email: userInfo.verified_email
                         };
-                        this.isAuthenticated = true;
+                        this.authenticated = true;
 
                         // Persist to storage
                         await chrome.storage.local.set({
@@ -154,13 +154,15 @@ class AuthenticationManager {
             email: 'developer@beatschain.com',
             name: 'BeatsChain Developer',
             verified_email: true,
-            picture: null
+            picture: null,
+            role: 'admin',
+            permissions: ['admin_panel', 'sponsor_management', 'user_management']
         };
         
         // Store mock authentication data
         this.accessToken = 'dev_token_' + Date.now();
         this.userProfile = mockProfile;
-        this.isAuthenticated = true;
+        this.authenticated = true;
         
         await chrome.storage.local.set({
             'auth_token': this.accessToken,
@@ -269,7 +271,7 @@ class AuthenticationManager {
             ]);
 
             // Reset state
-            this.isAuthenticated = false;
+            this.authenticated = false;
             this.userProfile = null;
             this.accessToken = null;
 
@@ -352,13 +354,20 @@ class AuthenticationManager {
     getUserProfile() {
         return this.userProfile;
     }
+    
+    hasPermission(permission) {
+        if (!this.userProfile || !this.userProfile.permissions) {
+            return this.userProfile && this.userProfile.role === 'admin';
+        }
+        return this.userProfile.permissions.includes(permission);
+    }
 
     getAccessToken() {
         return this.accessToken;
     }
 
     isAuthenticated() {
-        return this.isAuthenticated && this.userProfile && this.accessToken;
+        return this.authenticated && this.userProfile && this.accessToken;
     }
 }
 

@@ -73,6 +73,8 @@ class AnalyticsManager {
 
     // Package Analytics
     async recordPackageSuccess(packageData) {
+        if (!window.consentManager?.hasAnalyticsConsent()) return;
+        
         const stats = await this.getStats();
         stats.packages = stats.packages || {};
         stats.packages.successful = (stats.packages.successful || 0) + 1;

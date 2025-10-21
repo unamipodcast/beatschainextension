@@ -99,35 +99,8 @@ class UsageLimitsManager {
     }
 
     getAnonymousId() {
-        // Generate consistent anonymous ID based on browser fingerprint
-        const fingerprint = this.generateBrowserFingerprint();
-        return `anon_${fingerprint}`;
-    }
-
-    generateBrowserFingerprint() {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.textBaseline = 'top';
-        ctx.font = '14px Arial';
-        ctx.fillText('Browser fingerprint', 2, 2);
-        
-        const fingerprint = [
-            navigator.userAgent,
-            navigator.language,
-            screen.width + 'x' + screen.height,
-            new Date().getTimezoneOffset(),
-            canvas.toDataURL()
-        ].join('|');
-        
-        // Simple hash function
-        let hash = 0;
-        for (let i = 0; i < fingerprint.length; i++) {
-            const char = fingerprint.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32-bit integer
-        }
-        
-        return Math.abs(hash).toString(36);
+        // Generate privacy-compliant session ID
+        return `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
     async checkDailyLimit(packageType = 'radio') {

@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "BeatsChain - Music NFT Minter",
-  "version": "2.1.1",
+  "version": "2.4.1",
   "description": "Mint your beats as Solana NFTs with AI-generated licensing and Phantom wallet integration",
   "permissions": [
     "storage",
-    "identity"
+    "identity",
+    "activeTab"
   ],
   "host_permissions": [
     "https://*.ipfs.io/*",
@@ -46,6 +47,13 @@
       "https://www.googleapis.com/auth/userinfo.profile"
     ]
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lib/phantom-detector.js"],
+      "run_at": "document_start"
+    }
+  ],
   "web_accessible_resources": [
     {
       "resources": [

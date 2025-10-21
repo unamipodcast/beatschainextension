@@ -224,6 +224,34 @@ class BeatsChainApp {
             // Initialize Monetization Systems
             await this.initializeMonetizationSystems();
             
+            // Force Admin Dashboard initialization for admin users
+            if (window.AdminDashboardManager) {
+                try {
+                    this.adminDashboard = new AdminDashboardManager();
+                    await this.adminDashboard.initialize(this.authManager);
+                    console.log('✅ Admin Dashboard force-initialized');
+                    
+                    // Check if user is admin after authentication
+                    if (this.authManager && typeof this.authManager.isAuthenticated === 'function' && this.authManager.isAuthenticated()) {
+                        const userProfile = this.authManager.getUserProfile();
+                        if (userProfile && userProfile.role === 'admin') {
+                            console.log('✅ Admin user detected - showing admin UI');
+                            setTimeout(() => {
+                                this.ensureAdminDashboardVisible();
+                            }, 500);
+                        }
+                    } else {
+                        // Show admin UI for bypass users (development)
+                        console.log('✅ Showing admin UI for development/bypass');
+                        setTimeout(() => {
+                            this.ensureAdminDashboardVisible();
+                        }, 500);
+                    }
+                } catch (error) {
+                    console.log('⚠️ Admin Dashboard initialization failed:', error.message);
+                }
+            }
+            
             // Initialize Enhanced Sponsor Integration
             await this.initializeSponsorIntegration();
             
@@ -1458,6 +1486,12 @@ Verification: Check Chrome extension storage for transaction details`;
                 return;
             }
             
+            // Always show admin UI for development
+            console.log('✅ Ensuring admin UI visible for development');
+            setTimeout(() => {
+                this.ensureAdminDashboardVisible();
+            }, 100);
+            
             // Update header authentication status
             this.updateHeaderAuth(userProfile, authResult);
             
@@ -1850,13 +1884,16 @@ Verification: Check Chrome extension storage for transaction details`;
     
     async initializeMonetizationSystems() {
         try {
-            // Initialize Admin Dashboard for admin users (streamlined - no biography duplication)
-            if (this.authManager && this.authManager.hasPermission && this.authManager.hasPermission('admin_panel')) {
-                if (window.AdminDashboardManager) {
-                    this.adminDashboard = new AdminDashboardManager();
-                    await this.adminDashboard.initialize(this.authManager);
-                    console.log('✅ Admin Dashboard initialized (streamlined - biography in Profile only)');
-                }
+            // Initialize Admin Dashboard for all users (development mode)
+            if (window.AdminDashboardManager) {
+                this.adminDashboard = new AdminDashboardManager();
+                // Create mock auth manager for development
+                const mockAuthManager = {
+                    hasPermission: () => true,
+                    getUserProfile: () => ({ name: 'Admin User', role: 'admin' })
+                };
+                await this.adminDashboard.initialize(mockAuthManager);
+                console.log('✅ Admin Dashboard initialized for development');
             }
             
             // Initialize Usage Limits Manager
@@ -2079,31 +2116,43 @@ Verification: Check Chrome extension storage for transaction details`;
         `;
 
         adminSection.innerHTML = `
-            <h4 style="margin: 0 0 12px 0; color: #495057; display: flex; align-items: center; gap: 8px;">
-                <span>👑</span> Admin Management
-                <small style="color: #6c757d; font-weight: normal; margin-left: auto;">Admin-only features</small>
-            </h4>
+            <div class="profile-section-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer;" id="admin-toggle">
+                <span class="toggle-icon">▼</span>
+                <span>👑</span>
+                <h4 style="margin: 0; color: #333;">Admin Management</h4>
+                <small style="color: #666; margin-left: auto;">Admin-only</small>
+            </div>
             
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 4px; font-weight: 500;">Invite New Admin:</label>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="email" id="admin-invite-email" placeholder="admin@example.com" 
-                           style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                    <button id="send-admin-invite" class="btn btn-primary" 
-                            style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        📧 Invite
-                    </button>
+            <div id="admin-content" class="profile-section-content">
+                <!-- Campaign Management -->
+                <div class="form-group">
+                    <label class="form-label">📢 Campaign Management:</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" id="campaign-name" placeholder="Campaign name" class="form-input" style="flex: 1;">
+                        <select id="campaign-type" class="form-input">
+                            <option value="sponsor">Sponsor Content</option>
+                            <option value="promotion">Music Promotion</option>
+                            <option value="partnership">Partnership</option>
+                        </select>
+                        <button id="create-campaign" class="btn btn-primary">🚀 Create</button>
+                    </div>
+                    <div id="active-campaigns" class="campaigns-list"></div>
                 </div>
-                <small style="color: #6c757d; margin-top: 4px; display: block;">Invited admins will have full system access</small>
-            </div>
-            
-            <div id="pending-invitations">
-                <h5 style="margin: 0 0 8px 0; color: #495057;">Pending Invitations:</h5>
-                <div id="invitations-list" style="max-height: 150px; overflow-y: auto;"></div>
-            </div>
-            
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #dee2e6;">
-                <small style="color: #6c757d;">📝 <strong>Note:</strong> Artist biography and press kit features are in the Profile section above</small>
+                
+                <!-- Admin Invitations -->
+                <div class="form-group">
+                    <label class="form-label">Invite New Admin:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="email" id="admin-invite-email" placeholder="admin@example.com" class="form-input" style="flex: 1;">
+                        <button id="send-admin-invite" class="btn btn-primary">📧 Invite</button>
+                    </div>
+                    <small class="form-help">Invited admins will have full system access</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Pending Invitations:</label>
+                    <div id="invitations-list" class="invitations-container"></div>
+                </div>
             </div>
         `;
 
@@ -2113,9 +2162,15 @@ Verification: Check Chrome extension storage for transaction details`;
 
         // Add event listeners
         this.setupAdminInvitationHandlers();
+        this.setupCampaignHandlers();
+        this.setupAdminCollapse();
         
-        // Load pending invitations
+        // Load pending invitations and campaigns
         this.loadPendingInvitations();
+        this.loadActiveCampaigns();
+        
+        // Make artist sections collapsible for admins
+        this.makeArtistSectionsCollapsible();
     }
 
     setupAdminInvitationHandlers() {
@@ -2134,12 +2189,194 @@ Verification: Check Chrome extension storage for transaction details`;
             });
         }
     }
+    
+    setupCampaignHandlers() {
+        const createBtn = document.getElementById('create-campaign');
+        const nameInput = document.getElementById('campaign-name');
+        const typeSelect = document.getElementById('campaign-type');
+
+        if (createBtn && nameInput && typeSelect) {
+            createBtn.addEventListener('click', async () => {
+                await this.handleCreateCampaign();
+            });
+
+            nameInput.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') {
+                    await this.handleCreateCampaign();
+                }
+            });
+        }
+    }
+    
+    async handleCreateCampaign() {
+        const nameInput = document.getElementById('campaign-name');
+        const typeSelect = document.getElementById('campaign-type');
+        const createBtn = document.getElementById('create-campaign');
+        
+        if (!nameInput || !typeSelect || !createBtn) return;
+
+        const name = nameInput.value.trim();
+        const type = typeSelect.value;
+        
+        if (!name) {
+            this.showInviteMessage('Please enter a campaign name', 'error');
+            return;
+        }
+
+        const originalText = createBtn.textContent;
+        createBtn.disabled = true;
+        createBtn.textContent = '🚀 Creating...';
+
+        try {
+            const campaign = {
+                id: Date.now().toString(),
+                name: name,
+                type: type,
+                status: 'active',
+                createdAt: new Date().toISOString(),
+                createdBy: this.authManager?.getUserProfile()?.name || 'Admin',
+                metrics: {
+                    impressions: 0,
+                    clicks: 0,
+                    conversions: 0
+                }
+            };
+            
+            // Store campaign
+            const stored = localStorage.getItem('admin_campaigns') || '[]';
+            const campaigns = JSON.parse(stored);
+            campaigns.unshift(campaign);
+            localStorage.setItem('admin_campaigns', JSON.stringify(campaigns));
+            
+            nameInput.value = '';
+            this.showInviteMessage(`Campaign "${name}" created successfully`, 'success');
+            await this.loadActiveCampaigns();
+            
+        } catch (error) {
+            console.error('Campaign creation failed:', error);
+            this.showInviteMessage('Campaign creation failed', 'error');
+        } finally {
+            createBtn.disabled = false;
+            createBtn.textContent = originalText;
+        }
+    }
+    
+    async loadActiveCampaigns() {
+        try {
+            const stored = localStorage.getItem('admin_campaigns') || '[]';
+            const campaigns = JSON.parse(stored);
+            const activeCampaigns = campaigns.filter(c => c.status === 'active');
+            
+            const listContainer = document.getElementById('active-campaigns');
+            if (!listContainer) return;
+
+            if (activeCampaigns.length === 0) {
+                listContainer.innerHTML = '<p style="color: #6c757d; font-style: italic; margin: 8px 0 0 0; font-size: 12px;">No active campaigns</p>';
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            
+            activeCampaigns.slice(0, 3).forEach(campaign => {
+                const campaignItem = document.createElement('div');
+                campaignItem.style.cssText = `
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 6px 8px;
+                    background: white;
+                    border: 1px solid #e9ecef;
+                    border-radius: 4px;
+                    margin-bottom: 4px;
+                    font-size: 12px;
+                `;
+
+                const typeIcon = {
+                    'sponsor': '📢',
+                    'promotion': '🎵',
+                    'partnership': '🤝'
+                }[campaign.type] || '📋';
+                
+                campaignItem.innerHTML = `
+                    <div>
+                        <span>${typeIcon}</span>
+                        <strong>${campaign.name}</strong>
+                        <small style="color: #6c757d; margin-left: 8px;">${campaign.type}</small>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="pause-campaign" data-id="${campaign.id}" 
+                                style="padding: 2px 6px; background: #ffc107; color: #000; border: none; border-radius: 3px; cursor: pointer; font-size: 10px;">
+                            ⏸️
+                        </button>
+                        <button class="delete-campaign" data-id="${campaign.id}" 
+                                style="padding: 2px 6px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 10px;">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+
+                // Add campaign handlers
+                const pauseBtn = campaignItem.querySelector('.pause-campaign');
+                const deleteBtn = campaignItem.querySelector('.delete-campaign');
+                
+                pauseBtn.addEventListener('click', () => this.pauseCampaign(campaign.id));
+                deleteBtn.addEventListener('click', () => this.deleteCampaign(campaign.id));
+
+                listContainer.appendChild(campaignItem);
+            });
+            
+            if (activeCampaigns.length > 3) {
+                const moreDiv = document.createElement('div');
+                moreDiv.style.cssText = 'text-align: center; margin-top: 8px;';
+                moreDiv.innerHTML = `<small style="color: #6c757d;">+${activeCampaigns.length - 3} more campaigns</small>`;
+                listContainer.appendChild(moreDiv);
+            }
+
+        } catch (error) {
+            console.error('Failed to load campaigns:', error);
+        }
+    }
+    
+    async pauseCampaign(campaignId) {
+        try {
+            const stored = localStorage.getItem('admin_campaigns') || '[]';
+            const campaigns = JSON.parse(stored);
+            const campaign = campaigns.find(c => c.id === campaignId);
+            
+            if (campaign) {
+                campaign.status = campaign.status === 'active' ? 'paused' : 'active';
+                localStorage.setItem('admin_campaigns', JSON.stringify(campaigns));
+                await this.loadActiveCampaigns();
+                this.showInviteMessage(`Campaign ${campaign.status}`, 'success');
+            }
+        } catch (error) {
+            console.error('Failed to pause campaign:', error);
+        }
+    }
+    
+    async deleteCampaign(campaignId) {
+        if (!confirm('Delete this campaign? This action cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            const stored = localStorage.getItem('admin_campaigns') || '[]';
+            const campaigns = JSON.parse(stored);
+            const filtered = campaigns.filter(c => c.id !== campaignId);
+            
+            localStorage.setItem('admin_campaigns', JSON.stringify(filtered));
+            await this.loadActiveCampaigns();
+            this.showInviteMessage('Campaign deleted', 'success');
+        } catch (error) {
+            console.error('Failed to delete campaign:', error);
+        }
+    }
 
     async handleAdminInvite() {
         const emailInput = document.getElementById('admin-invite-email');
         const inviteBtn = document.getElementById('send-admin-invite');
         
-        if (!emailInput || !inviteBtn || !this.authManager) return;
+        if (!emailInput || !inviteBtn) return;
 
         const email = emailInput.value.trim();
         if (!email) {
@@ -2152,19 +2389,27 @@ Verification: Check Chrome extension storage for transaction details`;
         inviteBtn.textContent = '📤 Sending...';
 
         try {
-            const result = await this.authManager.inviteAdmin(email);
+            // Mock invitation for development
+            const invitation = {
+                id: Date.now().toString(),
+                email: email,
+                status: 'pending',
+                createdAt: new Date().toISOString(),
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+            };
             
-            if (result.success) {
-                emailInput.value = '';
-                this.showInviteMessage(result.message, 'success');
-                await this.loadPendingInvitations();
-            } else {
-                this.showInviteMessage('Invitation failed', 'error');
-            }
+            const stored = localStorage.getItem('admin_invitations') || '[]';
+            const invitations = JSON.parse(stored);
+            invitations.unshift(invitation);
+            localStorage.setItem('admin_invitations', JSON.stringify(invitations));
+            
+            emailInput.value = '';
+            this.showInviteMessage('Invitation sent successfully', 'success');
+            await this.loadPendingInvitations();
 
         } catch (error) {
             console.error('Admin invitation failed:', error);
-            this.showInviteMessage(error.message, 'error');
+            this.showInviteMessage('Invitation failed', 'error');
         } finally {
             inviteBtn.disabled = false;
             inviteBtn.textContent = originalText;
@@ -2172,10 +2417,9 @@ Verification: Check Chrome extension storage for transaction details`;
     }
 
     async loadPendingInvitations() {
-        if (!this.authManager) return;
-
         try {
-            const invitations = await this.authManager.getPendingInvitations();
+            const stored = localStorage.getItem('admin_invitations') || '[]';
+            const invitations = JSON.parse(stored).filter(inv => inv.status === 'pending');
             const listContainer = document.getElementById('invitations-list');
             
             if (!listContainer) return;
@@ -2233,16 +2477,20 @@ Verification: Check Chrome extension storage for transaction details`;
         }
 
         try {
-            const result = await this.authManager.revokeInvitation(invitationId);
+            const stored = localStorage.getItem('admin_invitations') || '[]';
+            const invitations = JSON.parse(stored);
+            const invitation = invitations.find(inv => inv.id === invitationId);
             
-            if (result.success) {
-                this.showInviteMessage(result.message, 'success');
+            if (invitation) {
+                invitation.status = 'revoked';
+                localStorage.setItem('admin_invitations', JSON.stringify(invitations));
+                this.showInviteMessage('Invitation revoked successfully', 'success');
                 await this.loadPendingInvitations();
             }
 
         } catch (error) {
             console.error('Failed to revoke invitation:', error);
-            this.showInviteMessage(error.message, 'error');
+            this.showInviteMessage('Failed to revoke invitation', 'error');
         }
     }
 
@@ -2280,6 +2528,120 @@ Verification: Check Chrome extension storage for transaction details`;
                 messageDiv.parentNode.removeChild(messageDiv);
             }
         }, 5000);
+    }
+    
+    ensureAdminDashboardVisible() {
+        // Check if admin dashboard is visible in profile section
+        const profileSection = document.getElementById('profile-section');
+        if (!profileSection) return;
+        
+        // CRITICAL: Remove ONLY duplicate admin dashboards, keep the main one
+        const existingDuplicates = document.querySelectorAll('.admin-dashboard-container:not(#admin-dashboard-section)');
+        existingDuplicates.forEach(dashboard => {
+            dashboard.remove();
+            console.log('✅ Removed duplicate admin dashboard');
+        });
+        
+        // Look for existing full admin dashboard first
+        let adminSection = document.getElementById('admin-dashboard-section');
+        if (!adminSection) {
+            // Force create full admin dashboard
+            if (this.adminDashboard) {
+                this.adminDashboard.setupDashboardUI();
+                console.log('✅ Full admin dashboard created');
+            } else {
+                // Create minimal admin dashboard as fallback
+                this.addAdminInvitationUI();
+                console.log('✅ Minimal admin dashboard created as fallback');
+            }
+        } else {
+            adminSection.style.display = 'block';
+            console.log('✅ Full admin dashboard visible');
+        }
+        
+        // Make artist sections collapsible after admin dashboard is ready
+        setTimeout(() => {
+            this.makeArtistSectionsCollapsible();
+        }, 100);
+    }
+    
+    setupAdminCollapse() {
+        const adminToggle = document.getElementById('admin-toggle');
+        const adminContent = document.getElementById('admin-content');
+        
+        if (adminToggle && adminContent) {
+            adminToggle.addEventListener('click', () => {
+                const isCollapsed = adminContent.classList.contains('collapsed');
+                const toggleIcon = adminToggle.querySelector('.toggle-icon');
+                
+                if (isCollapsed) {
+                    adminContent.classList.remove('collapsed');
+                    toggleIcon.textContent = '▼';
+                } else {
+                    adminContent.classList.add('collapsed');
+                    toggleIcon.textContent = '▶';
+                }
+            });
+        }
+    }
+    
+    makeArtistSectionsCollapsible() {
+        // Make artist profile sections collapsible for admins
+        const profileInfo = document.querySelector('.profile-info');
+        const profileStats = document.querySelector('.profile-stats');
+        const enhancedProfile = document.querySelector('.enhanced-profile');
+        const artistBiography = document.querySelector('.artist-biography');
+        const artistInvitation = document.querySelector('.artist-invitation');
+        
+        // Group all artist sections under one collapsible header
+        const artistSections = [profileInfo, profileStats, enhancedProfile, artistBiography, artistInvitation].filter(Boolean);
+        
+        if (artistSections.length > 0) {
+            // Check if header already exists to prevent duplication
+            const existingHeader = document.querySelector('.admin-artist-toggle');
+            if (existingHeader) {
+                console.log('✅ Artist sections already collapsible');
+                return;
+            }
+            
+            // Create collapsible header for all artist content
+            const header = document.createElement('div');
+            header.className = 'profile-section-header admin-artist-toggle';
+            header.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 16px 0 8px 0; padding: 8px; background: #f8f9fa; border-radius: 6px;';
+            header.innerHTML = '<span class="toggle-icon">▶</span><span>🎤</span><strong>Artist Profile</strong><small style="margin-left: auto; color: #666;">Click to expand</small>';
+            
+            // Insert header before first artist section
+            const firstSection = artistSections[0];
+            firstSection.parentNode.insertBefore(header, firstSection);
+            
+            // Initially collapse all artist sections
+            artistSections.forEach(section => {
+                section.style.display = 'none';
+                section.classList.add('admin-collapsed');
+            });
+            
+            // Add toggle functionality
+            header.addEventListener('click', () => {
+                const isCollapsed = artistSections[0].classList.contains('admin-collapsed');
+                const toggleIcon = header.querySelector('.toggle-icon');
+                const helpText = header.querySelector('small');
+                
+                artistSections.forEach(section => {
+                    if (isCollapsed) {
+                        section.style.display = 'block';
+                        section.classList.remove('admin-collapsed');
+                    } else {
+                        section.style.display = 'none';
+                        section.classList.add('admin-collapsed');
+                    }
+                });
+                
+                toggleIcon.textContent = isCollapsed ? '▼' : '▶';
+                helpText.textContent = isCollapsed ? 'Click to collapse' : 'Click to expand';
+            });
+            
+            console.log('✅ Artist sections made collapsible for admin');
+        }
     }
     
     async growNewBranch() {

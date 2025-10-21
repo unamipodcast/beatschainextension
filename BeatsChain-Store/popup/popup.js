@@ -29,10 +29,86 @@ class BeatsChainApp {
         this.usageLimits = null;
         this.sponsorContent = null;
         this.isInitialized = false;
+        this.partnerConsentGiven = false;
+    }
+
+    async showPartnerConsentModal() {
+        return new Promise((resolve) => {
+            // Check if consent already given
+            const consentStored = localStorage.getItem('beatschain_partner_consent');
+            if (consentStored === 'true') {
+                this.partnerConsentGiven = true;
+                resolve(true);
+                return;
+            }
+
+            // Create modal overlay
+            const modalOverlay = document.createElement('div');
+            modalOverlay.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.9); z-index: 20000;
+                display: flex; align-items: center; justify-content: center;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
+
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: white; border-radius: 12px; padding: 32px;
+                max-width: 500px; width: 90%; text-align: center;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            `;
+
+            modal.innerHTML = `
+                <div style="font-size: 48px; margin-bottom: 16px;">📢</div>
+                <h2 style="color: #333; margin: 0 0 16px 0;">Professional Partner Content</h2>
+                <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">
+                    BeatsChain partners with professional music industry services to provide you with relevant tools and resources.
+                </p>
+                <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">
+                    We may show you content from our verified partners that could help with your music career.
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button id="decline-consent" style="
+                        background: #6c757d; color: white; border: none;
+                        padding: 12px 24px; border-radius: 6px; cursor: pointer;
+                        font-size: 14px;
+                    ">No Thanks</button>
+                    <button id="accept-consent" style="
+                        background: #007bff; color: white; border: none;
+                        padding: 12px 24px; border-radius: 6px; cursor: pointer;
+                        font-size: 14px; font-weight: 500;
+                    ">I agree to see relevant partner content</button>
+                </div>
+                <p style="color: #999; font-size: 12px; margin: 16px 0 0 0;">
+                    You can change this preference anytime in settings. No personal data is shared with partners.
+                </p>
+            `;
+
+            modalOverlay.appendChild(modal);
+            document.body.appendChild(modalOverlay);
+
+            // Handle consent responses
+            modal.querySelector('#accept-consent').addEventListener('click', () => {
+                localStorage.setItem('beatschain_partner_consent', 'true');
+                this.partnerConsentGiven = true;
+                document.body.removeChild(modalOverlay);
+                resolve(true);
+            });
+
+            modal.querySelector('#decline-consent').addEventListener('click', () => {
+                localStorage.setItem('beatschain_partner_consent', 'false');
+                this.partnerConsentGiven = false;
+                document.body.removeChild(modalOverlay);
+                resolve(false);
+            });
+        });
     }
 
     async initialize() {
         try {
+            // CRITICAL: Show partner consent FIRST before any other initialization
+            await this.showPartnerConsentModal();
+            
             // Debug script loading
             console.log('🔍 Script loading check:', {
                 MetadataWriter: !!window.MetadataWriter,
@@ -148,8 +224,39 @@ class BeatsChainApp {
             // Initialize Monetization Systems
             await this.initializeMonetizationSystems();
             
+            // Force Admin Dashboard initialization for admin users
+            if (window.AdminDashboardManager) {
+                try {
+                    this.adminDashboard = new AdminDashboardManager();
+                    await this.adminDashboard.initialize(this.authManager);
+                    console.log('✅ Admin Dashboard force-initialized');
+                    
+                    // Check if user is admin after authentication
+                    if (this.authManager && typeof this.authManager.isAuthenticated === 'function' && this.authManager.isAuthenticated()) {
+                        const userProfile = this.authManager.getUserProfile();
+                        if (userProfile && userProfile.role === 'admin') {
+                            console.log('✅ Admin user detected - showing admin UI');
+                            setTimeout(() => {
+                                this.ensureAdminDashboardVisible();
+                            }, 500);
+                        }
+                    } else {
+                        // Show admin UI for bypass users (development)
+                        console.log('✅ Showing admin UI for development/bypass');
+                        setTimeout(() => {
+                            this.ensureAdminDashboardVisible();
+                        }, 500);
+                    }
+                } catch (error) {
+                    console.log('⚠️ Admin Dashboard initialization failed:', error.message);
+                }
+            }
+            
             // Initialize Enhanced Sponsor Integration
             await this.initializeSponsorIntegration();
+            
+            // Initialize Minting Sponsor Integration
+            await this.initializeMintingSponsorIntegration();
             
             // Initialize Analytics Manager
             await this.initializeAnalytics();
@@ -684,33 +791,48 @@ Verification: Check Chrome extension storage for transaction details`;
             
             statusDiv.textContent = 'Minting NFT on blockchain...';
             
-            // Try Phantom wallet first, fallback to embedded wallet
+            // Try Phantom wallet first, fallback to embedded wallet with timeout
+            let finalWalletAddress = walletAddress;
             if (!this.solanaManager.isWalletConnected()) {
                 console.log('🔄 Attempting Phantom wallet connection...');
                 try {
-                    const connectResult = await this.solanaManager.connectWallet();
-                    if (connectResult.success) {
+                    // Add timeout to prevent endless loops
+                    const connectPromise = this.solanaManager.connectWallet();
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Phantom connection timeout')), 10000);
+                    });
+                    
+                    const connectResult = await Promise.race([connectPromise, timeoutPromise]);
+                    if (connectResult && connectResult.success) {
                         console.log('✅ Connected to Phantom wallet:', connectResult.publicKey);
-                        walletAddress = connectResult.publicKey;
+                        finalWalletAddress = connectResult.publicKey;
                     } else {
-                        throw new Error('Phantom not available');
+                        console.log('⚠️ Phantom connection failed, using embedded wallet');
+                        finalWalletAddress = walletAddress;
                     }
                 } catch (error) {
-                    console.log('⚠️ Phantom unavailable, using embedded wallet for minting');
-                    // Use the authenticated wallet address from auth system
-                    walletAddress = walletAddress; // Keep existing authenticated address
+                    console.log('⚠️ Phantom unavailable, using embedded wallet:', error.message);
+                    finalWalletAddress = walletAddress;
                 }
             } else {
-                walletAddress = this.solanaManager.getWalletAddress();
+                finalWalletAddress = this.solanaManager.getWalletAddress();
             }
             
-            // Real Solana NFT minting (will use embedded wallet if Phantom unavailable)
-            const mintResult = await this.thirdweb.mintNFT(walletAddress, uploadResult.metadataUri);
+            // Real Solana NFT minting with timeout to prevent endless loops
+            statusDiv.textContent = 'Minting NFT on Solana blockchain...';
+            const mintPromise = this.thirdweb.mintNFT(finalWalletAddress, uploadResult.metadataUri);
+            const mintTimeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Minting timeout after 60 seconds')), 60000);
+            });
+            
+            const mintResult = await Promise.race([mintPromise, mintTimeoutPromise]);
             
             console.log('✅ Real blockchain minting completed:', {
                 network: mintResult.network || 'solana-devnet',
                 signature: mintResult.transactionHash,
-                tokenId: mintResult.tokenId
+                tokenId: mintResult.tokenId,
+                isrc: uploadResult.isrcCode,
+                metadataEmbedded: !!uploadResult.processedFile
             });
             
             this.showMintSuccess({
@@ -1364,6 +1486,14 @@ Verification: Check Chrome extension storage for transaction details`;
                 return;
             }
             
+            // Show admin UI if user is admin
+            if (userProfile.role === 'admin') {
+                console.log('✅ Admin user authenticated - ensuring admin UI visible');
+                setTimeout(() => {
+                    this.ensureAdminDashboardVisible();
+                }, 100);
+            }
+            
             // Update header authentication status
             this.updateHeaderAuth(userProfile, authResult);
             
@@ -1772,17 +1902,10 @@ Verification: Check Chrome extension storage for transaction details`;
                 console.log('✅ Usage Limits Manager initialized');
             }
             
-            // Initialize Sponsor Content Manager
+            // Initialize Sponsor Content Manager (consent already shown)
             if (window.SponsorContentManager) {
                 this.sponsorContent = new SponsorContentManager();
                 await this.sponsorContent.initialize(this.adminDashboard);
-                
-                // Show partner consent modal FIRST - before user can continue
-                const consentGiven = await this.sponsorContent.showInitialPartnerConsent();
-                if (!consentGiven) {
-                    console.log('User declined partner content');
-                }
-                
                 await this.sponsorContent.ensureCompliance();
                 
                 // Enhance existing systems with sponsor content
@@ -1809,6 +1932,18 @@ Verification: Check Chrome extension storage for transaction details`;
             }
         } catch (error) {
             console.log('Sponsor integration initialization failed:', error);
+        }
+    }
+    
+    async initializeMintingSponsorIntegration() {
+        try {
+            // Initialize Minting Sponsor Integration
+            if (window.MintingSponsorIntegration) {
+                this.mintingSponsorIntegration = MintingSponsorIntegration.enhanceApp(this);
+                console.log('✅ Minting Sponsor Integration initialized');
+            }
+        } catch (error) {
+            console.log('Minting sponsor integration initialization failed:', error);
         }
     }
     
@@ -1980,31 +2115,27 @@ Verification: Check Chrome extension storage for transaction details`;
         `;
 
         adminSection.innerHTML = `
-            <h4 style="margin: 0 0 12px 0; color: #495057; display: flex; align-items: center; gap: 8px;">
-                <span>👑</span> Admin Management
-                <small style="color: #6c757d; font-weight: normal; margin-left: auto;">Admin-only features</small>
-            </h4>
+            <div class="profile-section-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer;" id="admin-toggle">
+                <span class="toggle-icon">▼</span>
+                <span>👑</span>
+                <h4 style="margin: 0; color: #333;">Admin Management</h4>
+                <small style="color: #666; margin-left: auto;">Admin-only</small>
+            </div>
             
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 4px; font-weight: 500;">Invite New Admin:</label>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="email" id="admin-invite-email" placeholder="admin@example.com" 
-                           style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                    <button id="send-admin-invite" class="btn btn-primary" 
-                            style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        📧 Invite
-                    </button>
+            <div id="admin-content" class="profile-section-content">
+                <div class="form-group">
+                    <label class="form-label">Invite New Admin:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="email" id="admin-invite-email" placeholder="admin@example.com" class="form-input" style="flex: 1;">
+                        <button id="send-admin-invite" class="btn btn-primary">📧 Invite</button>
+                    </div>
+                    <small class="form-help">Invited admins will have full system access</small>
                 </div>
-                <small style="color: #6c757d; margin-top: 4px; display: block;">Invited admins will have full system access</small>
-            </div>
-            
-            <div id="pending-invitations">
-                <h5 style="margin: 0 0 8px 0; color: #495057;">Pending Invitations:</h5>
-                <div id="invitations-list" style="max-height: 150px; overflow-y: auto;"></div>
-            </div>
-            
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #dee2e6;">
-                <small style="color: #6c757d;">📝 <strong>Note:</strong> Artist biography and press kit features are in the Profile section above</small>
+                
+                <div class="form-group">
+                    <label class="form-label">Pending Invitations:</label>
+                    <div id="invitations-list" class="invitations-container"></div>
+                </div>
             </div>
         `;
 
@@ -2014,9 +2145,13 @@ Verification: Check Chrome extension storage for transaction details`;
 
         // Add event listeners
         this.setupAdminInvitationHandlers();
+        this.setupAdminCollapse();
         
         // Load pending invitations
         this.loadPendingInvitations();
+        
+        // Make artist sections collapsible for admins
+        this.makeArtistSectionsCollapsible();
     }
 
     setupAdminInvitationHandlers() {
@@ -2181,6 +2316,114 @@ Verification: Check Chrome extension storage for transaction details`;
                 messageDiv.parentNode.removeChild(messageDiv);
             }
         }, 5000);
+    }
+    
+    ensureAdminDashboardVisible() {
+        // Check if admin dashboard is visible in profile section
+        const profileSection = document.getElementById('profile-section');
+        if (!profileSection) return;
+        
+        // CRITICAL: Remove ONLY duplicate admin dashboards, keep the main one
+        const existingDuplicates = document.querySelectorAll('.admin-dashboard-container:not(#admin-dashboard-section)');
+        existingDuplicates.forEach(dashboard => {
+            dashboard.remove();
+            console.log('✅ Removed duplicate admin dashboard');
+        });
+        
+        // Look for existing full admin dashboard first
+        let adminSection = document.getElementById('admin-dashboard-section');
+        if (!adminSection) {
+            // Look for minimal admin section
+            adminSection = document.getElementById('admin-invitation-section');
+            if (!adminSection) {
+                // Create minimal admin dashboard as fallback
+                this.addAdminInvitationUI();
+                console.log('✅ Minimal admin dashboard created as fallback');
+            } else {
+                adminSection.style.display = 'block';
+                console.log('✅ Minimal admin dashboard visible');
+            }
+        } else {
+            adminSection.style.display = 'block';
+            console.log('✅ Full admin dashboard visible');
+        }
+        
+        // Make artist sections collapsible after admin dashboard is ready
+        setTimeout(() => {
+            this.makeArtistSectionsCollapsible();
+        }, 100);
+    }
+    
+    setupAdminCollapse() {
+        const adminToggle = document.getElementById('admin-toggle');
+        const adminContent = document.getElementById('admin-content');
+        
+        if (adminToggle && adminContent) {
+            adminToggle.addEventListener('click', () => {
+                const isCollapsed = adminContent.classList.contains('collapsed');
+                const toggleIcon = adminToggle.querySelector('.toggle-icon');
+                
+                if (isCollapsed) {
+                    adminContent.classList.remove('collapsed');
+                    toggleIcon.textContent = '▼';
+                } else {
+                    adminContent.classList.add('collapsed');
+                    toggleIcon.textContent = '▶';
+                }
+            });
+        }
+    }
+    
+    makeArtistSectionsCollapsible() {
+        // Make artist profile sections collapsible for admins
+        const profileInfo = document.querySelector('.profile-info');
+        const profileStats = document.querySelector('.profile-stats');
+        const enhancedProfile = document.querySelector('.enhanced-profile');
+        const artistBiography = document.querySelector('.artist-biography');
+        const artistInvitation = document.querySelector('.artist-invitation');
+        
+        // Group all artist sections under one collapsible header
+        const artistSections = [profileInfo, profileStats, enhancedProfile, artistBiography, artistInvitation].filter(Boolean);
+        
+        if (artistSections.length > 0) {
+            // Create collapsible header for all artist content
+            const header = document.createElement('div');
+            header.className = 'profile-section-header admin-artist-toggle';
+            header.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 16px 0 8px 0; padding: 8px; background: #f8f9fa; border-radius: 6px;';
+            header.innerHTML = '<span class="toggle-icon">▶</span><span>🎤</span><strong>Artist Profile</strong><small style="margin-left: auto; color: #666;">Click to expand</small>';
+            
+            // Insert header before first artist section
+            const firstSection = artistSections[0];
+            firstSection.parentNode.insertBefore(header, firstSection);
+            
+            // Initially collapse all artist sections
+            artistSections.forEach(section => {
+                section.style.display = 'none';
+                section.classList.add('admin-collapsed');
+            });
+            
+            // Add toggle functionality
+            header.addEventListener('click', () => {
+                const isCollapsed = artistSections[0].classList.contains('admin-collapsed');
+                const toggleIcon = header.querySelector('.toggle-icon');
+                const helpText = header.querySelector('small');
+                
+                artistSections.forEach(section => {
+                    if (isCollapsed) {
+                        section.style.display = 'block';
+                        section.classList.remove('admin-collapsed');
+                    } else {
+                        section.style.display = 'none';
+                        section.classList.add('admin-collapsed');
+                    }
+                });
+                
+                toggleIcon.textContent = isCollapsed ? '▼' : '▶';
+                helpText.textContent = isCollapsed ? 'Click to collapse' : 'Click to expand';
+            });
+            
+            console.log('✅ Artist sections made collapsible for admin');
+        }
     }
     
     async growNewBranch() {
