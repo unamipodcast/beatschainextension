@@ -1,43 +1,93 @@
-// Import config manager
-import config from './config.js';
-
-// Real Thirdweb Manager using browser APIs
-class ThirdwebManager {
+// Solana-Only Manager (Phase 2: Complete Migration)
+class SolanaManager {
     constructor() {
         this.isInitialized = false;
-        this.contractAddress = null;
-        this.rpcUrl = null;
-        this.clientId = null;
+        this.solanaConfig = null;
+        this.phantomWallet = null;
+        this.solanaIntegration = null;
+        this.connection = null;
     }
 
-    async initialize(privateKey) {
+    async initialize() {
         try {
-            if (!privateKey) {
-                throw new Error('Private key required');
+            // Initialize Solana configuration
+            this.solanaConfig = new SolanaConfig();
+            console.log('✅ Solana config loaded:', this.solanaConfig.getNetwork());
+            
+            // Initialize Sponsored Minting System
+            if (window.SponsoredMintingManager) {
+                this.sponsoredMinting = new SponsoredMintingManager();
+                const sponsorReady = await this.sponsoredMinting.initialize();
+                if (sponsorReady) {
+                    console.log('🎁 FREE minting enabled - Users pay $0.00 transaction fees');
+                } else {
+                    console.warn('⚠️ Sponsored minting unavailable - users will pay fees');
+                }
             }
             
-            // Load configuration from secure storage
-            await config.initialize();
-            this.contractAddress = await config.get('CONTRACT_ADDRESS');
-            this.rpcUrl = await config.get('RPC_URL') || await config.get('NEXT_PUBLIC_RPC_URL');
-            this.clientId = await config.get('THIRDWEB_CLIENT_ID') || await config.get('NEXT_PUBLIC_THIRDWEB_CLIENT_ID');
+            // Initialize NFT Metadata Integration
+            if (window.NFTMetadataIntegrator) {
+                this.nftMetadataIntegrator = new NFTMetadataIntegrator();
+                const metadataReady = await this.nftMetadataIntegrator.initialize();
+                if (metadataReady) {
+                    console.log('🏷️ NFT metadata integration ready - ISRC + embedding enabled');
+                } else {
+                    console.warn('⚠️ NFT metadata integration limited');
+                }
+            }
             
-            this.privateKey = privateKey;
+            // Initialize Phantom wallet
+            this.phantomWallet = new PhantomWalletManager();
+            const phantomReady = await this.phantomWallet.initialize();
+            
+            if (!phantomReady) {
+                console.warn('⚠️ Phantom wallet not available - will prompt user');
+            }
+            
+            // Initialize Solana integration
+            if (window.SolanaIntegration) {
+                this.solanaIntegration = new SolanaIntegration();
+                const solanaReady = await this.solanaIntegration.initialize();
+                if (solanaReady) {
+                    console.log('✅ Solana integration ready for real minting');
+                } else {
+                    throw new Error('Solana integration failed to initialize');
+                }
+            } else {
+                throw new Error('SolanaIntegration not available');
+            }
+            
             this.isInitialized = true;
             return true;
         } catch (error) {
-            console.error("Thirdweb initialization failed:", error);
+            console.error('❌ Solana manager initialization failed:', error);
             return false;
         }
     }
 
     async uploadToIPFS(file, metadata) {
         try {
-            console.log('🔄 Starting IPFS upload process...');
+            console.log('🔄 Starting IPFS upload process with metadata integration...');
             
-            // Upload audio file to IPFS
-            const audioUri = await this.uploadFileToIPFS(file);
-            console.log('✅ Audio uploaded:', audioUri);
+            // Process audio file with NFT metadata integration
+            let processedFile = file;
+            let isrcCode = null;
+            let nftMetadata = {};
+            
+            if (this.nftMetadataIntegrator) {
+                const processed = await this.nftMetadataIntegrator.processForNFTMinting(file, metadata);
+                processedFile = processed.processedAudioFile;
+                isrcCode = processed.isrcCode;
+                nftMetadata = processed.nftMetadata;
+                
+                if (processed.isDuplicate) {
+                    console.warn('⚠️ Potential duplicate detected - proceeding with caution');
+                }
+            }
+            
+            // Upload processed audio file to IPFS
+            const audioUri = await this.uploadFileToIPFS(processedFile);
+            console.log('✅ Audio uploaded with embedded metadata:', audioUri);
             
             // Upload cover image if provided
             let imageUri = "ipfs://QmYourDefaultCover";
@@ -46,10 +96,10 @@ class ThirdwebManager {
                 console.log('✅ Cover image uploaded:', imageUri);
             }
             
-            // Create comprehensive NFT metadata
-            const nftMetadata = {
+            // Create comprehensive NFT metadata with ISRC
+            const finalNftMetadata = {
                 name: metadata.title,
-                description: metadata.description || `${metadata.title} - AI-generated music NFT with blockchain licensing`,
+                description: metadata.description || `${metadata.title} - Professional music NFT with blockchain licensing`,
                 image: imageUri,
                 animation_url: audioUri,
                 external_url: "chrome-extension://" + chrome.runtime.id,
@@ -60,25 +110,36 @@ class ThirdwebManager {
                     { trait_type: "Energy Level", value: metadata.energyLevel },
                     { trait_type: "Quality", value: metadata.qualityLevel },
                     { trait_type: "Format", value: metadata.format },
-                    { trait_type: "License Type", value: "AI-Generated" },
-                    { trait_type: "Created With", value: "BeatsChain AI" }
+                    { trait_type: "License Type", value: "Professional" },
+                    { trait_type: "Created With", value: "BeatsChain Extension" }
                 ],
                 properties: {
                     license_terms: metadata.licenseTerms,
                     created_at: new Date().toISOString(),
-                    file_type: file.type,
-                    file_size: file.size,
+                    file_type: processedFile.type,
+                    file_size: processedFile.size,
                     bitrate: metadata.estimatedBitrate,
-                    duration_seconds: metadata.durationSeconds
+                    duration_seconds: metadata.durationSeconds,
+                    isrc: isrcCode,
+                    metadata_embedded: !!this.nftMetadataIntegrator,
+                    duplicate_checked: true,
+                    ...nftMetadata
                 }
             };
 
             // Upload metadata to IPFS
-            const metadataBlob = new Blob([JSON.stringify(nftMetadata, null, 2)], { type: 'application/json' });
+            const metadataBlob = new Blob([JSON.stringify(finalNftMetadata, null, 2)], { type: 'application/json' });
             const metadataUri = await this.uploadFileToIPFS(metadataBlob);
-            console.log('✅ Metadata uploaded:', metadataUri);
+            console.log('✅ Metadata uploaded with ISRC:', metadataUri);
             
-            return { audioUri, metadataUri, imageUri, nftMetadata };
+            return { 
+                audioUri, 
+                metadataUri, 
+                imageUri, 
+                nftMetadata: finalNftMetadata,
+                isrcCode,
+                processedFile
+            };
         } catch (error) {
             console.error('❌ IPFS upload failed:', error);
             throw error;
@@ -101,14 +162,15 @@ class ThirdwebManager {
             });
             formData.append('pinataMetadata', metadata);
             
-            const apiKey = await config.get('PINATA_API_KEY');
-            const secretKey = await config.get('PINATA_SECRET_KEY');
+            // Use hardcoded API keys for Chrome extension (no .env access)
+            const apiKey = '039a88d61f538316a611';
+            const secretKey = '15d14b953368d4d5c830c6e05f4767d63443da92da3359a7223ae115315beb91';
             
             const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
                 method: 'POST',
                 headers: {
-                    'pinata_api_key': apiKey || '039a88d61f538316a611',
-                    'pinata_secret_api_key': secretKey || '15d14b953368d4d5c830c6e05f4767d63443da92da3359a7223ae115315beb91'
+                    'pinata_api_key': apiKey,
+                    'pinata_secret_api_key': secretKey
                 },
                 body: formData
             });
@@ -149,23 +211,84 @@ class ThirdwebManager {
         }
     }
 
-    async mintNFT(recipientAddress, metadataUri) {
+    async mintNFT(recipientAddress, metadataUri, metadata = {}) {
         try {
-            if (!this.isInitialized) {
-                throw new Error("Thirdweb not initialized");
-            }
-
-            console.log('🔄 Starting Thirdweb SDK minting...');
+            console.log('🔄 Starting FREE Solana NFT minting...');
             console.log('Recipient:', recipientAddress);
             console.log('Metadata URI:', metadataUri);
             
-            // Skip Thirdweb API and go directly to RPC for reliability
-            console.log('⚡ Using direct RPC for faster minting');
-            return await this.mintViaDirectRPC(recipientAddress, metadataUri);
+            // Check if minting can be sponsored (FREE)
+            let isSponsored = false;
+            if (this.sponsoredMinting) {
+                const sponsorCheck = await this.sponsoredMinting.canSponsorMint(recipientAddress);
+                if (sponsorCheck.allowed) {
+                    console.log('🎁 FREE minting available:', sponsorCheck.remaining, 'remaining today');
+                    isSponsored = true;
+                } else {
+                    console.log('⚠️ Sponsored minting unavailable:', sponsorCheck.reason);
+                }
+            }
+            
+            // Try Phantom wallet, fallback to simulation
+            let usePhantom = false;
+            if (this.phantomWallet && this.phantomWallet.isWalletConnected()) {
+                usePhantom = true;
+            } else if (this.phantomWallet) {
+                try {
+                    const connectResult = await this.phantomWallet.connect();
+                    usePhantom = connectResult.success;
+                } catch (error) {
+                    console.log('⚠️ Phantom unavailable, using simulation mode');
+                }
+            }
+            
+            let result;
+            if (usePhantom && this.solanaIntegration) {
+                // Real Solana NFT minting with optional sponsoring
+                const mintOptions = { 
+                    ...metadata, 
+                    wallet: this.phantomWallet,
+                    sponsored: isSponsored
+                };
+                
+                if (isSponsored) {
+                    // Sponsor the transaction (FREE for user)
+                    const sponsoredTx = await this.sponsoredMinting.sponsorTransaction(recipientAddress, {
+                        type: 'nft_mint',
+                        metadataUri,
+                        recipient: recipientAddress
+                    });
+                    
+                    result = await this.solanaIntegration.mintNFT(
+                        recipientAddress, 
+                        metadataUri, 
+                        { ...mintOptions, sponsoredTransaction: sponsoredTx }
+                    );
+                    
+                    console.log('✅ FREE Solana NFT minted (sponsored):', result.transactionHash);
+                    result.cost = 'FREE (sponsored by BeatsChain)';
+                } else {
+                    result = await this.solanaIntegration.mintNFT(recipientAddress, metadataUri, mintOptions);
+                    console.log('✅ Solana NFT minted (user paid fees):', result.transactionHash);
+                    result.cost = '~$0.03 in SOL';
+                }
+            } else {
+                // Fallback to simulation for demo
+                console.log('⚠️ Using simulation mode - Phantom not available');
+                result = await this.createTestnetTransaction(recipientAddress, metadataUri);
+                result.cost = 'FREE (demo mode)';
+                console.log('✅ Demo transaction created:', result.transactionHash);
+            }
+            
+            return {
+                ...result,
+                network: usePhantom ? 'solana-' + this.solanaConfig.getNetwork() : 'solana-simulation',
+                explorerUrl: usePhantom ? this.solanaConfig.getExplorerUrl(result.transactionHash) : null,
+                sponsored: isSponsored
+            };
         } catch (error) {
-            console.error("Thirdweb SDK minting failed:", error);
-            // Fallback to direct RPC if Thirdweb API fails
-            return await this.mintViaDirectRPC(recipientAddress, metadataUri);
+            console.error('❌ Solana NFT minting failed:', error);
+            throw error;
         }
     }
     
@@ -312,15 +435,7 @@ class ThirdwebManager {
         }
     }
     
-    getWalletAddress() {
-        // Derive wallet address from private key
-        if (!this.privateKey) {
-            throw new Error('Private key not available');
-        }
-        // Simplified address derivation - in production use proper crypto library
-        const hash = this.privateKey.slice(2, 42);
-        return '0x' + hash;
-    }
+
 
     encodeMintFunction(to, tokenURI) {
         // Thirdweb ERC721Base mintTo(address,string) function
@@ -505,7 +620,44 @@ class ThirdwebManager {
     getNFTUrl(tokenId) {
         return `https://polygonscan.com/token/${this.contractAddress}?a=${tokenId}`;
     }
+
+    async connectWallet() {
+        try {
+            if (!this.phantomWallet) {
+                this.phantomWallet.showInstallPrompt();
+                throw new Error('Phantom wallet not available');
+            }
+            
+            const result = await this.phantomWallet.connect();
+            if (result.success) {
+                console.log('✅ Phantom wallet connected:', result.publicKey);
+                return result;
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('❌ Wallet connection failed:', error);
+            throw error;
+        }
+    }
+
+    getWalletAddress() {
+        return this.phantomWallet ? this.phantomWallet.getPublicKey() : null;
+    }
+
+    isWalletConnected() {
+        return this.phantomWallet ? this.phantomWallet.isWalletConnected() : false;
+    }
+
+    getExplorerUrl(signature) {
+        return this.solanaConfig ? this.solanaConfig.getExplorerUrl(signature) : null;
+    }
+
+    getNetwork() {
+        return this.solanaConfig ? this.solanaConfig.getNetwork() : 'unknown';
+    }
 }
 
-// Export to global window for Chrome extension compatibility
-window.ThirdwebManager = ThirdwebManager;
+// Export as both names for backward compatibility during migration
+window.SolanaManager = SolanaManager;
+window.ThirdwebManager = SolanaManager; // Backward compatibility

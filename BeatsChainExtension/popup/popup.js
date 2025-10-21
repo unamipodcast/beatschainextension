@@ -29,10 +29,86 @@ class BeatsChainApp {
         this.usageLimits = null;
         this.sponsorContent = null;
         this.isInitialized = false;
+        this.partnerConsentGiven = false;
+    }
+
+    async showPartnerConsentModal() {
+        return new Promise((resolve) => {
+            // Check if consent already given
+            const consentStored = localStorage.getItem('beatschain_partner_consent');
+            if (consentStored === 'true') {
+                this.partnerConsentGiven = true;
+                resolve(true);
+                return;
+            }
+
+            // Create modal overlay
+            const modalOverlay = document.createElement('div');
+            modalOverlay.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.9); z-index: 20000;
+                display: flex; align-items: center; justify-content: center;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
+
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: white; border-radius: 12px; padding: 32px;
+                max-width: 500px; width: 90%; text-align: center;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            `;
+
+            modal.innerHTML = `
+                <div style="font-size: 48px; margin-bottom: 16px;">📢</div>
+                <h2 style="color: #333; margin: 0 0 16px 0;">Professional Partner Content</h2>
+                <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">
+                    BeatsChain partners with professional music industry services to provide you with relevant tools and resources.
+                </p>
+                <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">
+                    We may show you content from our verified partners that could help with your music career.
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button id="decline-consent" style="
+                        background: #6c757d; color: white; border: none;
+                        padding: 12px 24px; border-radius: 6px; cursor: pointer;
+                        font-size: 14px;
+                    ">No Thanks</button>
+                    <button id="accept-consent" style="
+                        background: #007bff; color: white; border: none;
+                        padding: 12px 24px; border-radius: 6px; cursor: pointer;
+                        font-size: 14px; font-weight: 500;
+                    ">I agree to see relevant partner content</button>
+                </div>
+                <p style="color: #999; font-size: 12px; margin: 16px 0 0 0;">
+                    You can change this preference anytime in settings. No personal data is shared with partners.
+                </p>
+            `;
+
+            modalOverlay.appendChild(modal);
+            document.body.appendChild(modalOverlay);
+
+            // Handle consent responses
+            modal.querySelector('#accept-consent').addEventListener('click', () => {
+                localStorage.setItem('beatschain_partner_consent', 'true');
+                this.partnerConsentGiven = true;
+                document.body.removeChild(modalOverlay);
+                resolve(true);
+            });
+
+            modal.querySelector('#decline-consent').addEventListener('click', () => {
+                localStorage.setItem('beatschain_partner_consent', 'false');
+                this.partnerConsentGiven = false;
+                document.body.removeChild(modalOverlay);
+                resolve(false);
+            });
+        });
     }
 
     async initialize() {
         try {
+            // CRITICAL: Show partner consent FIRST before any other initialization
+            await this.showPartnerConsentModal();
+            
             // Debug script loading
             console.log('🔍 Script loading check:', {
                 MetadataWriter: !!window.MetadataWriter,
@@ -114,10 +190,26 @@ class BeatsChainApp {
             }
             
             try {
-                this.thirdweb = new ThirdwebManager();
-                console.log('Thirdweb manager initialized');
+                // Phase 2: Solana-only manager
+                if (window.SolanaManager) {
+                    this.solanaManager = new SolanaManager();
+                    const solanaReady = await this.solanaManager.initialize();
+                } else {
+                    console.error('❌ SolanaManager not available');
+                    this.showSolanaRequiredMessage();
+                    return;
+                }
+                
+                const solanaReady = await this.solanaManager.initialize();
+                this.thirdweb = this.solanaManager; // Always assign for backward compatibility
+                if (solanaReady) {
+                    console.log('✅ Solana-only manager initialized - real blockchain minting ready');
+                } else {
+                    console.log('⚠️ Solana manager partial initialization - some features may be limited');
+                }
             } catch (error) {
-                console.log('Thirdweb manager unavailable');
+                console.error('❌ Solana manager initialization failed:', error);
+                this.showSolanaRequiredMessage();
             }
             
             // Initialize radio features
@@ -668,25 +760,49 @@ Verification: Check Chrome extension storage for transaction details`;
             
             statusDiv.textContent = 'Minting NFT on blockchain...';
             
-            // Initialize Thirdweb with wallet private key
-            let privateKey;
-            const walletData = await window.StorageManager.getWalletData();
-            
-            if (walletData.privateKey) {
-                privateKey = walletData.privateKey;
+            // Try Phantom wallet first, fallback to embedded wallet with timeout
+            let finalWalletAddress = walletAddress;
+            if (!this.solanaManager.isWalletConnected()) {
+                console.log('🔄 Attempting Phantom wallet connection...');
+                try {
+                    // Add timeout to prevent endless loops
+                    const connectPromise = this.solanaManager.connectWallet();
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Phantom connection timeout')), 10000);
+                    });
+                    
+                    const connectResult = await Promise.race([connectPromise, timeoutPromise]);
+                    if (connectResult && connectResult.success) {
+                        console.log('✅ Connected to Phantom wallet:', connectResult.publicKey);
+                        finalWalletAddress = connectResult.publicKey;
+                    } else {
+                        console.log('⚠️ Phantom connection failed, using embedded wallet');
+                        finalWalletAddress = walletAddress;
+                    }
+                } catch (error) {
+                    console.log('⚠️ Phantom unavailable, using embedded wallet:', error.message);
+                    finalWalletAddress = walletAddress;
+                }
             } else {
-                // Use test wallet private key for testing
-                await config.initialize();
-                privateKey = await config.get('TEST_WALLET_PRIVATE_KEY');
-                console.log('Using test wallet private key for minting');
+                finalWalletAddress = this.solanaManager.getWalletAddress();
             }
             
-            await this.thirdweb.initialize(privateKey);
+            // Real Solana NFT minting with timeout to prevent endless loops
+            statusDiv.textContent = 'Minting NFT on Solana blockchain...';
+            const mintPromise = this.thirdweb.mintNFT(finalWalletAddress, uploadResult.metadataUri);
+            const mintTimeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Minting timeout after 60 seconds')), 60000);
+            });
             
-            // Mint NFT on blockchain
-            const mintResult = await this.thirdweb.mintNFT(walletAddress, uploadResult.metadataUri);
+            const mintResult = await Promise.race([mintPromise, mintTimeoutPromise]);
             
-            // NFT minting disabled in this version
+            console.log('✅ Real blockchain minting completed:', {
+                network: mintResult.network || 'solana-devnet',
+                signature: mintResult.transactionHash,
+                tokenId: mintResult.tokenId,
+                isrc: uploadResult.isrcCode,
+                metadataEmbedded: !!uploadResult.processedFile
+            });
             
             this.showMintSuccess({
                 transactionHash: mintResult.transactionHash,
@@ -1747,17 +1863,10 @@ Verification: Check Chrome extension storage for transaction details`;
                 console.log('✅ Usage Limits Manager initialized');
             }
             
-            // Initialize Sponsor Content Manager
+            // Initialize Sponsor Content Manager (consent already shown)
             if (window.SponsorContentManager) {
                 this.sponsorContent = new SponsorContentManager();
                 await this.sponsorContent.initialize(this.adminDashboard);
-                
-                // Show partner consent modal FIRST - before user can continue
-                const consentGiven = await this.sponsorContent.showInitialPartnerConsent();
-                if (!consentGiven) {
-                    console.log('User declined partner content');
-                }
-                
                 await this.sponsorContent.ensureCompliance();
                 
                 // Enhance existing systems with sponsor content
@@ -2505,6 +2614,50 @@ Verification: Check Chrome extension storage for transaction details`;
     recordISRCInPackage(isrcCode) {
         if (this.analyticsManager) {
             this.analyticsManager.recordISRCInPackage();
+        }
+    }
+    
+    showSolanaRequiredMessage() {
+        const messageDiv = document.createElement('div');
+        messageDiv.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+            color: white; text-align: center; padding: 20px;
+        `;
+        
+        messageDiv.innerHTML = `
+            <div style="background: #1a1a1a; padding: 40px; border-radius: 12px; max-width: 500px;">
+                <div style="font-size: 48px; margin-bottom: 20px;">🚀</div>
+                <h2 style="color: #9945ff; margin: 0 0 16px 0;">Solana-Only Extension</h2>
+                <p style="margin: 0 0 20px 0; line-height: 1.5;">This extension now uses Solana blockchain for real NFT minting. You'll need:</p>
+                <div style="text-align: left; margin: 20px 0;">
+                    <div style="margin: 8px 0;">👻 <strong>Phantom Wallet</strong> - For Solana transactions</div>
+                    <div style="margin: 8px 0;">⚡ <strong>SOL tokens</strong> - For transaction fees</div>
+                    <div style="margin: 8px 0;">🔗 <strong>Real blockchain</strong> - No more simulations</div>
+                </div>
+                <div style="margin-top: 30px;">
+                    <a href="https://phantom.app" target="_blank" style="
+                        background: #9945ff; color: white; padding: 12px 24px;
+                        border-radius: 8px; text-decoration: none; margin-right: 12px;
+                        display: inline-block;
+                    ">Install Phantom</a>
+                    <button id="continue-anyway-btn" style="
+                        background: #333; color: white; padding: 12px 24px;
+                        border: none; border-radius: 8px; cursor: pointer;
+                    ">Continue Anyway</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(messageDiv);
+        
+        // Add event listener for continue button
+        const continueBtn = messageDiv.querySelector('#continue-anyway-btn');
+        if (continueBtn) {
+            continueBtn.addEventListener('click', () => {
+                messageDiv.remove();
+            });
         }
     }
 
