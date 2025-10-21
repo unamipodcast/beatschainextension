@@ -220,7 +220,7 @@
 }
 
 .toggle-switch input:checked + .toggle-slider {
-    background: #007bff;
+    background: #4CAF50;
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
@@ -1229,6 +1229,8 @@
     gap: 12px;
     cursor: pointer;
     margin-bottom: 0;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .toggle-slider {
@@ -1254,7 +1256,7 @@
 }
 
 .toggle-switch input:checked + .toggle-slider {
-    background: #007bff;
+    background: #4CAF50;
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
