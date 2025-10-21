@@ -242,6 +242,13 @@
     border-radius: 6px;
     padding: 12px;
     margin-top: 8px;
+    transition: all 0.3s ease;
+}
+
+.sponsor-preview-box.enabled {
+    border-color: #4CAF50;
+    background: rgba(76,175,80,0.1);
+    box-shadow: 0 0 8px rgba(76,175,80,0.2);
 }
 
 .sponsor-content {
@@ -1222,49 +1229,80 @@
     padding: 10px;
 }
 
-/* Toggle Switch Spacing Fix */
+/* Toggle Switch - Enhanced Visibility */
 .toggle-switch {
     display: flex;
     align-items: center;
     gap: 16px;
     cursor: pointer;
     margin-bottom: 12px;
-    padding: 8px 0;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    border: 1px solid #444;
     flex-wrap: nowrap;
     white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.toggle-switch:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: #666;
 }
 
 .toggle-slider {
     position: relative;
-    width: 50px;
-    height: 24px;
-    background: #444;
-    border-radius: 12px;
-    transition: background 0.3s ease;
+    width: 60px;
+    height: 30px;
+    background: #666;
+    border-radius: 15px;
+    transition: all 0.3s ease;
     flex-shrink: 0;
-    border: 1px solid #555;
+    border: 2px solid #777;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .toggle-slider::before {
     content: '';
     position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20px;
-    height: 20px;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
     background: #fff;
     border-radius: 50%;
-    transition: transform 0.3s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.toggle-slider::after {
+    content: 'OFF';
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-weight: bold;
+    color: #999;
+    transition: opacity 0.3s ease;
 }
 
 .toggle-switch input:checked + .toggle-slider {
     background: #4CAF50;
-    border-color: #4CAF50;
+    border-color: #45a049;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 0 8px rgba(76,175,80,0.3);
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
-    transform: translateX(26px);
+    transform: translateX(30px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.toggle-switch input:checked + .toggle-slider::after {
+    content: 'ON';
+    left: 8px;
+    right: auto;
+    color: #fff;
 }
 
 .toggle-switch input {
@@ -1274,9 +1312,15 @@
 .toggle-label {
     color: #fff;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 15px;
     flex: 1;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    user-select: none;
+}
+
+.toggle-switch input:checked + .toggle-slider + .toggle-label {
+    color: #4CAF50;
+    text-shadow: 0 0 4px rgba(76,175,80,0.3);
 }
 
 /* Form Row Spacing */

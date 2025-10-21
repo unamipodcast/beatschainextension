@@ -722,7 +722,20 @@ class AdminDashboardManager {
             sponsorEnabled.addEventListener('change', (e) => {
                 this.sponsorConfig.enabled = e.target.checked;
                 this.updateSponsorPreview();
+                this.updateToggleVisualState(e.target);
+                
+                // Save state immediately
+                this.saveSponsorConfig();
+                
+                // Show feedback
+                this.showAdminMessage(
+                    `Sponsor content ${e.target.checked ? 'enabled' : 'disabled'}`, 
+                    'success'
+                );
             });
+            
+            // Set initial visual state
+            this.updateToggleVisualState(sponsorEnabled);
         }
 
         const sponsorTemplates = container.querySelectorAll('input[name="sponsor-template"]');
@@ -885,15 +898,27 @@ class AdminDashboardManager {
 
     generateSponsorPreview() {
         if (!this.sponsorConfig.enabled) {
-            return '<div class="sponsor-disabled">Sponsor content disabled</div>';
+            return `
+                <div class="sponsor-disabled" style="color: #999; font-style: italic; text-align: center; padding: 20px; border: 2px dashed #555; border-radius: 6px;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">🚫</div>
+                    <div>Sponsor content disabled</div>
+                    <small style="display: block; margin-top: 8px; color: #777;">Toggle above to enable sponsor content display</small>
+                </div>
+            `;
         }
 
         const template = this.sponsorConfig.templates[this.sponsorConfig.currentSponsor];
         return `
-            <div class="sponsor-content">
-                <div class="sponsor-logo">${template.logo ? '🖼️' : '📄'}</div>
-                <div class="sponsor-message">${template.message}</div>
-                <div class="sponsor-branding">BeatsChain Extension</div>
+            <div class="sponsor-content" style="border: 2px solid #4CAF50; border-radius: 6px; padding: 16px; background: rgba(76,175,80,0.1);">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                    <div class="sponsor-logo" style="font-size: 24px;">${template.logo ? '🖼️' : '📄'}</div>
+                    <div style="flex: 1;">
+                        <div class="sponsor-message" style="color: #4CAF50; font-weight: bold; margin-bottom: 4px;">${template.message}</div>
+                        <div class="sponsor-branding" style="color: #999; font-size: 12px;">BeatsChain Extension</div>
+                    </div>
+                    <div style="color: #4CAF50; font-size: 20px;">✅</div>
+                </div>
+                <small style="color: #4CAF50; font-size: 11px;">✓ Sponsor content will be displayed to users</small>
             </div>
         `;
     }
@@ -902,6 +927,36 @@ class AdminDashboardManager {
         const previewEl = document.getElementById('sponsor-preview');
         if (previewEl) {
             previewEl.innerHTML = this.generateSponsorPreview();
+            
+            // Update preview box styling based on enabled state
+            if (this.sponsorConfig.enabled) {
+                previewEl.classList.add('enabled');
+            } else {
+                previewEl.classList.remove('enabled');
+            }
+        }
+    }
+    
+    updateToggleVisualState(toggleInput) {
+        if (!toggleInput) return;
+        
+        const toggleSwitch = toggleInput.closest('.toggle-switch');
+        const toggleLabel = toggleSwitch?.querySelector('.toggle-label');
+        
+        if (toggleSwitch) {
+            if (toggleInput.checked) {
+                toggleSwitch.classList.add('enabled');
+                toggleSwitch.style.borderColor = '#4CAF50';
+                toggleSwitch.style.background = 'rgba(76,175,80,0.1)';
+            } else {
+                toggleSwitch.classList.remove('enabled');
+                toggleSwitch.style.borderColor = '#444';
+                toggleSwitch.style.background = 'rgba(255,255,255,0.05)';
+            }
+        }
+        
+        if (toggleLabel) {
+            toggleLabel.style.color = toggleInput.checked ? '#4CAF50' : '#fff';
         }
     }
 
