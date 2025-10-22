@@ -756,11 +756,16 @@ Verification: Check Chrome extension storage for transaction details`;
             });
         }
         
-        // Setup proceed to mint button
+        // Setup proceed to mint button - REQUIRES VALIDATION
         const proceedBtn = document.getElementById('proceed-to-mint');
         if (proceedBtn) {
+            // Initially disable until ISRC is generated and validated
+            proceedBtn.disabled = true;
+            proceedBtn.title = 'Generate and validate ISRC first';
+            
             proceedBtn.addEventListener('click', () => {
-                this.proceedToMinting();
+                // Show sponsored content before proceeding to minting
+                this.showISRCProceedSponsored();
             });
         }
         
@@ -774,6 +779,7 @@ Verification: Check Chrome extension storage for transaction details`;
     async handleISRCGeneration() {
         const generateBtn = document.getElementById('generate-isrc');
         const statusBadge = document.getElementById('isrc-status');
+        const validateBtn = document.getElementById('validate-isrc');
         
         if (!generateBtn || !statusBadge) return;
         
@@ -815,6 +821,23 @@ Verification: Check Chrome extension storage for transaction details`;
             statusBadge.textContent = 'Generated';
             generateBtn.textContent = '✅ Generated';
             
+            // Enable validation button and update first checklist item
+            if (validateBtn) {
+                validateBtn.disabled = false;
+                validateBtn.addEventListener('click', () => this.validateISRC(isrc));
+            }
+            
+            // Update first checklist item
+            const checkItems = document.querySelectorAll('.check-item');
+            if (checkItems.length > 0) {
+                const firstItem = checkItems[0];
+                const icon = firstItem.querySelector('.check-icon');
+                if (icon) {
+                    icon.textContent = '✅';
+                    firstItem.classList.add('completed');
+                }
+            }
+            
             setTimeout(() => {
                 generateBtn.textContent = originalText;
                 generateBtn.disabled = false;
@@ -831,6 +854,218 @@ Verification: Check Chrome extension storage for transaction details`;
                 statusBadge.textContent = 'Ready';
             }, 2000);
         }
+    }
+    
+    validateISRC(isrc) {
+        const validateBtn = document.getElementById('validate-isrc');
+        const proceedBtn = document.getElementById('proceed-to-mint');
+        const statusBadge = document.getElementById('isrc-status');
+        
+        if (!validateBtn || !proceedBtn || !statusBadge) return;
+        
+        const originalText = validateBtn.textContent;
+        validateBtn.disabled = true;
+        validateBtn.textContent = 'Validating...';
+        statusBadge.textContent = 'Validating';
+        
+        // Simulate validation process
+        setTimeout(() => {
+            // ISRC validation logic
+            const isValid = this.isValidISRC(isrc);
+            
+            if (isValid) {
+                statusBadge.textContent = 'Validated';
+                statusBadge.style.background = '#4CAF50';
+                validateBtn.textContent = '✅ Valid';
+                
+                // Enable proceed button after validation
+                proceedBtn.disabled = false;
+                proceedBtn.title = 'Proceed to NFT minting';
+                proceedBtn.style.opacity = '1';
+                
+                // Show validation success
+                this.showISRCValidationSuccess();
+            } else {
+                statusBadge.textContent = 'Invalid';
+                statusBadge.style.background = '#f44336';
+                validateBtn.textContent = '❌ Invalid';
+            }
+            
+            setTimeout(() => {
+                validateBtn.textContent = originalText;
+                validateBtn.disabled = false;
+            }, 2000);
+        }, 1500);
+    }
+    
+    isValidISRC(isrc) {
+        // ISRC format validation: ZA-80G-YY-NNNNN
+        const isrcPattern = /^ZA-80G-\d{2}-\d{5}$/;
+        return isrcPattern.test(isrc);
+    }
+    
+    showISRCValidationSuccess() {
+        // Update checklist to show validation complete
+        const checkItems = document.querySelectorAll('.check-item');
+        checkItems.forEach((item, index) => {
+            const text = item.querySelector('span:last-child');
+            const icon = item.querySelector('.check-icon');
+            
+            if (text && icon) {
+                if (text.textContent.includes('ISRC Generated')) {
+                    icon.textContent = '✅';
+                    item.classList.add('completed');
+                } else if (text.textContent.includes('ISRC Validated')) {
+                    icon.textContent = '✅';
+                    item.classList.add('completed');
+                } else if (text.textContent.includes('Ready for Minting')) {
+                    icon.textContent = '✅';
+                    item.classList.add('completed');
+                }
+            }
+        });
+        
+        // Show success animation
+        const integrationHeader = document.querySelector('.integration-header h3');
+        if (integrationHeader) {
+            integrationHeader.style.color = '#4CAF50';
+            integrationHeader.textContent = '✅ Ready for Minting';
+        }
+    }
+    
+    async showISRCProceedSponsored() {
+        // Check if user has consented to sponsor content
+        if (!this.partnerConsentGiven) {
+            // If no consent, proceed directly to minting
+            this.proceedToMinting();
+            return;
+        }
+
+        // Show sponsored content window with same styling as licensing sponsored content
+        this.displayISRCProceedSponsored();
+    }
+    
+    displayISRCProceedSponsored() {
+        // Create modal overlay with same styling as existing sponsored content
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'isrc-sponsor-modal';
+        modalOverlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9); z-index: 20000;
+            display: flex; align-items: center; justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background: white; border-radius: 12px; padding: 32px;
+            max-width: 500px; width: 90%; text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            position: relative;
+        `;
+
+        modal.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 16px;">⚖️</div>
+            <h2 style="color: #333; margin: 0 0 16px 0;">Professional Legal Services</h2>
+            <p style="color: #666; line-height: 1.5; margin: 0 0 16px 0;">
+                Before minting your NFT, consider professional legal review for your ISRC registration and intellectual property rights.
+            </p>
+            <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">
+                Our verified legal partners specialize in music industry contracts, ISRC compliance, and NFT intellectual property protection.
+            </p>
+            
+            <div class="sponsor-content" style="
+                background: rgba(0, 214, 122, 0.05);
+                border-radius: 8px;
+                border-left: 4px solid #00d67a;
+                border: 1px solid rgba(0, 214, 122, 0.2);
+                padding: 16px;
+                margin: 20px 0;
+                text-align: left;
+            ">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 24px;">📢</div>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 4px 0; color: #333; font-size: 14px; font-weight: 600;">
+                            Music Legal Services
+                        </h4>
+                        <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; line-height: 1.4;">
+                            Professional ISRC registration review, NFT legal compliance, and intellectual property protection.
+                        </p>
+                        <a href="#" class="sponsor-link" style="color: #00d67a; font-size: 12px; text-decoration: none; font-weight: 500;">
+                            Learn More →
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+                <button id="continue-minting" class="btn btn-primary" disabled style="
+                    background: #007bff; color: white; border: none;
+                    padding: 12px 24px; border-radius: 6px; cursor: not-allowed;
+                    font-size: 14px; font-weight: 500; opacity: 0.6;
+                ">Continue to Minting (<span id="countdown-isrc">5</span>s)</button>
+            </div>
+            
+            <p style="color: #999; font-size: 12px; margin: 16px 0 0 0;">
+                <span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span>
+                Professional partner content
+            </p>
+        `;
+
+        modalOverlay.appendChild(modal);
+        document.body.appendChild(modalOverlay);
+
+        // Start 5-second countdown
+        let countdown = 5;
+        const countdownElement = modal.querySelector('#countdown-isrc');
+        const continueButton = modal.querySelector('#continue-minting');
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                continueButton.disabled = false;
+                continueButton.style.cursor = 'pointer';
+                continueButton.style.opacity = '1';
+                continueButton.innerHTML = 'Continue to Minting';
+            }
+        }, 1000);
+
+        // Handle continue button click
+        continueButton.addEventListener('click', () => {
+            if (countdown <= 0) {
+                document.body.removeChild(modalOverlay);
+                this.proceedToMinting();
+                
+                // Track sponsor interaction
+                this.trackSponsorInteraction('continue', 'before_mint_nft');
+            }
+        });
+
+        // Handle sponsor link click
+        const sponsorLink = modal.querySelector('.sponsor-link');
+        if (sponsorLink) {
+            sponsorLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.trackSponsorInteraction('clicked', 'before_mint_nft');
+                // In a real implementation, this would open the legal services website
+                console.log('Legal services sponsor link clicked - would open legal services website');
+            });
+        }
+
+        // Track sponsor impression
+        this.trackSponsorDisplay('before_mint_nft');
+        
+        // Prevent closing by clicking outside during countdown
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay && countdown <= 0) {
+                document.body.removeChild(modalOverlay);
+                this.proceedToMinting();
+            }
+        });
     }
     
     proceedToMinting() {

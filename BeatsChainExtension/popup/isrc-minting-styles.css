@@ -351,6 +351,91 @@
   transform: translateX(4px);
 }
 
+/* ISRC Sponsored Content Modal - Consistent with Licensing */
+.isrc-sponsor-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.isrc-sponsor-modal .modal {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.isrc-sponsor-modal .sponsor-content {
+  background: rgba(76, 175, 80, 0.05);
+  border-radius: 8px;
+  border-left: 4px solid #4CAF50;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  padding: 16px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.isrc-sponsor-modal .sponsor-link {
+  color: #4CAF50;
+  font-size: 12px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.isrc-sponsor-modal .sponsor-link:hover {
+  color: #45a049;
+}
+
+/* Validation States */
+.status-badge.validated {
+  background: #4CAF50;
+  animation: pulse 2s infinite;
+}
+
+.status-badge.invalid {
+  background: #f44336;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.check-item .check-icon {
+  transition: all 0.3s ease;
+}
+
+.check-item.completed .check-icon {
+  color: #4CAF50;
+  transform: scale(1.1);
+}
+
+/* Disabled State Styling */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .isrc-container {
@@ -365,5 +450,10 @@
   .sponsor-banner {
     flex-direction: column;
     text-align: center;
+  }
+  
+  .isrc-sponsor-modal .modal {
+    margin: 20px;
+    padding: 24px;
   }
 }

@@ -456,7 +456,7 @@
 
                         <div class="isrc-actions">
                             <button class="btn btn-primary" id="generate-isrc">Generate New ISRC</button>
-                            <button class="btn btn-secondary" id="validate-isrc">Validate Code</button>
+                            <button class="btn btn-secondary" id="validate-isrc" disabled>Validate Code</button>
                         </div>
                     </div>
 
@@ -493,21 +493,28 @@
                         <h3>Ready for Minting</h3>
                         <div class="integration-checklist">
                             <div class="check-item">
-                                <span class="check-icon">✅</span>
+                                <span class="check-icon">⏳</span>
                                 <span>ISRC Generated</span>
                             </div>
                             <div class="check-item">
-                                <span class="check-icon">✅</span>
-                                <span>Metadata Embedded</span>
+                                <span class="check-icon">⏳</span>
+                                <span>ISRC Validated</span>
+                            </div>
+                            <div class="check-item">
+                                <span class="check-icon">⏳</span>
+                                <span>Ready for Minting</span>
                             </div>
                         </div>
                     </div>
                     
                     <div class="minting-actions">
-                        <button class="btn btn-primary btn-large" id="proceed-to-mint">
+                        <button class="btn btn-primary btn-large" id="proceed-to-mint" disabled style="opacity: 0.6;">
                             Proceed to NFT Minting
                             <span class="btn-arrow">→</span>
                         </button>
+                        <small style="color: #666; margin-top: 8px; display: block; text-align: center;">
+                            Generate and validate ISRC code first
+                        </small>
                     </div>
                 </div>
             </section>
