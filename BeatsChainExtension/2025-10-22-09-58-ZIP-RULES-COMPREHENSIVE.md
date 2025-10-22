@@ -574,4 +574,130 @@ const websiteUrl = 'https://chrome.google.com/webstore/detail/beatschain';
 
 ---
 
+## 🔧 Chrome Extension ZIP Packaging Rules
+
+### Extension Submission Package Requirements
+**CRITICAL**: Chrome extensions require specific ZIP structure to avoid "Manifest file is missing or unreadable" errors.
+
+#### Correct Extension ZIP Structure
+```
+BeatsChain_Extension_Submission.zip
+├── manifest.json                         # MUST be at root level
+├── popup/
+│   ├── index.html
+│   ├── popup.js
+│   ├── popup.css
+│   └── [other popup files]
+├── lib/
+│   └── [JavaScript libraries]
+├── assets/
+│   └── icons/
+│       ├── icon16.png
+│       ├── icon32.png
+│       ├── icon48.png
+│       └── icon128.png
+├── background/
+│   └── service-worker.js
+└── options/
+    ├── options.html
+    └── options.js
+```
+
+#### ZIP Creation Rules for Extensions
+```bash
+# CORRECT: Zip contents, not the folder
+cd BeatsChainExtension/
+zip -r "../BeatsChain_Extension_Submission.zip" . -x "*.md" "node_modules/*" ".git/*"
+
+# INCORRECT: Zipping the folder creates nested structure
+zip -r "BeatsChain_Extension_Submission.zip" BeatsChainExtension/
+```
+
+#### Manifest Validation Checklist
+```javascript
+// Pre-ZIP validation for Chrome extension
+const validateExtensionStructure = async () => {
+  const requiredFiles = [
+    'manifest.json',
+    'popup/index.html',
+    'popup/popup.js',
+    'assets/icons/icon16.png',
+    'assets/icons/icon48.png',
+    'assets/icons/icon128.png'
+  ];
+  
+  for (const file of requiredFiles) {
+    if (!await fileExists(file)) {
+      throw new Error(`Required file missing: ${file}`);
+    }
+  }
+  
+  // Validate manifest.json structure
+  const manifest = await readJSON('manifest.json');
+  if (!manifest.manifest_version || !manifest.name || !manifest.version) {
+    throw new Error('Invalid manifest.json structure');
+  }
+  
+  return true;
+};
+```
+
+#### Common ZIP Errors and Solutions
+
+**Error**: "Manifest file is missing or unreadable"
+**Cause**: ZIP contains folder instead of files at root
+**Solution**: 
+```bash
+# Navigate INTO the extension directory first
+cd BeatsChainExtension/
+# Then zip the contents (.) not the folder name
+zip -r "../Extension_Package.zip" .
+```
+
+**Error**: "Invalid manifest"
+**Cause**: manifest.json has syntax errors or missing fields
+**Solution**: Validate JSON syntax and required fields before zipping
+
+**Error**: "Icons not found"
+**Cause**: Icon paths in manifest don't match actual file locations
+**Solution**: Verify icon paths match manifest.json declarations
+
+#### Extension-Specific Exclusions
+```bash
+# Files to ALWAYS exclude from extension ZIP
+-x "*.md"           # Documentation files
+-x "node_modules/*"  # Dependencies
+-x ".git/*"         # Git repository
+-x "test/*"         # Test files
+-x "scripts/*"      # Build scripts
+-x "contracts/*"    # Smart contracts
+-x "*.log"          # Log files
+-x ".env*"          # Environment files
+```
+
+#### Automated Extension ZIP Creation
+```javascript
+// Automated extension packaging
+const createExtensionZip = async () => {
+  // 1. Validate extension structure
+  await validateExtensionStructure();
+  
+  // 2. Create file list (exclude unwanted files)
+  const files = await getExtensionFiles();
+  
+  // 3. Create ZIP with proper structure
+  const zip = new JSZip();
+  
+  for (const file of files) {
+    const content = await readFile(file.path);
+    zip.file(file.relativePath, content);
+  }
+  
+  // 4. Generate ZIP blob
+  return await zip.generateAsync({ type: 'blob' });
+};
+```
+
+---
+
 *These ZIP rules ensure consistent, professional, and secure package generation across all BeatsChain Extension systems while maintaining progressive enhancement and user input priority.*
