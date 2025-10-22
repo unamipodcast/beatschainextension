@@ -1,18 +1,36 @@
 // ISRC Minting Manager - Professional Music Industry Integration
 class ISRCMintingManager {
   constructor() {
-    this.isrcManager = new ISRCManager();
-    this.metadataWriter = new MetadataWriter();
-    this.sponsorManager = window.SponsorContentManager ? new SponsorContentManager() : null;
+    this.isrcManager = null;
+    this.metadataWriter = null;
+    this.sponsorManager = null;
     this.currentISRC = null;
     this.sponsorEnabled = true;
   }
 
   async initialize() {
-    await this.loadISRCRegistry();
-    this.setupEventListeners();
-    this.updateRegistryDisplay();
-    this.loadSponsorContent();
+    try {
+      // Initialize dependencies with error handling
+      if (window.ISRCManager) {
+        this.isrcManager = new ISRCManager();
+        await this.isrcManager.initialize();
+      }
+      
+      if (window.MetadataWriter) {
+        this.metadataWriter = new MetadataWriter();
+      }
+      
+      if (window.SponsorContentManager) {
+        this.sponsorManager = new SponsorContentManager();
+      }
+      
+      await this.loadISRCRegistry();
+      this.setupEventListeners();
+      this.updateRegistryDisplay();
+      this.loadSponsorContent();
+    } catch (error) {
+      console.error('ISRC Minting Manager initialization failed:', error);
+    }
   }
 
   setupEventListeners() {
@@ -26,6 +44,11 @@ class ISRCMintingManager {
 
   async generateNewISRC() {
     try {
+      if (!this.isrcManager) {
+        this.showError('ISRC Manager not available');
+        return;
+      }
+      
       this.updateStatus('Generating...');
       
       // Ensure ISRC manager is initialized
@@ -127,8 +150,6 @@ class ISRCMintingManager {
         if (sponsorData) {
           this.renderSponsorContent(sponsorData);
         }
-      } else {
-        console.log('Sponsor manager not available or method missing');
       }
       
     } catch (error) {

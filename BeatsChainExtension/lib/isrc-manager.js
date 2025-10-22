@@ -414,7 +414,7 @@ class ISRCManager {
                 return { start: 200, end: 1199, userId: 'fallback', rangeIndex: 0 };
             }
             
-            console.log('ISRC range calculated:', { start, end, userId: userId.substring(0, 8), rangeIndex });
+            console.log('ISRC range calculated:', JSON.stringify({ start, end, userId: userId.substring(0, 8), rangeIndex }));
             return { start, end, userId, rangeIndex };
             
         } catch (error) {
