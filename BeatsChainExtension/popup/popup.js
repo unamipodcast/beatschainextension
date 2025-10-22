@@ -748,9 +748,10 @@ Verification: Check Chrome extension storage for transaction details`;
             await this.isrcManager.initialize();
         }
         
-        // Setup ISRC generation button
+        // Setup ISRC generation button (prevent duplicate listeners)
         const generateBtn = document.getElementById('generate-isrc');
-        if (generateBtn) {
+        if (generateBtn && !generateBtn.hasAttribute('data-isrc-listener')) {
+            generateBtn.setAttribute('data-isrc-listener', 'true');
             generateBtn.addEventListener('click', async () => {
                 await this.handleISRCGeneration();
             });
@@ -763,10 +764,14 @@ Verification: Check Chrome extension storage for transaction details`;
             proceedBtn.disabled = true;
             proceedBtn.title = 'Generate and validate ISRC first';
             
-            proceedBtn.addEventListener('click', () => {
-                // Show sponsored content before proceeding to minting
-                this.showISRCProceedSponsored();
-            });
+            // Prevent duplicate listeners
+            if (!proceedBtn.hasAttribute('data-proceed-listener')) {
+                proceedBtn.setAttribute('data-proceed-listener', 'true');
+                proceedBtn.addEventListener('click', () => {
+                    // Show sponsored content before proceeding to minting
+                    this.showISRCProceedSponsored();
+                });
+            }
         }
         
         // Auto-generate ISRC if we have track info
@@ -824,7 +829,11 @@ Verification: Check Chrome extension storage for transaction details`;
             // Enable validation button and update first checklist item
             if (validateBtn) {
                 validateBtn.disabled = false;
-                validateBtn.addEventListener('click', () => this.validateISRC(isrc));
+                // Remove any existing event listeners to prevent loops
+                const newValidateBtn = validateBtn.cloneNode(true);
+                validateBtn.parentNode.replaceChild(newValidateBtn, validateBtn);
+                // Add fresh event listener
+                newValidateBtn.addEventListener('click', () => this.validateISRC(isrc));
             }
             
             // Update first checklist item
