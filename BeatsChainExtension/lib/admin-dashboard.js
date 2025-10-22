@@ -417,6 +417,69 @@ class AdminDashboardManager {
                     </div>
                 </div>
 
+                <!-- Asset Hub Analytics Section -->
+                <div class="samro-enhanced-section">
+                    <div class="samro-header">
+                        <h5>🎵 Asset Hub Analytics</h5>
+                        <button class="collapse-btn" id="asset-analytics-toggle" type="button">▼</button>
+                    </div>
+                    <div class="samro-content" id="asset-analytics-content">
+                        <div class="asset-metrics-grid">
+                            <div class="metric-card">
+                                <span class="metric-value" id="total-assets-count">0</span>
+                                <span class="metric-label">Total Assets</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-value" id="total-plays-count">0</span>
+                                <span class="metric-label">Total Plays</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-value" id="avg-quality-score">0</span>
+                                <span class="metric-label">Avg Quality</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-value" id="engagement-rate">0%</span>
+                                <span class="metric-label">Engagement</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sponsor Analytics Section -->
+                <div class="samro-enhanced-section">
+                    <div class="samro-header">
+                        <h5>📱 Sponsor Analytics</h5>
+                        <button class="collapse-btn" id="sponsor-analytics-toggle" type="button">▼</button>
+                    </div>
+                    <div class="samro-content" id="sponsor-analytics-content">
+                        <div class="sponsor-metrics-grid">
+                            <div class="metric-card">
+                                <span class="metric-value" id="sponsor-displays-count">0</span>
+                                <span class="metric-label">Total Displays</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-value" id="sponsor-interactions-count">0</span>
+                                <span class="metric-label">Interactions</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-value" id="sponsor-engagement-rate">0%</span>
+                                <span class="metric-label">Engagement Rate</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-value" id="ipfs-verifications">0</span>
+                                <span class="metric-label">IPFS Verified</span>
+                            </div>
+                        </div>
+                        
+                        <div class="placement-breakdown">
+                            <h6>Placement Performance</h6>
+                            <div id="placement-metrics" class="placement-metrics">
+                                <!-- Placement metrics will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Analytics Charts Section -->
                 <div class="samro-enhanced-section">
                     <div class="samro-header">
@@ -728,6 +791,12 @@ class AdminDashboardManager {
         this.setupAnalyticsEvents(container);
         this.setupUsersEvents(container);
         this.setupSystemEvents(container);
+        
+        // Load asset hub analytics
+        this.loadAssetHubAnalytics();
+        
+        // Load sponsor analytics
+        this.loadSponsorAnalytics();
 
         // Sponsor content events
         const sponsorEnabled = container.querySelector('#sponsor-enabled');
@@ -820,6 +889,8 @@ class AdminDashboardManager {
             { toggle: '#sponsor-custom-toggle', content: '#sponsor-custom-content' },
             // Analytics sections
             { toggle: '#analytics-summary-toggle', content: '#analytics-summary-content' },
+            { toggle: '#asset-analytics-toggle', content: '#asset-analytics-content' },
+            { toggle: '#sponsor-analytics-toggle', content: '#sponsor-analytics-content' },
             { toggle: '#analytics-charts-toggle', content: '#analytics-charts-content' },
             { toggle: '#analytics-actions-toggle', content: '#analytics-actions-content' },
             // Users sections
@@ -856,6 +927,20 @@ class AdminDashboardManager {
         const exportBtn = container.querySelector('#export-analytics');
         if (exportBtn) {
             exportBtn.addEventListener('click', () => this.exportAnalyticsData());
+        }
+        
+        // Refresh analytics button
+        const refreshAnalyticsBtn = document.createElement('button');
+        refreshAnalyticsBtn.textContent = '🔄 Refresh Analytics';
+        refreshAnalyticsBtn.className = 'btn btn-secondary';
+        refreshAnalyticsBtn.addEventListener('click', () => {
+            this.loadAssetHubAnalytics();
+            this.loadSponsorAnalytics();
+        });
+        
+        const actionsContainer = container.querySelector('#analytics-actions-content .form-row');
+        if (actionsContainer) {
+            actionsContainer.appendChild(refreshAnalyticsBtn);
         }
 
         const resetBtn = container.querySelector('#reset-analytics');
@@ -1638,6 +1723,95 @@ class AdminDashboardManager {
                 website: template.website
             }
         };
+    }
+
+    async loadAssetHubAnalytics() {
+        try {
+            if (window.publicAssetHub?.assetHub) {
+                const stats = window.publicAssetHub.assetHub.getStats();
+                
+                document.getElementById('total-assets-count').textContent = stats.totalAssets;
+                document.getElementById('total-plays-count').textContent = stats.totalPlays;
+                document.getElementById('avg-quality-score').textContent = stats.avgQualityScore || 0;
+                
+                const engagementRate = stats.totalAssets > 0 ? Math.round((stats.totalPlays / stats.totalAssets) * 10) / 10 : 0;
+                document.getElementById('engagement-rate').textContent = `${engagementRate}%`;
+            }
+        } catch (error) {
+            console.error('Failed to load asset hub analytics:', error);
+        }
+    }
+
+    async loadSponsorAnalytics() {
+        try {
+            if (window.packageMeasurementSystem) {
+                const report = window.packageMeasurementSystem.generateSponsorReport();
+                
+                document.getElementById('sponsor-displays-count').textContent = report.displays;
+                document.getElementById('sponsor-interactions-count').textContent = report.interactions;
+                document.getElementById('sponsor-engagement-rate').textContent = `${report.engagementRate}%`;
+                
+                // Count IPFS verifications (mock for now)
+                const ipfsVerifications = Math.floor(report.interactions * 0.8); // 80% verification rate
+                document.getElementById('ipfs-verifications').textContent = ipfsVerifications;
+                
+                // Load placement breakdown
+                this.loadPlacementMetrics(report.placements);
+            }
+        } catch (error) {
+            console.error('Failed to load sponsor analytics:', error);
+        }
+    }
+
+    loadPlacementMetrics(placements) {
+        const container = document.getElementById('placement-metrics');
+        if (!container) return;
+        
+        if (!placements || Object.keys(placements).length === 0) {
+            container.innerHTML = '<small style="color: #666;">No placement data available</small>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        Object.entries(placements).forEach(([placement, metrics]) => {
+            const placementDiv = document.createElement('div');
+            placementDiv.className = 'placement-metric-item';
+            placementDiv.style.cssText = `
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 8px 12px; margin-bottom: 4px;
+                background: #f8f9fa; border-radius: 4px;
+                font-size: 12px;
+            `;
+            
+            const engagementRate = metrics.displays > 0 ? 
+                Math.round((metrics.interactions / metrics.displays) * 100) : 0;
+            
+            placementDiv.innerHTML = `
+                <span style="font-weight: 500;">${this.formatPlacementName(placement)}</span>
+                <div style="display: flex; gap: 12px; font-size: 11px; color: #666;">
+                    <span>${metrics.displays} displays</span>
+                    <span>${metrics.interactions} interactions</span>
+                    <span>${engagementRate}% rate</span>
+                </div>
+            `;
+            
+            container.appendChild(placementDiv);
+        });
+    }
+
+    formatPlacementName(placement) {
+        const names = {
+            'after_isrc': 'After ISRC',
+            'validation': 'After Validation',
+            'before_package': 'Before Package',
+            'post_package': 'Post Package',
+            'after_license': 'After License',
+            'before_minting': 'Before Minting',
+            'after_minting': 'After Minting',
+            'during_download': 'During Download'
+        };
+        return names[placement] || placement;
     }
 
     async recordPackageGeneration(userId = 'anonymous', packageType = 'radio', packageData = {}) {

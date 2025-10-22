@@ -247,6 +247,9 @@ class BeatsChainApp {
             // Initialize Smart Trees AI
             await this.initializeSmartTreesAI();
             
+            // Initialize Smart Asset Hub Integration
+            await this.initializeSmartAssetHubIntegration();
+            
             // Initialize Monetization Systems
             await this.initializeMonetizationSystems();
             
@@ -286,6 +289,9 @@ class BeatsChainApp {
             
             // Initialize Analytics Manager
             await this.initializeAnalytics();
+            
+            // Initialize Package Measurement System
+            await this.initializePackageMeasurementSystem();
             
             // Initialize production systems
             if (window.productionMonitor) {
@@ -1382,6 +1388,13 @@ Verification: Check Chrome extension storage for transaction details`;
                 // Refresh the hub after generating mock data
                 await window.publicAssetHub.refreshAssets();
                 console.log('✅ Mock data generated and hub refreshed');
+            }
+            
+            // Activate Smart Asset Hub Integration if available
+            if (this.smartAssetHubIntegration && window.publicAssetHub) {
+                // Update integration with the active asset hub
+                this.smartAssetHubIntegration.assetHub = window.publicAssetHub;
+                console.log('✅ Smart Asset Hub Integration activated with live data');
             }
             
         } catch (error) {
@@ -2486,6 +2499,34 @@ Verification: Check Chrome extension storage for transaction details`;
         }
     }
     
+    async initializeSmartAssetHubIntegration() {
+        try {
+            if (window.SmartAssetHubIntegration) {
+                // Initialize Asset Hub if not already done
+                if (!this.assetHub && window.AssetManagementHub) {
+                    this.assetHub = new AssetManagementHub();
+                    await this.assetHub.initialize();
+                }
+                
+                // Create integration
+                this.smartAssetHubIntegration = new SmartAssetHubIntegration(
+                    this.smartTreesAI,
+                    this.assetHub,
+                    this.chromeAI
+                );
+                
+                const integrationReady = await this.smartAssetHubIntegration.initialize();
+                if (integrationReady) {
+                    console.log('✅ Smart Asset Hub Integration ready');
+                } else {
+                    console.log('ℹ️ Smart Asset Hub Integration using fallback mode');
+                }
+            }
+        } catch (error) {
+            console.log('Smart Asset Hub Integration initialization failed:', error);
+        }
+    }
+    
     async initializeMonetizationSystems() {
         try {
             // Initialize Admin Dashboard for all users (development mode)
@@ -2567,6 +2608,22 @@ Verification: Check Chrome extension storage for transaction details`;
             }
         } catch (error) {
             console.log('Analytics initialization failed:', error);
+        }
+    }
+    
+    async initializePackageMeasurementSystem() {
+        try {
+            if (window.PackageMeasurementSystem) {
+                window.packageMeasurementSystem = new PackageMeasurementSystem();
+                await window.packageMeasurementSystem.initialize(
+                    window.consentManager,
+                    this.radioIPFSManager,
+                    this.isrcManager
+                );
+                console.log('✅ Package Measurement System initialized');
+            }
+        } catch (error) {
+            console.log('Package Measurement System initialization failed:', error);
         }
     }
     

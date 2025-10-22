@@ -215,7 +215,42 @@ class AssetManagementHub {
     if (asset) {
       asset.plays = (asset.plays || 0) + 1;
       await this.saveAssets();
+      // Record measurement
+      await this.recordAssetInteraction(assetId, 'play');
     }
+  }
+
+  // Measurement Integration
+  async recordAssetInteraction(assetId, interactionType) {
+    if (window.packageMeasurementSystem) {
+      await window.packageMeasurementSystem.recordAssetInteraction?.({ assetId, type: interactionType, timestamp: Date.now() });
+    }
+  }
+
+  getAssetMetrics(assetId) {
+    const asset = this.assets.get(assetId);
+    if (!asset) return null;
+    return {
+      plays: asset.plays || 0,
+      likes: asset.likes || 0,
+      qualityScore: this.calculateQualityScore(asset),
+      completeness: this.calculateCompleteness(asset)
+    };
+  }
+
+  calculateQualityScore(asset) {
+    let score = 50;
+    if (asset.isrc) score += 20;
+    if (asset.genre) score += 10;
+    if (asset.duration) score += 10;
+    if (asset.coverUrl) score += 10;
+    return Math.min(score, 100);
+  }
+
+  calculateCompleteness(asset) {
+    const fields = ['title', 'artist', 'genre', 'isrc', 'duration'];
+    const completed = fields.filter(field => asset[field]).length;
+    return Math.round((completed / fields.length) * 100);
   }
 
   updatePlayButton(assetId, isPlaying) {
@@ -267,8 +302,22 @@ class AssetManagementHub {
       totalAssets: assets.length,
       totalPlays: assets.reduce((sum, asset) => sum + (asset.plays || 0), 0),
       activeCampaigns: assets.filter(asset => asset.type === 'campaign' && asset.status === 'active').length,
-      nftCount: assets.filter(asset => asset.type === 'nft').length
+      nftCount: assets.filter(asset => asset.type === 'nft').length,
+      avgQualityScore: this.getAverageQualityScore(assets),
+      avgCompleteness: this.getAverageCompleteness(assets)
     };
+  }
+
+  getAverageQualityScore(assets) {
+    if (assets.length === 0) return 0;
+    const total = assets.reduce((sum, asset) => sum + this.calculateQualityScore(asset), 0);
+    return Math.round(total / assets.length);
+  }
+
+  getAverageCompleteness(assets) {
+    if (assets.length === 0) return 0;
+    const total = assets.reduce((sum, asset) => sum + this.calculateCompleteness(asset), 0);
+    return Math.round(total / assets.length);
   }
 
   setupAudioPlayer() {
@@ -298,6 +347,9 @@ class AssetManagementHub {
   async showAssetDetails(assetId) {
     const asset = await this.getAssetById(assetId);
     if (!asset) return;
+
+    // Record view interaction
+    await this.recordAssetInteraction(assetId, 'view');
 
     const modal = document.getElementById('asset-detail-modal');
     const content = document.getElementById('asset-detail-content');

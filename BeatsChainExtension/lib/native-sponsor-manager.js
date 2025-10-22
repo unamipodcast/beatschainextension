@@ -473,7 +473,8 @@ class NativeSponsorManager {
         // Dismiss button
         const dismissBtn = card.querySelector('.sponsor-dismiss');
         if (dismissBtn) {
-            dismissBtn.addEventListener('click', () => {
+            dismissBtn.addEventListener('click', async () => {
+                await this.trackSponsorDismissal(sponsor, placement);
                 this.dismissSponsor(card, sponsor, placement);
             });
         }
@@ -481,13 +482,15 @@ class NativeSponsorManager {
         // CTA tracking
         const ctaLink = card.querySelector('.sponsor-cta');
         if (ctaLink) {
-            ctaLink.addEventListener('click', () => {
-                this.trackSponsorClick(sponsor, placement);
+            ctaLink.addEventListener('click', async () => {
+                await this.trackSponsorClick(sponsor, placement);
             });
         }
 
-        // Impression tracking
-        this.trackSponsorImpression(sponsor, placement);
+        // Impression tracking (async)
+        setTimeout(async () => {
+            await this.trackSponsorImpression(sponsor, placement);
+        }, 1000);
     }
 
     insertNatively(container, card, placement) {
@@ -541,20 +544,108 @@ class NativeSponsorManager {
         }
     }
 
-    // Analytics methods
-    trackSponsorImpression(sponsor, placement) {
+    // Analytics methods with measurement integration
+    async trackSponsorImpression(sponsor, placement) {
         console.log(`📊 Sponsor impression: ${sponsor.name} at ${placement}`);
-        // Implement analytics tracking
+        
+        // Record in PackageMeasurementSystem
+        if (window.packageMeasurementSystem) {
+            await window.packageMeasurementSystem.recordSponsorDisplay?.(placement, {
+                sponsorId: sponsor.id,
+                sponsorName: sponsor.name,
+                timestamp: Date.now()
+            });
+        }
+        
+        // Record in AnalyticsManager
+        if (window.analyticsManager) {
+            await window.analyticsManager.recordSponsorDisplay?.(placement);
+        }
+        
+        // Store verification data on IPFS
+        await this.storeVerificationOnIPFS('impression', sponsor, placement);
     }
 
-    trackSponsorClick(sponsor, placement) {
+    async trackSponsorClick(sponsor, placement) {
         console.log(`🖱️ Sponsor click: ${sponsor.name} at ${placement}`);
-        // Implement analytics tracking
+        
+        // Record in PackageMeasurementSystem
+        if (window.packageMeasurementSystem) {
+            await window.packageMeasurementSystem.recordSponsorInteraction?.('click', placement, {
+                sponsorId: sponsor.id,
+                sponsorName: sponsor.name,
+                timestamp: Date.now()
+            });
+        }
+        
+        // Record in AnalyticsManager
+        if (window.analyticsManager) {
+            await window.analyticsManager.recordSponsorInteraction?.('click', placement);
+        }
+        
+        // Store verification data on IPFS
+        await this.storeVerificationOnIPFS('click', sponsor, placement);
     }
 
-    trackSponsorDismissal(sponsor, placement) {
+    async trackSponsorDismissal(sponsor, placement) {
         console.log(`❌ Sponsor dismissed: ${sponsor.name} at ${placement}`);
-        // Implement analytics tracking
+        
+        // Record in PackageMeasurementSystem
+        if (window.packageMeasurementSystem) {
+            await window.packageMeasurementSystem.recordSponsorInteraction?.('dismiss', placement, {
+                sponsorId: sponsor.id,
+                sponsorName: sponsor.name,
+                timestamp: Date.now()
+            });
+        }
+        
+        // Record in AnalyticsManager
+        if (window.analyticsManager) {
+            await window.analyticsManager.recordSponsorInteraction?.('dismiss', placement);
+        }
+        
+        // Store verification data on IPFS
+        await this.storeVerificationOnIPFS('dismiss', sponsor, placement);
+    }
+
+    // IPFS Verification Storage
+    async storeVerificationOnIPFS(action, sponsor, placement) {
+        try {
+            if (!this.ipfsAssetManager) return;
+            
+            const verificationData = {
+                action,
+                sponsorId: sponsor.id,
+                sponsorName: sponsor.name,
+                placement,
+                timestamp: Date.now(),
+                userAgent: navigator.userAgent.substring(0, 100),
+                extensionVersion: chrome.runtime?.getManifest()?.version || '2.1.0',
+                verificationHash: await this.generateVerificationHash(action, sponsor, placement)
+            };
+            
+            // Store on IPFS for verification
+            const result = await this.ipfsAssetManager.uploadJSON(
+                verificationData, 
+                `sponsor-${action}-${Date.now()}.json`
+            );
+            
+            if (result.success) {
+                console.log(`✅ Sponsor ${action} verification stored on IPFS:`, result.ipfsHash);
+            }
+            
+        } catch (error) {
+            console.warn(`⚠️ Failed to store ${action} verification on IPFS:`, error);
+        }
+    }
+
+    async generateVerificationHash(action, sponsor, placement) {
+        const data = `${action}-${sponsor.id}-${placement}-${Date.now()}`;
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(data);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     sanitize(text) {

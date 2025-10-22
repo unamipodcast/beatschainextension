@@ -249,6 +249,98 @@ class PackageMeasurementSystem {
         });
     }
 
+    // Asset Hub Measurements
+    async recordAssetInteraction(interactionData) {
+        if (!this.consentManager?.hasAnalyticsConsent()) return;
+        
+        if (!this.measurements.assets) {
+            this.measurements.assets = {
+                interactions: 0,
+                plays: 0,
+                views: 0,
+                lastInteraction: null
+            };
+        }
+        
+        const assets = this.measurements.assets;
+        assets.interactions++;
+        assets.lastInteraction = interactionData.timestamp;
+        
+        if (interactionData.type === 'play') {
+            assets.plays++;
+        } else if (interactionData.type === 'view') {
+            assets.views++;
+        }
+        
+        await this.recordDailyActivity(`asset_${interactionData.type}`);
+        await this.saveMeasurements();
+    }
+
+    // Sponsor Measurements
+    async recordSponsorDisplay(placement, sponsorData = {}) {
+        if (!this.consentManager?.hasAnalyticsConsent()) return;
+        
+        if (!this.measurements.sponsors) {
+            this.measurements.sponsors = {
+                displays: 0,
+                interactions: 0,
+                placements: {},
+                lastDisplay: null
+            };
+        }
+        
+        const sponsors = this.measurements.sponsors;
+        sponsors.displays++;
+        sponsors.lastDisplay = sponsorData.timestamp || Date.now();
+        
+        // Track by placement
+        if (!sponsors.placements[placement]) {
+            sponsors.placements[placement] = { displays: 0, interactions: 0 };
+        }
+        sponsors.placements[placement].displays++;
+        
+        await this.recordDailyActivity(`sponsor_display_${placement}`);
+        await this.saveMeasurements();
+        
+        console.log('📊 Sponsor display recorded:', {
+            placement,
+            totalDisplays: sponsors.displays,
+            placementDisplays: sponsors.placements[placement].displays
+        });
+    }
+
+    async recordSponsorInteraction(action, placement, sponsorData = {}) {
+        if (!this.consentManager?.hasAnalyticsConsent()) return;
+        
+        if (!this.measurements.sponsors) {
+            this.measurements.sponsors = {
+                displays: 0,
+                interactions: 0,
+                placements: {},
+                lastDisplay: null
+            };
+        }
+        
+        const sponsors = this.measurements.sponsors;
+        sponsors.interactions++;
+        
+        // Track by placement
+        if (!sponsors.placements[placement]) {
+            sponsors.placements[placement] = { displays: 0, interactions: 0 };
+        }
+        sponsors.placements[placement].interactions++;
+        
+        await this.recordDailyActivity(`sponsor_${action}_${placement}`);
+        await this.saveMeasurements();
+        
+        console.log('📊 Sponsor interaction recorded:', {
+            action,
+            placement,
+            totalInteractions: sponsors.interactions,
+            placementInteractions: sponsors.placements[placement].interactions
+        });
+    }
+
     // Daily Activity Tracking
     async recordDailyActivity(activity) {
         const today = new Date().toDateString();
@@ -332,6 +424,30 @@ class PackageMeasurementSystem {
         };
     }
 
+    generateAssetReport() {
+        const assets = this.measurements.assets || {};
+        
+        return {
+            interactions: assets.interactions || 0,
+            plays: assets.plays || 0,
+            views: assets.views || 0,
+            engagementRate: assets.views > 0 ? ((assets.plays / assets.views) * 100).toFixed(1) : 0,
+            lastInteraction: assets.lastInteraction ? new Date(assets.lastInteraction).toLocaleString() : 'Never'
+        };
+    }
+
+    generateSponsorReport() {
+        const sponsors = this.measurements.sponsors || {};
+        
+        return {
+            displays: sponsors.displays || 0,
+            interactions: sponsors.interactions || 0,
+            engagementRate: sponsors.displays > 0 ? ((sponsors.interactions / sponsors.displays) * 100).toFixed(1) : 0,
+            placements: sponsors.placements || {},
+            lastDisplay: sponsors.lastDisplay ? new Date(sponsors.lastDisplay).toLocaleString() : 'Never'
+        };
+    }
+
     generateDailyReport(days = 7) {
         const report = {};
         const today = new Date();
@@ -408,6 +524,8 @@ class PackageMeasurementSystem {
             packages: this.generatePackageReport(),
             isrc: this.generateISRCReport(),
             ipfs: this.generateIPFSReport(),
+            assets: this.generateAssetReport(),
+            sponsors: this.generateSponsorReport(),
             compliance: this.getComplianceMetrics(),
             daily: this.generateDailyReport(),
             exportedAt: new Date().toISOString(),

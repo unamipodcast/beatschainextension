@@ -294,17 +294,22 @@ class MintingSponsorIntegration extends EnhancedSponsorIntegration {
 
         // Add event listeners
         const closeBtn = sponsorEl.querySelector('.sponsor-close');
-        closeBtn.addEventListener('click', () => {
+        closeBtn.addEventListener('click', async () => {
+            await this.trackSponsorInteraction(sponsor.id, placement, 'close');
             sponsorEl.remove();
-            this.trackSponsorInteraction(sponsor.id, placement, 'close');
         });
 
         const link = sponsorEl.querySelector('.sponsor-link');
         if (link) {
-            link.addEventListener('click', () => {
-                this.trackSponsorInteraction(sponsor.id, placement, 'click');
+            link.addEventListener('click', async () => {
+                await this.trackSponsorInteraction(sponsor.id, placement, 'click');
             });
         }
+        
+        // Track impression after element is displayed
+        setTimeout(async () => {
+            await this.trackSponsorImpression(sponsor.id, placement);
+        }, 1000);
 
         return sponsorEl;
     }
@@ -354,20 +359,82 @@ class MintingSponsorIntegration extends EnhancedSponsorIntegration {
         return fallbacks[type] || '📄';
     }
 
-    trackSponsorImpression(sponsorId, placement) {
+    async trackSponsorImpression(sponsorId, placement) {
         console.log(`📊 Sponsor impression: ${sponsorId} at ${placement}`);
-        // Integration with existing analytics
-        if (this.analytics) {
-            this.recordAnalytics('impression', sponsorId, placement);
+        
+        // Record in PackageMeasurementSystem
+        if (window.packageMeasurementSystem) {
+            await window.packageMeasurementSystem.recordSponsorDisplay(placement, {
+                sponsorId,
+                timestamp: Date.now()
+            });
+        }
+        
+        // Record in AnalyticsManager
+        if (window.analyticsManager) {
+            await window.analyticsManager.recordSponsorDisplay(placement);
+        }
+        
+        // Store verification on IPFS
+        await this.storeVerificationOnIPFS('impression', { id: sponsorId }, placement);
+    }
+
+    async trackSponsorInteraction(sponsorId, placement, action) {
+        console.log(`📊 Sponsor ${action}: ${sponsorId} at ${placement}`);
+        
+        // Record in PackageMeasurementSystem
+        if (window.packageMeasurementSystem) {
+            await window.packageMeasurementSystem.recordSponsorInteraction(action, placement, {
+                sponsorId,
+                timestamp: Date.now()
+            });
+        }
+        
+        // Record in AnalyticsManager
+        if (window.analyticsManager) {
+            await window.analyticsManager.recordSponsorInteraction(action, placement);
+        }
+        
+        // Store verification on IPFS
+        await this.storeVerificationOnIPFS(action, { id: sponsorId }, placement);
+    }
+
+    // IPFS Verification Storage
+    async storeVerificationOnIPFS(action, sponsor, placement) {
+        try {
+            if (!this.ipfsAssetManager) return;
+            
+            const verificationData = {
+                action,
+                sponsorId: sponsor.id,
+                placement,
+                timestamp: Date.now(),
+                context: 'minting_flow',
+                extensionVersion: chrome.runtime?.getManifest()?.version || '2.1.0',
+                verificationHash: await this.generateVerificationHash(action, sponsor, placement)
+            };
+            
+            const result = await this.ipfsAssetManager.uploadJSON(
+                verificationData,
+                `minting-sponsor-${action}-${Date.now()}.json`
+            );
+            
+            if (result.success) {
+                console.log(`✅ Minting sponsor ${action} verification stored on IPFS:`, result.ipfsHash);
+            }
+            
+        } catch (error) {
+            console.warn(`⚠️ Failed to store minting ${action} verification on IPFS:`, error);
         }
     }
 
-    trackSponsorInteraction(sponsorId, placement, action) {
-        console.log(`📊 Sponsor ${action}: ${sponsorId} at ${placement}`);
-        // Integration with existing analytics
-        if (this.analytics) {
-            this.recordAnalytics(action, sponsorId, placement);
-        }
+    async generateVerificationHash(action, sponsor, placement) {
+        const data = `minting-${action}-${sponsor.id}-${placement}-${Date.now()}`;
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(data);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     // Static integration method
