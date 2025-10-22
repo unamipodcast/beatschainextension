@@ -422,7 +422,93 @@
                 <textarea id="license-terms" placeholder="AI will generate licensing terms here..." rows="6"></textarea>
                 <div class="license-actions">
                     <button id="generate-license" class="btn btn-secondary">Generate with AI</button>
-                    <button id="approve-license" class="btn btn-primary" disabled>Approve & Continue</button>
+                    <button id="approve-license" class="btn btn-primary" disabled>Approve & Continue to ISRC</button>
+                </div>
+            </section>
+
+            <!-- ISRC Professional Minting Section -->
+            <section id="isrc-minting-section" class="section">
+                <div class="section-header">
+                    <h2>🎵 ISRC Professional Registration</h2>
+                    <p class="section-subtitle">Industry-standard music identification codes</p>
+                </div>
+
+                <div class="isrc-container">
+                    <!-- ISRC Generation Card -->
+                    <div class="isrc-card">
+                        <div class="card-header">
+                            <h3>Generate ISRC Code</h3>
+                            <span class="status-badge" id="isrc-status">Ready</span>
+                        </div>
+                        
+                        <div class="isrc-preview">
+                            <div class="isrc-display">
+                                <span class="isrc-code" id="generated-isrc">ZA-80G-25-00000</span>
+                                <button class="copy-btn" id="copy-isrc">📋</button>
+                            </div>
+                            <div class="isrc-breakdown">
+                                <span class="isrc-part">ZA <small>Country</small></span>
+                                <span class="isrc-part">80G <small>Registrant</small></span>
+                                <span class="isrc-part">25 <small>Year</small></span>
+                                <span class="isrc-part">00000 <small>Designation</small></span>
+                            </div>
+                        </div>
+
+                        <div class="isrc-actions">
+                            <button class="btn btn-primary" id="generate-isrc">Generate New ISRC</button>
+                            <button class="btn btn-secondary" id="validate-isrc">Validate Code</button>
+                        </div>
+                    </div>
+
+                    <!-- Sponsored Content Placement -->
+                    <div class="sponsor-placement-card">
+                        <div class="card-header">
+                            <h3>🎯 Sponsored Content Opportunity</h3>
+                            <span class="revenue-badge">+$2.50 Revenue</span>
+                        </div>
+                        
+                        <div class="sponsor-content" id="isrc-sponsor-content">
+                            <div class="sponsor-banner">
+                                <div class="sponsor-message">
+                                    <h4>Professional Music Distribution</h4>
+                                    <p>Get your music on Spotify, Apple Music & more with industry-standard ISRC codes</p>
+                                    <button class="sponsor-cta">Learn More</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="sponsor-controls">
+                            <label class="checkbox-container">
+                                <input type="checkbox" id="enable-sponsor-isrc" checked>
+                                <span class="checkmark"></span>
+                                Enable sponsored content (+$2.50 per mint)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Minting Integration -->
+                <div class="minting-integration">
+                    <div class="integration-header">
+                        <h3>Ready for Minting</h3>
+                        <div class="integration-checklist">
+                            <div class="check-item">
+                                <span class="check-icon">✅</span>
+                                <span>ISRC Generated</span>
+                            </div>
+                            <div class="check-item">
+                                <span class="check-icon">✅</span>
+                                <span>Metadata Embedded</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="minting-actions">
+                        <button class="btn btn-primary btn-large" id="proceed-to-mint">
+                            Proceed to NFT Minting
+                            <span class="btn-arrow">→</span>
+                        </button>
+                    </div>
                 </div>
             </section>
 

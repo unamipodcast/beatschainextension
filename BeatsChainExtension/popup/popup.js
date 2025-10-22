@@ -737,6 +737,98 @@ Verification: Check Chrome extension storage for transaction details`;
         }
         
         this.licenseTerms = licenseText;
+        this.showSection('isrc-minting-section');
+        this.initializeISRCMinting();
+    }
+
+    async initializeISRCMinting() {
+        // Initialize ISRC manager if not already done
+        if (!this.isrcManager && window.ISRCManager) {
+            this.isrcManager = new ISRCManager();
+            await this.isrcManager.initialize();
+        }
+        
+        // Setup ISRC generation button
+        const generateBtn = document.getElementById('generate-isrc');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', async () => {
+                await this.handleISRCGeneration();
+            });
+        }
+        
+        // Setup proceed to mint button
+        const proceedBtn = document.getElementById('proceed-to-mint');
+        if (proceedBtn) {
+            proceedBtn.addEventListener('click', () => {
+                this.proceedToMinting();
+            });
+        }
+        
+        // Auto-generate ISRC if we have track info
+        const artistInputs = this.getArtistInputs();
+        if (artistInputs.beatTitle && artistInputs.artistName) {
+            await this.handleISRCGeneration();
+        }
+    }
+    
+    async handleISRCGeneration() {
+        const generateBtn = document.getElementById('generate-isrc');
+        const statusBadge = document.getElementById('isrc-status');
+        
+        if (!generateBtn || !statusBadge) return;
+        
+        const originalText = generateBtn.textContent;
+        generateBtn.disabled = true;
+        generateBtn.textContent = 'Generating...';
+        statusBadge.textContent = 'Generating';
+        
+        try {
+            const artistInputs = this.getArtistInputs();
+            const isrc = this.isrcManager.generateISRC(artistInputs.beatTitle, artistInputs.artistName);
+            
+            // Update display
+            const isrcDisplay = document.getElementById('generated-isrc');
+            if (isrcDisplay) {
+                isrcDisplay.textContent = isrc;
+            }
+            
+            // Update breakdown
+            const parts = isrc.split('-');
+            const breakdown = document.querySelector('.isrc-breakdown');
+            if (breakdown && parts.length === 4) {
+                breakdown.innerHTML = `
+                    <span class="isrc-part">${parts[0]} <small>Country</small></span>
+                    <span class="isrc-part">${parts[1]} <small>Registrant</small></span>
+                    <span class="isrc-part">${parts[2]} <small>Year</small></span>
+                    <span class="isrc-part">${parts[3]} <small>Designation</small></span>
+                `;
+            }
+            
+            // Store ISRC for minting
+            this.beatMetadata.isrc = isrc;
+            
+            statusBadge.textContent = 'Generated';
+            generateBtn.textContent = '✅ Generated';
+            
+            setTimeout(() => {
+                generateBtn.textContent = originalText;
+                generateBtn.disabled = false;
+            }, 2000);
+            
+        } catch (error) {
+            console.error('ISRC generation failed:', error);
+            statusBadge.textContent = 'Error';
+            generateBtn.textContent = 'Error';
+            
+            setTimeout(() => {
+                generateBtn.textContent = originalText;
+                generateBtn.disabled = false;
+                statusBadge.textContent = 'Ready';
+            }, 2000);
+        }
+    }
+    
+    proceedToMinting() {
         this.prepareNFTPreview();
         this.showSection('minting-section');
     }
