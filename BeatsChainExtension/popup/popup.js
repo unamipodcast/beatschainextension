@@ -1172,12 +1172,21 @@ Verification: Check Chrome extension storage for transaction details`;
                 }
             }
             
-            const walletAddress = await walletContext.getCurrentAddress();
+            let walletAddress = null;
+            if (walletContext && walletContext.getCurrentAddress) {
+                walletAddress = await walletContext.getCurrentAddress();
+            }
+            
+            // GRACEFUL: Try unified auth wallet if walletContext fails
+            if (!walletAddress && unifiedAuth && unifiedAuth.getWalletAddress) {
+                walletAddress = await unifiedAuth.getWalletAddress();
+            }
+            
             if (!walletAddress) {
                 throw new Error('Wallet not available: Please sign in with Google to generate your secure wallet');
             }
             
-            console.log('✅ Using authenticated wallet:', walletAddress.substring(0, 6) + '...' + walletAddress.substring(-4));
+            console.log('✅ Using authenticated wallet:', walletAddress ? walletAddress.substring(0, 6) + '...' + walletAddress.substring(-4) : 'undefined');
             
             statusDiv.textContent = 'Uploading to IPFS...';
             

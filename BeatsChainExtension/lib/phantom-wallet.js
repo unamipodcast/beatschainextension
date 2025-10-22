@@ -8,125 +8,40 @@ class PhantomWalletManager {
 
     async initialize() {
         try {
-            console.log('🔍 Initializing Phantom wallet detection...');
-            
-            // Enhanced Phantom detection with multiple injection points
+            // GRACEFUL: Quick check only, no aggressive detection
             const checkPhantom = () => {
-                const checks = [
-                    window.solana && window.solana.isPhantom,
-                    window.phantom && window.phantom.solana && window.phantom.solana.isPhantom,
-                    window.solana && window.solana.phantom,
-                    window.phantom && window.phantom.isPhantom
-                ];
-                
-                console.log('🔍 Phantom detection checks:', {
-                    'window.solana': !!window.solana,
-                    'window.solana.isPhantom': !!(window.solana && window.solana.isPhantom),
-                    'window.phantom': !!window.phantom,
-                    'window.phantom.solana': !!(window.phantom && window.phantom.solana),
-                    'checks': checks
-                });
-                
-                return checks.some(check => check);
+                return (window.solana && window.solana.isPhantom) || 
+                       (window.phantom && window.phantom.solana && window.phantom.solana.isPhantom);
             };
             
             // Immediate check
             if (checkPhantom()) {
                 this.phantom = window.solana || (window.phantom && window.phantom.solana);
-                console.log('✅ Phantom wallet detected immediately');
+                console.log('✅ Phantom wallet detected');
                 return true;
             }
             
-            // Extended wait with progress logging and timeout
-            console.log('⏳ Waiting for Phantom injection...');
+            // Brief wait (max 1 second) then fallback
             let attempts = 0;
-            const maxAttempts = 30; // Reduced to prevent endless loops
+            const maxAttempts = 10;
             
             while (!checkPhantom() && attempts < maxAttempts) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 attempts++;
-                
-                // Log progress every 5 attempts
-                if (attempts % 5 === 0) {
-                    console.log(`⏳ Phantom detection attempt ${attempts}/${maxAttempts}...`);
-                }
             }
             
             if (checkPhantom()) {
                 this.phantom = window.solana || (window.phantom && window.phantom.solana);
-                console.log(`✅ Phantom wallet detected after ${attempts} attempts`);
+                console.log('✅ Phantom wallet detected after brief wait');
                 return true;
             }
             
-            // Document ready state check
-            if (document.readyState !== 'complete') {
-                console.log('📄 Waiting for document ready...');
-                await new Promise(resolve => {
-                    if (document.readyState === 'complete') {
-                        resolve();
-                    } else {
-                        const handler = () => {
-                            if (document.readyState === 'complete') {
-                                window.removeEventListener('readystatechange', handler);
-                                resolve();
-                            }
-                        };
-                        window.addEventListener('readystatechange', handler);
-                        window.addEventListener('load', resolve, { once: true });
-                    }
-                });
-                
-                // Final check after document ready
-                if (checkPhantom()) {
-                    this.phantom = window.solana || (window.phantom && window.phantom.solana);
-                    console.log('✅ Phantom wallet detected after document ready');
-                    return true;
-                }
-            }
-            
-            // Check for Phantom extension in different contexts
-            console.log('🔍 Final Phantom detection attempt...');
-            const finalCheck = () => {
-                try {
-                    // Check if Phantom extension is installed but not injected
-                    if (typeof chrome !== 'undefined' && chrome.runtime) {
-                        console.log('🔍 Checking for Phantom extension in Chrome...');
-                    }
-                    
-                    // Alternative detection methods
-                    const altChecks = [
-                        document.querySelector('meta[name="phantom-wallet"]'),
-                        window.phantom,
-                        window.solana
-                    ];
-                    
-                    console.log('🔍 Alternative detection results:', altChecks.map(c => !!c));
-                    
-                    return checkPhantom();
-                } catch (error) {
-                    console.warn('⚠️ Final check error:', error);
-                    return false;
-                }
-            };
-            
-            if (finalCheck()) {
-                this.phantom = window.solana || (window.phantom && window.phantom.solana);
-                console.log('✅ Phantom wallet detected in final check');
-                return true;
-            }
-            
-            console.warn('⚠️ Phantom wallet not detected after comprehensive search');
-            console.log('💡 Phantom may be installed but not injected into this context');
-            
-            // Show install prompt if not detected
-            if (typeof this.showInstallPrompt === 'function') {
-                setTimeout(() => this.showInstallPrompt(), 1000);
-            }
-            
+            // GRACEFUL: No install prompt, just fallback to embedded wallet
+            console.log('ℹ️ Phantom not detected - using embedded wallet');
             return false;
             
         } catch (error) {
-            console.error('❌ Phantom initialization failed:', error);
+            console.warn('⚠️ Phantom detection failed, using embedded wallet:', error);
             return false;
         }
     }
