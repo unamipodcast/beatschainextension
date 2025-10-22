@@ -36,13 +36,10 @@ class SolanaManager {
                 }
             }
             
-            // Initialize Phantom wallet
+            // Initialize Phantom wallet (optional - embedded is primary)
             this.phantomWallet = new PhantomWalletManager();
-            const phantomReady = await this.phantomWallet.initialize();
-            
-            if (!phantomReady) {
-                console.warn('⚠️ Phantom wallet not available - will prompt user');
-            }
+            await this.phantomWallet.initialize();
+            // No warnings - embedded wallet is primary strategy
             
             // Initialize Solana integration
             if (window.SolanaIntegration) {

@@ -7,43 +7,14 @@ class PhantomWalletManager {
     }
 
     async initialize() {
-        try {
-            // GRACEFUL: Quick check only, no aggressive detection
-            const checkPhantom = () => {
-                return (window.solana && window.solana.isPhantom) || 
-                       (window.phantom && window.phantom.solana && window.phantom.solana.isPhantom);
-            };
-            
-            // Immediate check
-            if (checkPhantom()) {
-                this.phantom = window.solana || (window.phantom && window.phantom.solana);
-                console.log('✅ Phantom wallet detected');
-                return true;
-            }
-            
-            // Brief wait (max 1 second) then fallback
-            let attempts = 0;
-            const maxAttempts = 10;
-            
-            while (!checkPhantom() && attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                attempts++;
-            }
-            
-            if (checkPhantom()) {
-                this.phantom = window.solana || (window.phantom && window.phantom.solana);
-                console.log('✅ Phantom wallet detected after brief wait');
-                return true;
-            }
-            
-            // GRACEFUL: No install prompt, just fallback to embedded wallet
-            console.log('ℹ️ Phantom not detected - using embedded wallet');
-            return false;
-            
-        } catch (error) {
-            console.warn('⚠️ Phantom detection failed, using embedded wallet:', error);
-            return false;
+        // STRATEGY: Embedded wallet is primary - only check if Phantom is immediately available
+        if (window.solana && window.solana.isPhantom) {
+            this.phantom = window.solana;
+            return true;
         }
+        
+        // No detection attempts - embedded wallet is primary strategy
+        return false;
     }
 
     async connect() {
