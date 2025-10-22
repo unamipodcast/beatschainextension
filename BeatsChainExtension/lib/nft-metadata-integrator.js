@@ -187,6 +187,36 @@ class NFTMetadataIntegrator {
         return this.isrcManager ? this.isrcManager.getLastGenerated() : null;
     }
 
+    generateNFTMetadata(audioData, transactionData, isrcCode) {
+        return {
+            name: audioData.title || 'BeatNFT',
+            description: `Music NFT by ${audioData.artist}: ${audioData.title} - ${audioData.genre}`,
+            external_url: `https://mumbai.polygonscan.com/tx/${transactionData.hash}`,
+            attributes: [
+                { trait_type: 'Artist', value: audioData.artist },
+                { trait_type: 'Genre', value: audioData.genre },
+                { trait_type: 'ISRC', value: isrcCode },
+                { trait_type: 'BPM', value: audioData.bpm || 'Unknown' },
+                { trait_type: 'Duration', value: audioData.duration || 'Unknown' },
+                { trait_type: 'Quality', value: audioData.quality || 'Unknown' },
+                { trait_type: 'Energy Level', value: audioData.energyLevel || 'Unknown' },
+                { trait_type: 'Format', value: audioData.format || 'MP3' }
+            ],
+            properties: {
+                isrc: isrcCode,
+                registrant: isrcCode ? isrcCode.split('-')[1] : null,
+                year: isrcCode ? isrcCode.split('-')[2] : null,
+                designation: isrcCode ? isrcCode.split('-')[3] : null
+            },
+            blockchain: {
+                contract: transactionData.contract,
+                tokenId: transactionData.tokenId,
+                transactionHash: transactionData.hash,
+                network: transactionData.network || 'Polygon Mumbai'
+            }
+        };
+    }
+
     getDuplicateStats() {
         return {
             totalHashes: this.duplicateHashes.size,

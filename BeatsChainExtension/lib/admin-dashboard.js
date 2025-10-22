@@ -25,10 +25,20 @@ class AdminDashboardManager {
 
         await this.loadSponsorConfig();
         await this.loadUsageStats();
+        await this.initializeCampaignManager();
         this.setupDashboardUI();
         
         this.isInitialized = true;
         console.log('✅ Admin Dashboard initialized');
+    }
+
+    async initializeCampaignManager() {
+        if (window.CampaignManager) {
+            this.campaignManager = new CampaignManager();
+            await this.campaignManager.initialize();
+        } else {
+            console.warn('CampaignManager not available');
+        }
     }
 
     async loadSponsorConfig() {
@@ -254,13 +264,14 @@ class AdminDashboardManager {
                         <div class="campaign-actions">
                             <div class="form-row">
                                 <button id="create-campaign-btn" class="btn btn-primary">🚀 Create Campaign</button>
+                                <button id="refresh-campaigns-btn" class="btn btn-secondary">🔄 Refresh</button>
                             </div>
                         </div>
                         
                         <div class="active-campaigns">
                             <h6>Active Campaigns</h6>
                             <div id="campaigns-list" class="campaigns-container">
-                                <div class="no-campaigns">No active campaigns</div>
+                                ${this.generateCampaignsListHTML()}
                             </div>
                         </div>
                     </div>
@@ -776,8 +787,16 @@ class AdminDashboardManager {
         // Campaign management events
         const createCampaignBtn = container.querySelector('#create-campaign-btn');
         if (createCampaignBtn) {
-            createCampaignBtn.addEventListener('click', () => this.createCampaign());
+            createCampaignBtn.addEventListener('click', () => this.showCreateCampaignForm());
         }
+
+        const refreshCampaignsBtn = container.querySelector('#refresh-campaigns-btn');
+        if (refreshCampaignsBtn) {
+            refreshCampaignsBtn.addEventListener('click', () => this.refreshCampaignsList());
+        }
+
+        // Campaign list events
+        this.setupCampaignListEvents(container);
 
         // System events
         const clearCacheBtn = container.querySelector('#clear-cache');
@@ -1382,8 +1401,131 @@ class AdminDashboardManager {
         this.showAdminMessage('System logs cleared', 'success');
     }
 
-    createCampaign() {
-        this.showAdminMessage('Campaign creation feature coming soon', 'info');
+    generateCampaignsListHTML() {
+        if (!this.campaignManager) {
+            return '<div class="no-campaigns">Campaign Manager not available</div>';
+        }
+
+        const campaigns = this.campaignManager.getAllCampaigns();
+        if (campaigns.length === 0) {
+            return '<div class="no-campaigns">No campaigns created yet</div>';
+        }
+
+        return campaigns.map(campaign => this.campaignManager.generateCampaignHTML(campaign)).join('');
+    }
+
+    setupCampaignListEvents(container) {
+        const campaignsList = container.querySelector('#campaigns-list');
+        if (!campaignsList) return;
+
+        campaignsList.addEventListener('click', (e) => {
+            const campaignId = e.target.dataset.campaignId;
+            if (!campaignId) return;
+
+            if (e.target.classList.contains('edit-campaign')) {
+                this.showEditCampaignForm(campaignId);
+            } else if (e.target.classList.contains('delete-campaign')) {
+                this.deleteCampaign(campaignId);
+            }
+        });
+    }
+
+    async showCreateCampaignForm() {
+        if (!this.campaignManager) {
+            this.showAdminMessage('Campaign Manager not available', 'error');
+            return;
+        }
+
+        const formHTML = this.campaignManager.generateCampaignFormHTML(null, this.sponsorConfig.templates);
+        this.showCampaignFormModal(formHTML);
+    }
+
+    async showEditCampaignForm(campaignId) {
+        if (!this.campaignManager) {
+            this.showAdminMessage('Campaign Manager not available', 'error');
+            return;
+        }
+
+        const campaign = this.campaignManager.getCampaign(campaignId);
+        if (!campaign) {
+            this.showAdminMessage('Campaign not found', 'error');
+            return;
+        }
+
+        const formHTML = this.campaignManager.generateCampaignFormHTML(campaign, this.sponsorConfig.templates);
+        this.showCampaignFormModal(formHTML, campaignId);
+    }
+
+    showCampaignFormModal(formHTML, editCampaignId = null) {
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = formHTML;
+        document.body.appendChild(modalContainer);
+
+        const form = modalContainer.querySelector('#campaign-form');
+        const closeBtn = modalContainer.querySelector('.close-form-btn');
+        const cancelBtn = modalContainer.querySelector('.cancel-campaign-btn');
+
+        const closeModal = () => {
+            document.body.removeChild(modalContainer);
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.handleCampaignFormSubmit(form, editCampaignId);
+            closeModal();
+        });
+    }
+
+    async handleCampaignFormSubmit(form, editCampaignId = null) {
+        try {
+            const formData = new FormData(form);
+            const campaignData = {
+                name: form.querySelector('#campaign-name').value,
+                sponsorId: form.querySelector('#campaign-sponsor').value,
+                placement: form.querySelector('#campaign-placement').value,
+                startDate: form.querySelector('#campaign-start-date').value,
+                endDate: form.querySelector('#campaign-end-date').value,
+                budget: form.querySelector('#campaign-budget').value
+            };
+
+            if (editCampaignId) {
+                await this.campaignManager.updateCampaign(editCampaignId, campaignData);
+                this.showAdminMessage('Campaign updated successfully', 'success');
+            } else {
+                await this.campaignManager.createCampaign(campaignData);
+                this.showAdminMessage('Campaign created successfully', 'success');
+            }
+
+            this.refreshCampaignsList();
+        } catch (error) {
+            console.error('Campaign form submission failed:', error);
+            this.showAdminMessage('Failed to save campaign: ' + error.message, 'error');
+        }
+    }
+
+    async deleteCampaign(campaignId) {
+        if (!confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await this.campaignManager.deleteCampaign(campaignId);
+            this.showAdminMessage('Campaign deleted successfully', 'success');
+            this.refreshCampaignsList();
+        } catch (error) {
+            console.error('Campaign deletion failed:', error);
+            this.showAdminMessage('Failed to delete campaign: ' + error.message, 'error');
+        }
+    }
+
+    refreshCampaignsList() {
+        const campaignsList = document.getElementById('campaigns-list');
+        if (campaignsList) {
+            campaignsList.innerHTML = this.generateCampaignsListHTML();
+        }
     }
 
     getDailyAnalytics() {

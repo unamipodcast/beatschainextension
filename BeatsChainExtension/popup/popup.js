@@ -922,6 +922,9 @@ Verification: Check Chrome extension storage for transaction details`;
         if (section === 'mint') {
             this.showSection('upload-section');
             this.autoFillFromProfile('nft');
+        } else if (section === 'hub') {
+            this.showSection('hub-section');
+            this.loadAssetHub();
         } else if (section === 'profile') {
             this.showSection('profile-section');
         } else if (section === 'history') {
@@ -937,6 +940,11 @@ Verification: Check Chrome extension storage for transaction details`;
             this.showSection('insights-section');
             this.loadAIInsights();
         }
+    }
+    
+    async loadAssetHub() {
+        console.log('Loading asset hub...');
+        // Asset hub will be initialized by PublicAssetHubManager
     }
 
     showSection(sectionId) {
