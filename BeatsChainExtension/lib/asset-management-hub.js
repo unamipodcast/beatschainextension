@@ -14,8 +14,25 @@ class AssetManagementHub {
 
   async loadAssets() {
     try {
-      // Load from Chrome storage
-      const stored = await chrome.storage.local.get(['nftAssets', 'campaigns', 'isrcRegistry']);
+      let stored;
+      
+      // Try Chrome storage first
+      try {
+        stored = await chrome.storage.local.get(['nftAssets', 'campaigns', 'isrcRegistry']);
+        console.log('💾 Loaded from Chrome storage:', stored);
+      } catch (chromeError) {
+        console.warn('⚠️ Chrome storage unavailable, trying localStorage:', chromeError);
+        // Fallback to localStorage
+        stored = {
+          nftAssets: JSON.parse(localStorage.getItem('nftAssets') || '[]'),
+          campaigns: JSON.parse(localStorage.getItem('campaigns') || '[]'),
+          isrcRegistry: JSON.parse(localStorage.getItem('isrcRegistry') || '[]')
+        };
+        console.log('💾 Loaded from localStorage:', stored);
+      }
+      
+      // Clear existing assets
+      this.assets.clear();
       
       // Combine all asset types
       const nftAssets = stored.nftAssets || [];
@@ -24,7 +41,7 @@ class AssetManagementHub {
 
       // Process NFT assets
       nftAssets.forEach(nft => {
-        this.assets.set(nft.id || Date.now(), {
+        this.assets.set(nft.id || `nft_${Date.now()}`, {
           id: nft.id,
           type: 'nft',
           title: nft.title,
@@ -38,28 +55,45 @@ class AssetManagementHub {
           blockchain: nft.blockchain,
           createdAt: nft.createdAt,
           plays: nft.plays || 0,
-          likes: nft.likes || 0
+          likes: nft.likes || 0,
+          isMockData: nft.isMockData || false
         });
       });
 
       // Process campaigns
       campaigns.forEach(campaign => {
-        this.assets.set(campaign.id, {
+        this.assets.set(campaign.id || `campaign_${Date.now()}`, {
           id: campaign.id,
           type: 'campaign',
           title: campaign.title,
-          artist: campaign.sponsor,
+          artist: campaign.sponsor || campaign.artist,
           description: campaign.description,
           status: campaign.status,
-          impressions: campaign.metrics?.impressions || 0,
-          clicks: campaign.metrics?.clicks || 0,
-          createdAt: campaign.createdAt
+          impressions: campaign.impressions || campaign.metrics?.impressions || 0,
+          clicks: campaign.clicks || campaign.metrics?.clicks || 0,
+          createdAt: campaign.createdAt,
+          isMockData: campaign.isMockData || false
+        });
+      });
+      
+      // Process ISRC codes as assets
+      isrcCodes.forEach(isrc => {
+        this.assets.set(isrc.id || `isrc_${Date.now()}`, {
+          id: isrc.id,
+          type: 'isrc',
+          title: isrc.title,
+          artist: isrc.artist,
+          isrc: isrc.isrc,
+          status: isrc.status,
+          embedded: isrc.embedded,
+          createdAt: isrc.createdAt,
+          isMockData: isrc.isMockData || false
         });
       });
 
-      console.log(`Loaded ${this.assets.size} assets`);
+      console.log(`✅ Loaded ${this.assets.size} assets (${nftAssets.length} NFTs, ${campaigns.length} campaigns, ${isrcCodes.length} ISRC codes)`);
     } catch (error) {
-      console.error('Failed to load assets:', error);
+      console.error('❌ Failed to load assets:', error);
     }
   }
 
@@ -196,21 +230,34 @@ class AssetManagementHub {
     try {
       const nftAssets = [];
       const campaigns = [];
+      const isrcRegistry = [];
 
       this.assets.forEach(asset => {
         if (asset.type === 'nft') {
           nftAssets.push(asset);
         } else if (asset.type === 'campaign') {
           campaigns.push(asset);
+        } else if (asset.type === 'isrc') {
+          isrcRegistry.push(asset);
         }
       });
 
-      await chrome.storage.local.set({
-        nftAssets,
-        campaigns
-      });
+      try {
+        await chrome.storage.local.set({
+          nftAssets,
+          campaigns,
+          isrcRegistry
+        });
+        console.log('✅ Assets saved to Chrome storage');
+      } catch (chromeError) {
+        console.warn('⚠️ Chrome storage unavailable, using localStorage:', chromeError);
+        localStorage.setItem('nftAssets', JSON.stringify(nftAssets));
+        localStorage.setItem('campaigns', JSON.stringify(campaigns));
+        localStorage.setItem('isrcRegistry', JSON.stringify(isrcRegistry));
+        console.log('✅ Assets saved to localStorage');
+      }
     } catch (error) {
-      console.error('Failed to save assets:', error);
+      console.error('❌ Failed to save assets:', error);
     }
   }
 

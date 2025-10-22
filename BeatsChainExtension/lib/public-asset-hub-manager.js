@@ -279,12 +279,7 @@ class PublicAssetHubManager {
   }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  if (document.getElementById('public-hub-section')) {
-    window.publicAssetHub = new PublicAssetHubManager();
-    window.publicAssetHub.initialize();
-  }
-});
+// PublicAssetHubManager is now manually initialized by popup.js loadAssetHub function
+// No auto-initialization to prevent conflicts
 
 window.PublicAssetHubManager = PublicAssetHubManager;

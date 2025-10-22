@@ -944,7 +944,48 @@ Verification: Check Chrome extension storage for transaction details`;
     
     async loadAssetHub() {
         console.log('Loading asset hub...');
-        // Asset hub will be initialized by PublicAssetHubManager
+        
+        try {
+            // Initialize PublicAssetHubManager if not already done
+            if (!window.publicAssetHub) {
+                console.log('🔧 Initializing PublicAssetHubManager...');
+                window.publicAssetHub = new PublicAssetHubManager();
+                await window.publicAssetHub.initialize();
+                console.log('✅ PublicAssetHubManager initialized');
+            } else {
+                console.log('♻️ Refreshing existing asset hub...');
+                await window.publicAssetHub.refreshAssets();
+            }
+            
+            // Check if we need to generate mock data
+            const existing = await chrome.storage.local.get(['nftAssets', 'campaigns', 'isrcRegistry']);
+            const hasData = (existing.nftAssets && existing.nftAssets.length > 0) || 
+                           (existing.campaigns && existing.campaigns.length > 0) || 
+                           (existing.isrcRegistry && existing.isrcRegistry.length > 0);
+            
+            if (!hasData) {
+                console.log('🔧 No existing data found, generating mock data for demo...');
+                await MockDataGenerator.generateMockData();
+                // Refresh the hub after generating mock data
+                await window.publicAssetHub.refreshAssets();
+                console.log('✅ Mock data generated and hub refreshed');
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to load asset hub:', error);
+            // Show error in the asset grid
+            const grid = document.getElementById('asset-grid');
+            if (grid) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <h3>Failed to load assets</h3>
+                        <p>Error: ${error.message}</p>
+                        <button class="btn-primary" onclick="location.reload()">Reload Extension</button>
+                    </div>
+                `;
+            }
+        }
     }
 
     showSection(sectionId) {

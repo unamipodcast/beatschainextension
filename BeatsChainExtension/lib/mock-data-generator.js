@@ -164,37 +164,42 @@ class MockDataGenerator {
       }
     ];
 
-    // Store in Chrome storage
-    await chrome.storage.local.set({
-      nftAssets: mockNFTs,
-      campaigns: mockCampaigns,
-      isrcRegistry: mockISRCRegistry
-    });
+    // Store in Chrome storage with error handling
+    try {
+      await chrome.storage.local.set({
+        nftAssets: mockNFTs,
+        campaigns: mockCampaigns,
+        isrcRegistry: mockISRCRegistry
+      });
+      console.log('✅ Mock data generated and stored in Chrome storage');
+    } catch (error) {
+      console.error('❌ Failed to store mock data in Chrome storage:', error);
+      // Fallback to localStorage for development
+      localStorage.setItem('nftAssets', JSON.stringify(mockNFTs));
+      localStorage.setItem('campaigns', JSON.stringify(mockCampaigns));
+      localStorage.setItem('isrcRegistry', JSON.stringify(mockISRCRegistry));
+      console.log('✅ Mock data stored in localStorage as fallback');
+    }
 
-    console.log('✅ Mock data generated and stored');
     return { nftAssets: mockNFTs, campaigns: mockCampaigns, isrcRegistry: mockISRCRegistry };
   }
 
   static async clearMockData() {
-    await chrome.storage.local.remove(['nftAssets', 'campaigns', 'isrcRegistry']);
-    console.log('🗑️ Mock data cleared');
+    try {
+      await chrome.storage.local.remove(['nftAssets', 'campaigns', 'isrcRegistry']);
+      console.log('🗑️ Mock data cleared from Chrome storage');
+    } catch (error) {
+      console.error('❌ Failed to clear Chrome storage:', error);
+      // Fallback to localStorage
+      localStorage.removeItem('nftAssets');
+      localStorage.removeItem('campaigns');
+      localStorage.removeItem('isrcRegistry');
+      console.log('🗑️ Mock data cleared from localStorage');
+    }
   }
 }
 
-// Auto-generate mock data on load for testing
-document.addEventListener('DOMContentLoaded', async () => {
-  // Check if we're in development/testing mode
-  const isDev = window.location.hostname === 'localhost' || chrome.runtime?.id?.includes('dev');
-  
-  if (isDev) {
-    // Check if mock data already exists
-    const existing = await chrome.storage.local.get(['nftAssets', 'campaigns', 'isrcRegistry']);
-    
-    if (!existing.nftAssets || existing.nftAssets.length === 0) {
-      console.log('🔧 Generating mock data for testing...');
-      await MockDataGenerator.generateMockData();
-    }
-  }
-});
+// Mock data generator is now manually controlled by the asset hub loader
+// No auto-initialization to prevent conflicts
 
 window.MockDataGenerator = MockDataGenerator;
