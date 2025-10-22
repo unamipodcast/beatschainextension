@@ -2797,6 +2797,68 @@ Verification: Check Chrome extension storage for transaction details`;
         return card;
     }
 
+    createMinimalAdminDashboard() {
+        // Check if admin dashboard already exists
+        if (document.getElementById('admin-dashboard-section') || document.getElementById('admin-invitation-section')) {
+            return;
+        }
+        
+        const profileSection = document.getElementById('profile-section');
+        if (!profileSection) return;
+
+        // Create minimal admin section
+        const adminSection = document.createElement('div');
+        adminSection.id = 'admin-dashboard-section';
+        adminSection.className = 'admin-dashboard admin-only';
+        adminSection.style.cssText = `
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        `;
+
+        adminSection.innerHTML = `
+            <div class="admin-header">
+                <h3>👑 Admin Dashboard</h3>
+                <button class="collapse-btn" id="admin-toggle" type="button">▼</button>
+            </div>
+            <div class="admin-content" id="admin-content">
+                <div class="admin-status">
+                    <p>⚠️ Full admin dashboard unavailable</p>
+                    <p>Basic admin functions available below:</p>
+                </div>
+                
+                <!-- Campaign Management -->
+                <div class="form-group">
+                    <label class="form-label">📢 Campaign Management:</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" id="campaign-name" placeholder="Campaign name" class="form-input" style="flex: 1;">
+                        <button id="create-campaign" class="btn btn-primary">🚀 Create</button>
+                    </div>
+                    <div id="active-campaigns" class="campaigns-list">
+                        <p style="color: #666; font-style: italic;">No active campaigns</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Insert at the beginning of profile section
+        const profileContent = profileSection.querySelector('.profile-content') || profileSection;
+        profileContent.insertBefore(adminSection, profileContent.firstChild);
+
+        // Add collapse functionality
+        const adminToggleBtn = adminSection.querySelector('#admin-toggle');
+        const adminContent = adminSection.querySelector('#admin-content');
+        
+        adminToggleBtn.addEventListener('click', () => {
+            adminContent.classList.toggle('collapsed');
+            adminToggleBtn.textContent = adminContent.classList.contains('collapsed') ? '▶' : '▼';
+        });
+        
+        console.log('✅ Minimal admin dashboard created');
+    }
+    
     addAdminInvitationUI() {
         // Check if admin invitation UI already exists
         if (document.getElementById('admin-invitation-section')) {
@@ -3239,28 +3301,34 @@ Verification: Check Chrome extension storage for transaction details`;
         const profileSection = document.getElementById('profile-section');
         if (!profileSection) return;
         
-        // CRITICAL: Remove ONLY duplicate admin dashboards, keep the main one
-        const existingDuplicates = document.querySelectorAll('.admin-dashboard-container:not(#admin-dashboard-section)');
+        // CRITICAL: Remove ALL duplicate admin dashboards to prevent conflicts
+        const existingDuplicates = document.querySelectorAll('.admin-dashboard-container, #admin-invitation-section');
         existingDuplicates.forEach(dashboard => {
-            dashboard.remove();
-            console.log('✅ Removed duplicate admin dashboard');
+            if (dashboard.id !== 'admin-dashboard-section') {
+                dashboard.remove();
+                console.log('✅ Removed duplicate admin dashboard:', dashboard.id);
+            }
         });
         
         // Look for existing full admin dashboard first
         let adminSection = document.getElementById('admin-dashboard-section');
-        if (!adminSection) {
+        if (!adminSection && this.adminDashboard && this.adminDashboard.isInitialized) {
             // Force create full admin dashboard
-            if (this.adminDashboard) {
+            try {
                 this.adminDashboard.setupDashboardUI();
                 console.log('✅ Full admin dashboard created');
-            } else {
-                // Create minimal admin dashboard as fallback
-                this.addAdminInvitationUI();
-                console.log('✅ Minimal admin dashboard created as fallback');
+            } catch (error) {
+                console.warn('⚠️ Full admin dashboard creation failed:', error);
+                // Create minimal fallback
+                this.createMinimalAdminDashboard();
             }
+        } else if (!adminSection) {
+            // Create minimal admin dashboard as fallback
+            this.createMinimalAdminDashboard();
+            console.log('✅ Minimal admin dashboard created as fallback');
         } else {
             adminSection.style.display = 'block';
-            console.log('✅ Full admin dashboard visible');
+            console.log('✅ Admin dashboard visible');
         }
         
         // Make artist sections collapsible after admin dashboard is ready

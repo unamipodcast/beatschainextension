@@ -2270,15 +2270,30 @@ class AdminDashboardManager {
         const last7Days = [];
         const today = new Date();
         
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toDateString();
-            
-            last7Days.push({
-                date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                count: this.usageStats.dailyPackages[dateStr] || 0
-            });
+        try {
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toDateString();
+                
+                // Safe access to dailyPackages with fallback
+                const dailyPackages = this.usageStats?.dailyPackages || {};
+                const count = dailyPackages[dateStr] || 0;
+                
+                last7Days.push({
+                    date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    count: count
+                });
+            }
+        } catch (error) {
+            console.warn('Error generating daily analytics:', error);
+            // Return empty data on error
+            for (let i = 6; i >= 0; i--) {
+                last7Days.push({
+                    date: `Day ${7-i}`,
+                    count: 0
+                });
+            }
         }
         
         return last7Days;
