@@ -351,6 +351,8 @@ class AdminDashboardManager {
                                 <label for="sponsor-placement">Placement:</label>
                                 <select id="sponsor-placement" class="form-input">
                                     <option value="after_isrc" ${this.sponsorConfig.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
+                                    <option value="licensing_proceed" ${this.sponsorConfig.placement === 'licensing_proceed' ? 'selected' : ''}>Proceed to Licensing</option>
+                                    <option value="before_mint_nft" ${this.sponsorConfig.placement === 'before_mint_nft' ? 'selected' : ''}>Before Mint NFT</option>
                                     <option value="before_package" ${this.sponsorConfig.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
                                     <option value="after_package" ${this.sponsorConfig.placement === 'after_package' ? 'selected' : ''}>After Package Generation</option>
                                     <option value="after_minting" ${this.sponsorConfig.placement === 'after_minting' ? 'selected' : ''}>After NFT Minting</option>
