@@ -18,9 +18,11 @@ class AssetCardRenderer {
 
   nftCardTemplate(asset) {
     const mockBadge = asset.isMockData ? '<span class="mock-badge">MOCK</span>' : '';
+    const coverImage = asset.coverUrl ? `<img src="${asset.coverUrl}" alt="${asset.title}" class="cover-thumbnail">` : '<div class="cover-placeholder">🎵</div>';
     return `
       <div class="asset-card" data-asset-id="${asset.id}">
         <div class="asset-card-header">
+          ${coverImage}
           <div class="asset-info">
             <h3>${asset.title} ${mockBadge}</h3>
             <p class="artist">${asset.artist}</p>

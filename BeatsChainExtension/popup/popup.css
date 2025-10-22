@@ -2728,3 +2728,181 @@ textarea:focus {
     font-size: 11px;
     margin: 3px 0;
 }
+
+/* Asset Card Styles */
+.asset-card {
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-border);
+    border-radius: var(--bc-radius-lg);
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.asset-card:hover {
+    background: var(--bc-surface-light);
+    border-color: var(--bc-accent-green);
+    transform: translateY(-1px);
+}
+
+/* Cover Image Thumbnails */
+.cover-thumbnail {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: var(--bc-radius);
+    border: 2px solid var(--bc-border);
+    flex-shrink: 0;
+}
+
+.cover-placeholder {
+    width: 60px;
+    height: 60px;
+    background: var(--bc-surface-light);
+    border: 2px solid var(--bc-border);
+    border-radius: var(--bc-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--bc-text-muted);
+    flex-shrink: 0;
+}
+
+.asset-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.asset-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.asset-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--bc-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.asset-info .artist {
+    margin: 0;
+    font-size: 12px;
+    color: var(--bc-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.asset-type-badge {
+    background: var(--bc-accent-green);
+    color: var(--bc-text-primary);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.asset-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.metadata-tag {
+    background: var(--bc-surface-light);
+    color: var(--bc-text-secondary);
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    border: 1px solid var(--bc-border);
+}
+
+.metadata-tag.isrc-tag {
+    background: rgba(156, 39, 176, 0.2);
+    color: #9c27b0;
+    border-color: rgba(156, 39, 176, 0.3);
+}
+
+.asset-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.play-btn {
+    background: var(--bc-accent-green);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.play-btn:hover {
+    background: var(--bc-accent-green-hover);
+    transform: scale(1.1);
+}
+
+.asset-stats {
+    display: flex;
+    gap: 12px;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--bc-text-secondary);
+}
+
+.blockchain-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid var(--bc-border);
+}
+
+.network-badge {
+    background: rgba(33, 150, 243, 0.2);
+    color: #2196F3;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.token-id {
+    color: var(--bc-text-muted);
+    font-size: 11px;
+    font-family: monospace;
+}
+
+.mock-badge {
+    background: #ff9800;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 6px;
+}
