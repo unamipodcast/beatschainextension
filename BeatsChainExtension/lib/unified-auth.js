@@ -288,6 +288,10 @@ class UnifiedAuthenticationManager {
     }
 
     // Backward compatibility methods
+    isAuthenticated() {
+        return this.isAuthenticated === true;
+    }
+
     async getWalletBalance() {
         return '0.0000';
     }

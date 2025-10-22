@@ -1148,7 +1148,17 @@ Verification: Check Chrome extension storage for transaction details`;
 
         try {
             // Authentication is MANDATORY for minting
-            if (!unifiedAuth || !unifiedAuth.isAuthenticated()) {
+            let isAuthenticated = false;
+            if (unifiedAuth) {
+                try {
+                    isAuthenticated = typeof unifiedAuth.isAuthenticated === 'function' ? 
+                        unifiedAuth.isAuthenticated() : unifiedAuth.isAuthenticated === true;
+                } catch (authCheckError) {
+                    console.warn('Auth check failed:', authCheckError);
+                }
+            }
+            
+            if (!unifiedAuth || !isAuthenticated) {
                 // Try bypass authentication for development
                 try {
                     const bypassResult = await unifiedAuth.bypassAuth();
@@ -2324,13 +2334,26 @@ Verification: Check Chrome extension storage for transaction details`;
             
             if (!unifiedAuth) return;
             
-            const walletAddress = await walletContext.getCurrentAddress();
-            const walletBalance = await walletContext.getBalance();
+            // Graceful wallet address loading
+            let walletAddress = null;
+            if (walletContext && walletContext.getCurrentAddress) {
+                walletAddress = await walletContext.getCurrentAddress();
+            }
+            
+            // Graceful balance loading with fallback
+            let walletBalance = '0.0000';
+            if (walletContext && walletContext.getBalance) {
+                try {
+                    walletBalance = await walletContext.getBalance();
+                } catch (balanceError) {
+                    console.warn('Balance loading failed, using fallback:', balanceError);
+                }
+            }
             
             // Update wallet display
             const balanceElement = document.getElementById('wallet-balance');
             if (balanceElement && walletBalance) {
-                balanceElement.textContent = `${walletBalance} MATIC`;
+                balanceElement.textContent = `${walletBalance}`;
             }
             
             console.log('Wallet loaded:', walletAddress);

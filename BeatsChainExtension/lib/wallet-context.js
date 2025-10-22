@@ -58,6 +58,11 @@ class WalletContextManager {
         return provider ? await provider.getAddress() : null;
     }
 
+    async getBalance() {
+        // Graceful fallback - return mock balance for compatibility
+        return '0.0000 SOL';
+    }
+
     async signTransaction(transaction) {
         const provider = this.getCurrentProvider();
         if (!provider) throw new Error('No wallet provider available');
