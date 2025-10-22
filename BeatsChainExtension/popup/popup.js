@@ -121,18 +121,31 @@ class BeatsChainApp {
             
             // Initialize managers with error handling
             try {
-                // Try enhanced authentication first, fallback to basic
-                if (window.EnhancedAuthenticationManager) {
-                    this.authManager = new EnhancedAuthenticationManager();
-                    console.log('🛡️ Initializing enhanced authentication...');
-                } else {
-                    this.authManager = new AuthenticationManager();
-                    console.log('🔑 Initializing basic authentication...');
+                // PHASE 1: Run migration first
+                if (window.MigrationManager) {
+                    this.migrationManager = new MigrationManager();
+                    await this.migrationManager.checkAndMigrate();
+                    console.log('✅ Migration check completed');
                 }
                 
-                const isAuthenticated = await this.authManager.initialize();
+                // PHASE 1: Use unified authentication system
+                if (window.UnifiedAuthenticationManager) {
+                    unifiedAuth = new UnifiedAuthenticationManager();
+                    console.log('🔄 Initializing unified authentication...');
+                } else {
+                    // Graceful fallback to enhanced auth
+                    if (window.EnhancedAuthenticationManager) {
+                        unifiedAuth = new EnhancedAuthenticationManager();
+                        console.log('🛡️ Fallback to enhanced authentication...');
+                    } else {
+                        unifiedAuth = new AuthenticationManager();
+                        console.log('🔑 Fallback to basic authentication...');
+                    }
+                }
+                
+                const isAuthenticated = await unifiedAuth.initialize();
                 if (isAuthenticated) {
-                    const userProfile = this.authManager.getUserProfile();
+                    const userProfile = unifiedAuth.getUserProfile();
                     console.log('✅ User authenticated:', userProfile.name);
                     
                     if (userProfile.enhanced) {
@@ -155,15 +168,17 @@ class BeatsChainApp {
                 // Production bypass for end users
                 console.log('🔧 OAuth2 pending Chrome Web Store approval - using bypass');
                 
-                // Initialize bypass authentication
-                if (window.EnhancedAuthenticationManager) {
-                    this.authManager = new EnhancedAuthenticationManager();
+                // Initialize bypass authentication with unified system
+                if (window.UnifiedAuthenticationManager) {
+                    unifiedAuth = new UnifiedAuthenticationManager();
+                } else if (window.EnhancedAuthenticationManager) {
+                    unifiedAuth = new EnhancedAuthenticationManager();
                 } else {
-                    this.authManager = new AuthenticationManager();
+                    unifiedAuth = new AuthenticationManager();
                 }
                 
                 try {
-                    const bypassResult = await this.authManager.bypassAuth();
+                    const bypassResult = await unifiedAuth.bypassAuth();
                     if (bypassResult.success) {
                         console.log('✅ Production bypass successful');
                         await this.updateAuthenticatedUI(bypassResult);
@@ -190,7 +205,14 @@ class BeatsChainApp {
             }
             
             try {
-                // Phase 2: Solana-only manager
+                // PHASE 1: Initialize unified wallet context
+                if (window.WalletContextManager) {
+                    this.walletContext = new WalletContextManager();
+                    const walletReady = await this.walletContext.initialize();
+                    console.log('✅ Unified wallet context initialized');
+                }
+                
+                // Phase 2: Solana-only manager (preserved for compatibility)
                 if (window.SolanaManager) {
                     this.solanaManager = new SolanaManager();
                     const solanaReady = await this.solanaManager.initialize();
@@ -228,12 +250,12 @@ class BeatsChainApp {
             if (window.AdminDashboardManager) {
                 try {
                     this.adminDashboard = new AdminDashboardManager();
-                    await this.adminDashboard.initialize(this.authManager);
+                    await this.adminDashboard.initialize(unifiedAuth);
                     console.log('✅ Admin Dashboard force-initialized');
                     
                     // Check if user is admin after authentication
-                    if (this.authManager && typeof this.authManager.isAuthenticated === 'function' && this.authManager.isAuthenticated()) {
-                        const userProfile = this.authManager.getUserProfile();
+                    if (unifiedAuth && unifiedAuth.isAuthenticated()) {
+                        const userProfile = unifiedAuth.getUserProfile();
                         if (userProfile && userProfile.role === 'admin') {
                             console.log('✅ Admin user detected - showing admin UI');
                             setTimeout(() => {
@@ -1099,13 +1121,12 @@ Verification: Check Chrome extension storage for transaction details`;
 
         try {
             // Authentication is MANDATORY for minting
-            if (!this.authManager || !this.authManager.isAuthenticated || !this.authManager.isAuthenticated()) {
+            if (!unifiedAuth || !unifiedAuth.isAuthenticated()) {
                 // Try bypass authentication for development
                 try {
-                    const bypassResult = await this.authManager.bypassAuth();
+                    const bypassResult = await unifiedAuth.bypassAuth();
                     if (bypassResult.success) {
                         console.log('✅ Using development authentication bypass');
-                        this.authManager.isAuthenticated = () => true;
                     } else {
                         throw new Error('Authentication required: Please sign in with Google to mint NFTs');
                     }
@@ -1114,7 +1135,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 }
             }
             
-            const walletAddress = await this.authManager.getWalletAddress();
+            const walletAddress = await walletContext.getCurrentAddress();
             if (!walletAddress) {
                 throw new Error('Wallet not available: Please sign in with Google to generate your secure wallet');
             }
@@ -1337,7 +1358,7 @@ Verification: Check Chrome extension storage for transaction details`;
         this.currentSection = sectionId;
         
         // Authentication required for licensing and minting sections
-        if ((sectionId === 'licensing-section' || sectionId === 'minting-section') && !this.authManager) {
+        if ((sectionId === 'licensing-section' || sectionId === 'minting-section') && !unifiedAuth) {
             this.showAuthenticationRequired();
         }
     }
@@ -1813,15 +1834,9 @@ Verification: Check Chrome extension storage for transaction details`;
             signInBtn.disabled = true;
             signInBtn.textContent = 'Signing in...';
             
-            if (!this.authManager) {
-                // Initialize enhanced authentication if available
-                if (window.EnhancedAuthenticationManager) {
-                    this.authManager = new EnhancedAuthenticationManager();
-                    console.log('🛡️ Using enhanced authentication for sign-in');
-                } else {
-                    this.authManager = new AuthenticationManager();
-                    console.log('🔑 Using basic authentication for sign-in');
-                }
+            if (!unifiedAuth) {
+                console.error('Unified authentication not initialized');
+                return;
             }
             
             // Clear cached tokens first to force account selection
@@ -1831,7 +1846,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 });
             }
             
-            const result = await this.authManager.signInWithGoogle();
+            const result = await unifiedAuth.signInWithGoogle();
             if (result.success) {
                 console.log('✅ Successfully signed in:', result.user.name);
                 
@@ -1998,13 +2013,13 @@ Verification: Check Chrome extension storage for transaction details`;
 
     async updateAuthenticatedUI(authResult = null) {
         try {
-            if (!this.authManager) {
-                console.error('Authentication manager not available');
+            if (!unifiedAuth) {
+                console.error('Unified authentication not available');
                 this.showAuthenticationRequired();
                 return;
             }
             
-            const userProfile = this.authManager.getUserProfile();
+            const userProfile = unifiedAuth.getUserProfile();
             if (!userProfile) {
                 console.log('No user profile available - authentication required');
                 this.showAuthenticationRequired();
@@ -2029,7 +2044,7 @@ Verification: Check Chrome extension storage for transaction details`;
             if (profileEmail) profileEmail.textContent = userProfile.email || '';
             
             // Update wallet info
-            const walletAddress = await this.authManager.getWalletAddress();
+            const walletAddress = await walletContext.getCurrentAddress();
             if (profileWallet && walletAddress) {
                 profileWallet.textContent = `${walletAddress.substring(0, 6)}...${walletAddress.substring(-4)}`;
             }
@@ -2092,8 +2107,8 @@ Verification: Check Chrome extension storage for transaction details`;
     
     async handleLogout() {
         try {
-            if (this.authManager) {
-                await this.authManager.signOut();
+            if (unifiedAuth) {
+                await unifiedAuth.signOut();
             }
             
             // Hide header auth
@@ -2280,10 +2295,10 @@ Verification: Check Chrome extension storage for transaction details`;
             // Always show WalletConnect section regardless of authentication
             this.initializeWalletConnect();
             
-            if (!this.authManager) return;
+            if (!unifiedAuth) return;
             
-            const walletAddress = await this.authManager.getWalletAddress();
-            const walletBalance = await this.authManager.getWalletBalance();
+            const walletAddress = await walletContext.getCurrentAddress();
+            const walletBalance = await walletContext.getBalance();
             
             // Update wallet display
             const balanceElement = document.getElementById('wallet-balance');

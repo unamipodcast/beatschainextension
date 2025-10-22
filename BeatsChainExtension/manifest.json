@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "BeatsChain - FREE Music NFT Minter",
-  "version": "2.4.1",
-  "description": "Mint your beats as Solana NFTs for FREE! Unlimited gasless minting via Thirdweb, AI licensing, and professional radio packages.",
+  "version": "2.7.0",
+  "description": "Mint your beats as Solana NFTs for FREE! Phase 3: Production security with admin wallet management, Phantom integration, AI licensing, and professional radio packages.",
   "permissions": [
     "storage",
     "identity",
