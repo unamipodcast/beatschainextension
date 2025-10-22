@@ -74,10 +74,17 @@ class NativeSponsorManager {
     }
 
     async displaySponsorContent(placement, forceContainer = null) {
-        // Prevent duplicate displays
-        const displayKey = `${placement}_${Date.now()}`;
+        // Prevent duplicate displays - check both memory and DOM
         if (this.displayedSponsors.has(placement)) {
             console.log(`⚠️ Sponsor already displayed for ${placement}, skipping duplicate`);
+            return;
+        }
+        
+        // Also check if sponsor already exists in DOM
+        const existingSponsor = document.querySelector(`.${placement}-sponsor, .native-sponsor-${placement}`);
+        if (existingSponsor) {
+            console.log(`⚠️ Sponsor already exists in DOM for ${placement}, skipping duplicate`);
+            this.displayedSponsors.add(placement); // Sync memory state
             return;
         }
 
@@ -255,7 +262,7 @@ class NativeSponsorManager {
                 <div class="sponsor-visual">
                     ${assets.logo ? 
                         `<img src="${assets.logo}" alt="${sponsor.name}" class="sponsor-logo">` :
-                        `<div class="sponsor-logo-fallback">${this.getSponsorIcon(sponsor.tier)} ${sponsor.name}</div>`
+                        `<div class="sponsor-logo-fallback">${this.getSponsorIcon(sponsor.tier)}</div>`
                     }
                 </div>
                 <div class="sponsor-info">

@@ -181,19 +181,7 @@ class IPFSAssetManager {
         }
         
         try {
-            // For development, return mock asset URLs
-            const mockAssets = {
-                'QmLegalServicesLogo123': this.createMockAsset('⚖️', 'Legal Services'),
-                'QmAnalyticsLogo789': this.createMockAsset('📊', 'Analytics'),
-                'QmPromotionLogo345': this.createMockAsset('🎵', 'Promotion'),
-                'QmDistributionLogo901': this.createMockAsset('🌐', 'Distribution')
-            };
-            
-            if (mockAssets[ipfsHash]) {
-                const assetUrl = mockAssets[ipfsHash];
-                this.assetCache.set(ipfsHash, assetUrl);
-                return assetUrl;
-            }
+            // Production: Try IPFS gateway first, no mock assets
             
             // Try to load from IPFS gateway with CSRF protection
             const gatewayUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
@@ -219,29 +207,12 @@ class IPFSAssetManager {
         } catch (error) {
             console.warn(`⚠️ Failed to load IPFS asset ${ipfsHash}:`, error);
             
-            // Return fallback mock asset
-            const fallbackUrl = this.createMockAsset('📦', 'Asset');
-            this.assetCache.set(ipfsHash, fallbackUrl);
-            return fallbackUrl;
+            // Production: Return null for failed assets, let UI handle gracefully
+            return null;
         }
     }
 
-    createMockAsset(icon, text) {
-        // Create a data URL for a simple SVG logo
-        const svg = `
-            <svg width="120" height="60" xmlns="http://www.w3.org/2000/svg">
-                <rect width="120" height="60" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1" rx="4"/>
-                <text x="60" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#333">
-                    ${icon}
-                </text>
-                <text x="60" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#666">
-                    ${text}
-                </text>
-            </svg>
-        `;
-        
-        return `data:image/svg+xml;base64,${btoa(svg)}`;
-    }
+
 
     async uploadAsset(file, metadata = {}) {
         try {

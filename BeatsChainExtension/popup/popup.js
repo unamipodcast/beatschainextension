@@ -892,13 +892,9 @@ Verification: Check Chrome extension storage for transaction details`;
                 }
             }
             
-            // FIXED: Show native sponsor content after ISRC generation (no duplicates)
+            // FIXED: Show native sponsor content after ISRC generation (prevent duplicates)
             setTimeout(() => {
-                if (this.nativeSponsorManager) {
-                    this.nativeSponsorManager.displayAfterISRC();
-                } else if (this.enhancedSponsorIntegration) {
-                    this.enhancedSponsorIntegration.displaySponsorAfterISRC();
-                }
+                this.displayISRCGenerationSponsored();
             }, 1000);
             
             setTimeout(() => {
@@ -3532,20 +3528,14 @@ Verification: Check Chrome extension storage for transaction details`;
     }
     
     displayPostPackageSponsor(fileCount, title) {
-        // FIXED: Use native sponsor manager first (IPFS primary)
-        if (this.nativeSponsorManager) {
-            this.nativeSponsorManager.displayPostPackage();
+        // Check if already displayed to prevent duplicates
+        if (document.querySelector('.post-package-sponsor')) {
+            console.log('⚠️ Post-package sponsor already displayed, skipping duplicate');
             return;
         }
-        
-        // Fallback to enhanced integration (Google Drive)
-        if (this.enhancedSponsorIntegration?.displayPostPackageSponsor) {
-            this.enhancedSponsorIntegration.displayPostPackageSponsor(fileCount, title);
-            return;
-        }
-        
-        // Final fallback to hardcoded content
-        this.displayFallbackPostPackageSponsor(fileCount, title);
+
+        // Use consistent styling for post-package sponsor
+        this.displayConsistentPostPackageSponsor(fileCount, title);
     }
     
     displayFallbackPostPackageSponsor(fileCount, title) {
@@ -4611,12 +4601,8 @@ Verification: Check Chrome extension storage for transaction details`;
         generateBtn.disabled = true;
         generateBtn.textContent = 'Generating...';
         
-        // FIXED: Show native sponsor before package generation (no duplicates)
-        if (this.nativeSponsorManager) {
-            await this.nativeSponsorManager.displayBeforePackage();
-        } else if (this.enhancedSponsorIntegration) {
-            this.enhancedSponsorIntegration.displayPackageSponsor();
-        }
+        // FIXED: Show native sponsor before package generation (prevent duplicates)
+        await this.displayPackageGenerationSponsored();
         
         try {
             const files = [];
@@ -5980,3 +5966,204 @@ document.addEventListener('visibilitychange', () => {
         window.beatsChainApp.audioManager.pauseAllAudio();
     }
 });
+    // CONSOLIDATED SPONSOR DISPLAY METHODS - PREVENT DUPLICATES
+    displayISRCGenerationSponsored() {
+        // Check if already displayed to prevent duplicates
+        if (document.querySelector('.isrc-generation-sponsor')) {
+            console.log('⚠️ ISRC generation sponsor already displayed, skipping duplicate');
+            return;
+        }
+
+        // Use consistent styling from the example provided
+        this.displayConsistentSponsor('isrc-generation', {
+            title: 'BeatsChain Premium',
+            message: 'Unlock advanced features with BeatsChain Premium - Enhanced ISRC management, priority support, and exclusive tools for professional music creators.',
+            cta: 'Learn More',
+            icon: '📢',
+            placement: 'after',
+            targetSelector: '.isrc-input-group'
+        });
+    }
+
+    displayValidationSponsored() {
+        // Check if already displayed to prevent duplicates
+        if (document.querySelector('.validation-sponsor')) {
+            console.log('⚠️ Validation sponsor already displayed, skipping duplicate');
+            return;
+        }
+
+        this.displayConsistentSponsor('validation', {
+            title: 'Music Promotion Hub',
+            message: 'Get your music heard by industry professionals and radio programmers',
+            cta: 'Learn More',
+            icon: '📢',
+            placement: 'after',
+            targetSelector: '#radio-validation-results'
+        });
+    }
+
+    async displayPackageGenerationSponsored() {
+        // Check if already displayed to prevent duplicates
+        if (document.querySelector('.package-generation-sponsor')) {
+            console.log('⚠️ Package generation sponsor already displayed, skipping duplicate');
+            return;
+        }
+
+        this.displayConsistentSponsor('package-generation', {
+            title: 'Digital Distribution',
+            message: 'Distribute your music to Spotify, Apple Music, and 150+ platforms',
+            cta: 'Learn More',
+            icon: '🏆',
+            placement: 'before',
+            targetSelector: '#generate-radio-package'
+        });
+    }
+
+    displayConsistentSponsor(type, config) {
+        // Check if native sponsor manager is handling this
+        if (this.nativeSponsorManager && this.nativeSponsorManager.isInitialized) {
+            console.log(`📱 Native sponsor manager handling ${type}, skipping popup method`);
+            return;
+        }
+        
+        const targetElement = document.querySelector(config.targetSelector);
+        if (!targetElement) {
+            console.warn(`⚠️ Target element not found for ${type} sponsor: ${config.targetSelector}`);
+            return;
+        }
+        
+        // Check for existing sponsor in DOM
+        const existingSponsor = document.querySelector(`.${type}-sponsor`);
+        if (existingSponsor) {
+            console.log(`⚠️ ${type} sponsor already exists, skipping duplicate`);
+            return;
+        }
+
+        // Create sponsor container with consistent styling
+        const sponsorContainer = document.createElement('div');
+        sponsorContainer.className = `sponsor-container ${type}-sponsor`;
+        sponsorContainer.style.cssText = `
+            background: rgba(0, 214, 122, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid #00d67a;
+            border: 1px solid rgba(0, 214, 122, 0.2);
+            padding: 16px;
+            margin: 20px 0;
+            position: relative;
+        `;
+
+        sponsorContainer.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 24px;">${config.icon}</div>
+                <div style="flex: 1;">
+                    <h4 style="margin: 0 0 4px 0; color: #333; font-size: 14px; font-weight: 600;">
+                        ${this.sanitizeInput(config.title)}
+                    </h4>
+                    <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; line-height: 1.4;">
+                        ${this.sanitizeInput(config.message)}
+                    </p>
+                    <a href="#" class="sponsor-link" style="color: #00d67a; font-size: 12px; text-decoration: none; font-weight: 500;">
+                        ${config.cta} →
+                    </a>
+                </div>
+                <button class="sponsor-dismiss" style="
+                    position: absolute; top: 8px; right: 8px; 
+                    background: none; border: none; font-size: 16px; 
+                    cursor: pointer; color: #666; padding: 4px;
+                " aria-label="Dismiss">×</button>
+            </div>
+            <div style="margin-top: 12px;">
+                <span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span>
+                <span style="color: #999; font-size: 12px; margin-left: 8px;">Professional partner content</span>
+            </div>
+        `;
+
+        // Insert based on placement
+        if (config.placement === 'after') {
+            targetElement.parentNode.insertBefore(sponsorContainer, targetElement.nextSibling);
+        } else if (config.placement === 'before') {
+            targetElement.parentNode.insertBefore(sponsorContainer, targetElement);
+        }
+
+        // Add event handlers
+        const dismissBtn = sponsorContainer.querySelector('.sponsor-dismiss');
+        const sponsorLink = sponsorContainer.querySelector('.sponsor-link');
+
+        dismissBtn.addEventListener('click', () => {
+            sponsorContainer.remove();
+            this.trackSponsorInteraction('dismissed', type);
+        });
+
+        sponsorLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.trackSponsorInteraction('clicked', type);
+            console.log(`${config.title} sponsor link clicked`);
+        });
+
+        // Track display
+        this.trackSponsorDisplay(type);
+
+        // Auto-dismiss after 10 seconds if not interacted with
+        setTimeout(() => {
+            if (sponsorContainer.parentNode && !sponsorContainer.dataset.interacted) {
+                sponsorContainer.remove();
+            }
+        }, 10000);
+
+        // Mark interaction on hover
+        sponsorContainer.addEventListener('mouseenter', () => {
+            sponsorContainer.dataset.interacted = 'true';
+        });
+
+        console.log(`✅ Consistent ${type} sponsor displayed`);
+    }
+    displayConsistentPostPackageSponsor(fileCount, title) {
+        const sponsorDiv = document.createElement('div');
+        sponsorDiv.className = 'post-package-sponsor';
+        sponsorDiv.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(0, 214, 122, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid #00d67a;
+            border: 1px solid rgba(0, 214, 122, 0.2);
+            padding: 16px; max-width: 320px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10001;
+            font-size: 13px;
+        `;
+        
+        sponsorDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span>🎵</span>
+                <strong>Next Steps for Your Music</strong>
+                <span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span>
+            </div>
+            <p style="margin: 0 0 12px 0; color: #666;">
+                Your ${fileCount}-file radio package is ready! Consider these next steps:
+            </p>
+            <div style="font-size: 12px; line-height: 1.4;">
+                <div>📻 Radio submission services</div>
+                <div>📈 Airplay tracking tools</div>
+                <div>🎯 Music promotion platforms</div>
+            </div>
+            <button id="dismiss-sponsor" style="position: absolute; top: 4px; right: 8px; border: none; background: none; cursor: pointer; font-size: 16px;">×</button>
+        `;
+        
+        // Track display
+        this.trackSponsorDisplay('post-package');
+        
+        // Dismiss functionality
+        sponsorDiv.querySelector('#dismiss-sponsor').addEventListener('click', () => {
+            this.trackSponsorInteraction('dismissed', 'post-package');
+            sponsorDiv.remove();
+        });
+        
+        // Auto-dismiss after 8 seconds
+        setTimeout(() => {
+            if (sponsorDiv.parentNode) {
+                sponsorDiv.remove();
+            }
+        }, 8000);
+        
+        document.body.appendChild(sponsorDiv);
+        console.log('✅ Consistent post-package sponsor displayed');
+    }
