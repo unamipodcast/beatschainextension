@@ -783,8 +783,13 @@ Verification: Check Chrome extension storage for transaction details`;
         statusBadge.textContent = 'Generating';
         
         try {
+            // Ensure ISRC manager is initialized
+            if (!this.isrcManager.registry) {
+                await this.isrcManager.initialize();
+            }
+            
             const artistInputs = this.getArtistInputs();
-            const isrc = this.isrcManager.generateISRC(artistInputs.beatTitle, artistInputs.artistName);
+            const isrc = await this.isrcManager.generateISRC(artistInputs.beatTitle, artistInputs.artistName);
             
             // Update display
             const isrcDisplay = document.getElementById('generated-isrc');
@@ -2842,6 +2847,11 @@ Verification: Check Chrome extension storage for transaction details`;
             }
             
             if (this.isrcManager) {
+                // Ensure registry is loaded
+                if (!this.isrcManager.registry) {
+                    await this.isrcManager.initialize();
+                }
+                
                 const newISRC = await this.isrcManager.generateISRC();
                 if (newISRC) {
                     isrcInput.value = newISRC;

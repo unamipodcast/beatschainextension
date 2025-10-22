@@ -28,6 +28,11 @@ class ISRCMintingManager {
     try {
       this.updateStatus('Generating...');
       
+      // Ensure ISRC manager is initialized
+      if (!this.isrcManager.registry) {
+        await this.isrcManager.initialize();
+      }
+      
       // Generate new ISRC code
       this.currentISRC = await this.isrcManager.generateISRC();
       
@@ -166,13 +171,7 @@ class ISRCMintingManager {
     if (!this.currentISRC) return;
 
     try {
-      await this.isrcManager.addToRegistry({
-        isrc: this.currentISRC,
-        timestamp: Date.now(),
-        status: 'generated',
-        embedded: false
-      });
-
+      // Registry is already updated in generateISRC method
       this.updateRegistryDisplay();
       
     } catch (error) {
@@ -182,8 +181,8 @@ class ISRCMintingManager {
 
   async updateRegistryDisplay() {
     try {
-      const registry = await this.isrcManager.getRegistry();
-      const count = registry.length;
+      const registry = this.isrcManager.getISRCRegistry();
+      const count = registry.total;
       
       const countDisplay = document.getElementById('isrc-count');
       if (countDisplay) {
@@ -192,12 +191,13 @@ class ISRCMintingManager {
 
       // Update registry list preview
       const listContainer = document.getElementById('isrc-registry-list');
-      if (listContainer && count > 0) {
-        const recentCodes = registry.slice(-3).reverse();
-        listContainer.innerHTML = recentCodes.map(entry => `
+      if (listContainer && count > 0 && this.isrcManager.registry) {
+        const codes = Object.entries(this.isrcManager.registry.codes);
+        const recentCodes = codes.slice(-3).reverse();
+        listContainer.innerHTML = recentCodes.map(([isrc, data]) => `
           <div class="registry-item">
-            <span class="registry-isrc">${entry.isrc}</span>
-            <span class="registry-date">${new Date(entry.timestamp).toLocaleDateString()}</span>
+            <span class="registry-isrc">${isrc}</span>
+            <span class="registry-date">${new Date(data.generated).toLocaleDateString()}</span>
           </div>
         `).join('');
       }
@@ -250,12 +250,16 @@ class ISRCMintingManager {
 
   async exportRegistry() {
     try {
-      const registry = await this.isrcManager.getRegistry();
+      if (!this.isrcManager.registry) {
+        await this.isrcManager.initialize();
+      }
+      
+      const codes = Object.entries(this.isrcManager.registry.codes);
       
       const csvContent = [
-        'ISRC,Date Generated,Status,Embedded',
-        ...registry.map(entry => 
-          `${entry.isrc},${new Date(entry.timestamp).toISOString()},${entry.status},${entry.embedded}`
+        'ISRC,Date Generated,Track Title,Artist Name,Used',
+        ...codes.map(([isrc, data]) => 
+          `${isrc},${data.generated},${data.trackTitle || ''},${data.artistName || ''},${data.used ? 'Yes' : 'No'}`
         )
       ].join('\n');
 
@@ -303,10 +307,19 @@ class ISRCMintingManager {
 
   async loadISRCRegistry() {
     try {
-      const registry = await this.isrcManager.getRegistry();
-      if (registry.length > 0) {
-        this.currentISRC = registry[registry.length - 1].isrc;
-        this.updateISRCDisplay(this.currentISRC);
+      // Ensure ISRC manager is initialized
+      if (!this.isrcManager.registry) {
+        await this.isrcManager.initialize();
+      }
+      
+      const registry = this.isrcManager.getISRCRegistry();
+      if (registry.total > 0) {
+        // Get the last generated ISRC from registry codes
+        const codes = Object.keys(this.isrcManager.registry.codes);
+        if (codes.length > 0) {
+          this.currentISRC = codes[codes.length - 1];
+          this.updateISRCDisplay(this.currentISRC);
+        }
       }
     } catch (error) {
       console.error('Failed to load ISRC registry:', error);

@@ -60,8 +60,13 @@ class ISRCManager {
         }
     }
 
-    generateISRC(trackTitle = '', artistName = '') {
+    async generateISRC(trackTitle = '', artistName = '') {
         try {
+            // Ensure registry is initialized
+            if (!this.registry) {
+                await this.loadISRCRegistry();
+            }
+            
             const designation = this.getNextDesignation();
             const isrc = `${this.territory}-${this.registrantCode}-${this.currentYear}-${designation}`;
             
@@ -86,7 +91,7 @@ class ISRCManager {
                 validated: true
             };
             
-            this.saveRegistry();
+            await this.saveRegistry();
             
             console.log('✅ ISRC generated and validated:', {
                 isrc,
@@ -104,6 +109,11 @@ class ISRCManager {
     }
 
     getNextDesignation() {
+        // Ensure registry exists
+        if (!this.registry) {
+            throw new Error('ISRC registry not initialized');
+        }
+        
         this.registry.lastDesignation += 1;
         
         // Ensure we stay within user's designated range
@@ -149,7 +159,7 @@ class ISRCManager {
     }
 
     markISRCAsUsed(isrc, context = {}) {
-        if (this.registry.codes[isrc]) {
+        if (this.registry && this.registry.codes && this.registry.codes[isrc]) {
             this.registry.codes[isrc].used = true;
             this.registry.codes[isrc].usedAt = new Date().toISOString();
             this.registry.codes[isrc].context = context;
@@ -211,8 +221,8 @@ class ISRCManager {
                 return;
             }
 
-            // Generate ISRC
-            const isrc = this.generateISRC(trackTitle, artistName);
+            // Generate ISRC (now async)
+            const isrc = await this.generateISRC(trackTitle, artistName);
             
             // Set in field
             const isrcField = document.getElementById('radio-isrc');
@@ -296,6 +306,11 @@ class ISRCManager {
             return userISRC;
         }
 
+        // Check if registry exists and has codes
+        if (!this.registry || !this.registry.codes) {
+            return null;
+        }
+
         // Check if we have generated ISRC for this track
         for (const [isrc, data] of Object.entries(this.registry.codes)) {
             if (data.trackTitle === trackTitle && data.artistName === artistName && !data.used) {
@@ -307,6 +322,16 @@ class ISRCManager {
     }
 
     getISRCRegistry() {
+        if (!this.registry) {
+            return {
+                total: 0,
+                used: 0,
+                available: 0,
+                currentYear: this.currentYear,
+                lastDesignation: 0
+            };
+        }
+        
         return {
             total: Object.keys(this.registry.codes).length,
             used: Object.values(this.registry.codes).filter(c => c.used).length,
@@ -396,9 +421,9 @@ class ISRCManager {
     }
 
     // Cross-system ISRC integration
-    integrateWithNFTSystem(nftMetadata) {
+    async integrateWithNFTSystem(nftMetadata) {
         if (!nftMetadata.isrc && nftMetadata.title && nftMetadata.artist) {
-            const generatedISRC = this.generateISRC(nftMetadata.title, nftMetadata.artist);
+            const generatedISRC = await this.generateISRC(nftMetadata.title, nftMetadata.artist);
             return {
                 ...nftMetadata,
                 isrc: generatedISRC,
@@ -410,9 +435,9 @@ class ISRCManager {
         return nftMetadata;
     }
 
-    integrateWithRadioSystem(radioMetadata) {
+    async integrateWithRadioSystem(radioMetadata) {
         if (!radioMetadata.isrc && radioMetadata.title && radioMetadata.artistName) {
-            const generatedISRC = this.generateISRC(radioMetadata.title, radioMetadata.artistName);
+            const generatedISRC = await this.generateISRC(radioMetadata.title, radioMetadata.artistName);
             return {
                 ...radioMetadata,
                 isrc: generatedISRC,
