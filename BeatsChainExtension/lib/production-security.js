@@ -36,14 +36,20 @@ class ProductionSecurityManager {
             throw new Error('Admin wallet not available');
         }
         
-        // Add security headers
+        // Add security headers with CSRF protection
         transaction.security = {
             timestamp: Date.now(),
             level: this.securityLevel,
-            walletType: walletType
+            walletType: walletType,
+            extensionId: chrome.runtime?.id || 'development',
+            sessionToken: this.generateSessionToken()
         };
         
         return transaction;
+    }
+    
+    generateSessionToken() {
+        return 'sec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
     maskSensitiveData(data) {

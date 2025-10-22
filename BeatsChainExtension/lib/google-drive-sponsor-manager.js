@@ -17,6 +17,7 @@ class GoogleDriveSponsorManager {
             clicks: [],
             interactions: []
         };
+        this.csrfProtection = window.CSRFProtection ? new CSRFProtection() : null;
     }
 
     // Set Google Drive manifest URL
@@ -44,7 +45,7 @@ class GoogleDriveSponsorManager {
             }
 
             console.log('🌐 Fetching sponsor manifest from Google Drive...');
-            const response = await fetch(this.manifestUrl, {
+            const requestOptions = {
                 method: 'GET',
                 mode: 'cors',
                 headers: {
@@ -52,7 +53,11 @@ class GoogleDriveSponsorManager {
                     'Cache-Control': 'no-cache'
                 },
                 credentials: 'omit'
-            });
+            };
+            
+            const response = this.csrfProtection ? 
+                await this.csrfProtection.secureRequest(this.manifestUrl, requestOptions) :
+                await fetch(this.manifestUrl, requestOptions);
 
             console.log('📡 Response status:', response.status, response.statusText);
 

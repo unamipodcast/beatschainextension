@@ -892,6 +892,15 @@ Verification: Check Chrome extension storage for transaction details`;
                 }
             }
             
+            // FIXED: Show native sponsor content after ISRC generation (no duplicates)
+            setTimeout(() => {
+                if (this.nativeSponsorManager) {
+                    this.nativeSponsorManager.displayAfterISRC();
+                } else if (this.enhancedSponsorIntegration) {
+                    this.enhancedSponsorIntegration.displaySponsorAfterISRC();
+                }
+            }, 1000);
+            
             setTimeout(() => {
                 generateBtn.textContent = originalText;
                 generateBtn.disabled = false;
@@ -2525,10 +2534,16 @@ Verification: Check Chrome extension storage for transaction details`;
     
     async initializeSponsorIntegration() {
         try {
-            // Initialize Enhanced Sponsor Integration
+            // Initialize Native Sponsor Manager (IPFS primary, Google Drive fallback)
+            if (window.NativeSponsorManager) {
+                this.nativeSponsorManager = NativeSponsorManager.enhanceApp(this);
+                console.log('✅ Native Sponsor Manager initialized (IPFS primary)');
+            }
+            
+            // Keep Enhanced Sponsor Integration as fallback
             if (window.EnhancedSponsorIntegration) {
                 this.enhancedSponsorIntegration = EnhancedSponsorIntegration.enhanceApp(this);
-                console.log('✅ Enhanced Sponsor Integration initialized');
+                console.log('✅ Enhanced Sponsor Integration initialized (fallback)');
             }
         } catch (error) {
             console.log('Sponsor integration initialization failed:', error);
@@ -3517,13 +3532,19 @@ Verification: Check Chrome extension storage for transaction details`;
     }
     
     displayPostPackageSponsor(fileCount, title) {
-        // Try Google Drive integration first
+        // FIXED: Use native sponsor manager first (IPFS primary)
+        if (this.nativeSponsorManager) {
+            this.nativeSponsorManager.displayPostPackage();
+            return;
+        }
+        
+        // Fallback to enhanced integration (Google Drive)
         if (this.enhancedSponsorIntegration?.displayPostPackageSponsor) {
             this.enhancedSponsorIntegration.displayPostPackageSponsor(fileCount, title);
             return;
         }
         
-        // Fallback to hardcoded content if Google Drive unavailable
+        // Final fallback to hardcoded content
         this.displayFallbackPostPackageSponsor(fileCount, title);
     }
     
@@ -4403,12 +4424,14 @@ Verification: Check Chrome extension storage for transaction details`;
                 
                 this.displayRadioValidation(validation, overallScore);
                 
-                // Show sponsor content after validation (Position 2)
-                if (this.enhancedSponsorIntegration) {
-                    setTimeout(() => {
+                // FIXED: Show native sponsor content after validation (no duplicates)
+                setTimeout(() => {
+                    if (this.nativeSponsorManager) {
+                        this.nativeSponsorManager.displayAfterValidation();
+                    } else if (this.enhancedSponsorIntegration) {
                         this.enhancedSponsorIntegration.displayValidationSponsor();
-                    }, 500);
-                }
+                    }
+                }, 500);
                 
                 const generateBtn = document.getElementById('generate-radio-package');
                 if (generateBtn) generateBtn.disabled = overallScore < 60;
@@ -4588,8 +4611,10 @@ Verification: Check Chrome extension storage for transaction details`;
         generateBtn.disabled = true;
         generateBtn.textContent = 'Generating...';
         
-        // Show sponsor before package generation (Position 3)
-        if (this.enhancedSponsorIntegration) {
+        // FIXED: Show native sponsor before package generation (no duplicates)
+        if (this.nativeSponsorManager) {
+            await this.nativeSponsorManager.displayBeforePackage();
+        } else if (this.enhancedSponsorIntegration) {
             this.enhancedSponsorIntegration.displayPackageSponsor();
         }
         
