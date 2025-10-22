@@ -33,6 +33,12 @@ class ISRCManager {
                 userRange: userRange
             };
             
+            // CRITICAL FIX: Ensure codes object always exists
+            if (!this.registry.codes || typeof this.registry.codes !== 'object') {
+                this.registry.codes = {};
+                console.log('🔧 Fixed missing codes object in registry');
+            }
+            
             // Reset designation if year changed or user range not set
             if (this.registry.year !== this.currentYear || !this.registry.userRange) {
                 this.registry.lastDesignation = userRange.start;
@@ -57,6 +63,8 @@ class ISRCManager {
             await chrome.storage.local.set({ isrcRegistry: this.registry });
         } catch (error) {
             console.error('ISRC Registry save failed:', error);
+            // GRACEFUL: Continue without persistent storage
+            console.log('🔧 ISRC system continuing with in-memory storage only');
         }
     }
 
@@ -65,6 +73,12 @@ class ISRCManager {
             // Ensure registry is initialized
             if (!this.registry) {
                 await this.loadISRCRegistry();
+            }
+            
+            // CRITICAL FIX: Ensure registry.codes exists
+            if (!this.registry.codes) {
+                this.registry.codes = {};
+                console.log('🔧 Initialized empty codes registry');
             }
             
             const designation = this.getNextDesignation();
@@ -82,25 +96,32 @@ class ISRCManager {
                 throw new Error(`Generated ISRC invalid format: ${isrc}`);
             }
             
-            // Store in registry
-            this.registry.codes[isrc] = {
-                trackTitle: this.sanitizeInput(trackTitle),
-                artistName: this.sanitizeInput(artistName),
-                generated: new Date().toISOString(),
-                used: false,
-                validated: true
-            };
-            
-            await this.saveRegistry();
-            
-            console.log('✅ ISRC generated and validated:', {
-                isrc,
-                designation,
-                trackTitle: trackTitle.substring(0, 20),
-                artistName: artistName.substring(0, 20)
-            });
-            
-            return isrc;
+            // Store in registry with defensive programming
+            try {
+                this.registry.codes[isrc] = {
+                    trackTitle: this.sanitizeInput(trackTitle),
+                    artistName: this.sanitizeInput(artistName),
+                    generated: new Date().toISOString(),
+                    used: false,
+                    validated: true
+                };
+                
+                await this.saveRegistry();
+                
+                console.log('✅ ISRC generated and validated:', {
+                    isrc,
+                    designation,
+                    trackTitle: trackTitle.substring(0, 20),
+                    artistName: artistName.substring(0, 20)
+                });
+                
+                return isrc;
+                
+            } catch (storageError) {
+                console.warn('⚠️ ISRC storage failed, returning generated code:', storageError);
+                // Return the valid ISRC even if storage fails
+                return isrc;
+            }
             
         } catch (error) {
             console.error('❌ ISRC generation failed:', error);
@@ -112,6 +133,18 @@ class ISRCManager {
         // Ensure registry exists
         if (!this.registry) {
             throw new Error('ISRC registry not initialized');
+        }
+        
+        // DEFENSIVE: Ensure userRange exists
+        if (!this.registry.userRange) {
+            console.warn('⚠️ User range missing, using default');
+            this.registry.userRange = { start: 200, end: 1199 };
+        }
+        
+        // DEFENSIVE: Ensure lastDesignation is a number
+        if (typeof this.registry.lastDesignation !== 'number') {
+            console.warn('⚠️ Invalid lastDesignation, resetting to start');
+            this.registry.lastDesignation = this.registry.userRange.start;
         }
         
         this.registry.lastDesignation += 1;
@@ -346,16 +379,26 @@ class ISRCManager {
             // Get authenticated user ID for unique range calculation
             let userId = 'anonymous';
             
-            if (window.AuthenticationManager || window.EnhancedAuthenticationManager) {
-                const authManager = window.authManager || 
-                    (window.EnhancedAuthenticationManager ? new EnhancedAuthenticationManager() : new AuthenticationManager());
-                
-                if (authManager.isAuthenticated) {
-                    const userProfile = authManager.getUserProfile();
+            // GRACEFUL: Handle missing authentication managers
+            try {
+                if (window.unifiedAuth && window.unifiedAuth.isAuthenticated()) {
+                    const userProfile = window.unifiedAuth.getUserProfile();
                     if (userProfile && userProfile.id) {
                         userId = userProfile.id;
                     }
+                } else if (window.AuthenticationManager || window.EnhancedAuthenticationManager) {
+                    const authManager = window.authManager || 
+                        (window.EnhancedAuthenticationManager ? new EnhancedAuthenticationManager() : new AuthenticationManager());
+                    
+                    if (authManager.isAuthenticated) {
+                        const userProfile = authManager.getUserProfile();
+                        if (userProfile && userProfile.id) {
+                            userId = userProfile.id;
+                        }
+                    }
                 }
+            } catch (authError) {
+                console.warn('⚠️ Auth check failed, using anonymous:', authError);
             }
             
             // FIXED: Generate unique range with 5-digit limit enforcement

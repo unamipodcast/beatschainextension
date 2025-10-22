@@ -768,42 +768,49 @@ Verification: Check Chrome extension storage for transaction details`;
     }
 
     async initializeISRCMinting() {
-        // Initialize ISRC manager if not already done
-        if (!this.isrcManager && window.ISRCManager) {
-            this.isrcManager = new ISRCManager();
-            await this.isrcManager.initialize();
-        }
-        
-        // Setup ISRC generation button (prevent duplicate listeners)
-        const generateBtn = document.getElementById('generate-isrc');
-        if (generateBtn && !generateBtn.hasAttribute('data-isrc-listener')) {
-            generateBtn.setAttribute('data-isrc-listener', 'true');
-            generateBtn.addEventListener('click', async () => {
-                await this.handleISRCGeneration();
-            });
-        }
-        
-        // Setup proceed to mint button - REQUIRES VALIDATION
-        const proceedBtn = document.getElementById('proceed-to-mint');
-        if (proceedBtn) {
-            // Initially disable until ISRC is generated and validated
-            proceedBtn.disabled = true;
-            proceedBtn.title = 'Generate and validate ISRC first';
+        try {
+            // GRACEFUL: Initialize ISRC manager with error handling
+            if (!this.isrcManager && window.ISRCManager) {
+                this.isrcManager = new ISRCManager();
+                await this.isrcManager.initialize();
+                console.log('✅ ISRC Manager initialized for minting');
+            }
             
-            // Prevent duplicate listeners
-            if (!proceedBtn.hasAttribute('data-proceed-listener')) {
-                proceedBtn.setAttribute('data-proceed-listener', 'true');
-                proceedBtn.addEventListener('click', () => {
-                    // Show sponsored content before proceeding to minting
-                    this.showISRCProceedSponsored();
+            // Setup ISRC generation button (prevent duplicate listeners)
+            const generateBtn = document.getElementById('generate-isrc');
+            if (generateBtn && !generateBtn.hasAttribute('data-isrc-listener')) {
+                generateBtn.setAttribute('data-isrc-listener', 'true');
+                generateBtn.addEventListener('click', async () => {
+                    await this.handleISRCGeneration();
                 });
             }
-        }
-        
-        // Auto-generate ISRC if we have track info
-        const artistInputs = this.getArtistInputs();
-        if (artistInputs.beatTitle && artistInputs.artistName) {
-            await this.handleISRCGeneration();
+            
+            // Setup proceed to mint button - REQUIRES VALIDATION
+            const proceedBtn = document.getElementById('proceed-to-mint');
+            if (proceedBtn) {
+                // Initially disable until ISRC is generated and validated
+                proceedBtn.disabled = true;
+                proceedBtn.title = 'Generate and validate ISRC first';
+                
+                // Prevent duplicate listeners
+                if (!proceedBtn.hasAttribute('data-proceed-listener')) {
+                    proceedBtn.setAttribute('data-proceed-listener', 'true');
+                    proceedBtn.addEventListener('click', () => {
+                        // Show sponsored content before proceeding to minting
+                        this.showISRCProceedSponsored();
+                    });
+                }
+            }
+            
+            // Auto-generate ISRC if we have track info
+            const artistInputs = this.getArtistInputs();
+            if (artistInputs.beatTitle && artistInputs.artistName) {
+                await this.handleISRCGeneration();
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ ISRC minting initialization failed:', error);
+            // Continue without ISRC functionality
         }
     }
     
@@ -820,9 +827,21 @@ Verification: Check Chrome extension storage for transaction details`;
         statusBadge.textContent = 'Generating';
         
         try {
-            // Ensure ISRC manager is initialized
+            // GRACEFUL: Initialize ISRC manager if not available
+            if (!this.isrcManager && window.ISRCManager) {
+                this.isrcManager = new ISRCManager();
+                await this.isrcManager.initialize();
+                console.log('🔧 ISRC Manager initialized on demand');
+            }
+            
+            if (!this.isrcManager) {
+                throw new Error('ISRC Manager not available');
+            }
+            
+            // Ensure ISRC manager is properly initialized
             if (!this.isrcManager.registry) {
                 await this.isrcManager.initialize();
+                console.log('🔧 ISRC Manager registry initialized');
             }
             
             const artistInputs = this.getArtistInputs();
@@ -882,6 +901,10 @@ Verification: Check Chrome extension storage for transaction details`;
             console.error('ISRC generation failed:', error);
             statusBadge.textContent = 'Error';
             generateBtn.textContent = 'Error';
+            
+            // Show user-friendly error message
+            const errorMsg = error.message.includes('not available') ? 
+                'ISRC system unavailable' : 'Generation failed';
             
             setTimeout(() => {
                 generateBtn.textContent = originalText;
