@@ -127,7 +127,43 @@ class CampaignManager {
     }
 
     getAllCampaigns() {
-        return Array.from(this.campaigns.values());
+        try {
+            if (!this.campaigns || typeof this.campaigns.values !== 'function') {
+                console.warn('Campaign storage not properly initialized');
+                return [];
+            }
+            
+            return Array.from(this.campaigns.values()).map(campaign => {
+                // Ensure all campaigns have proper structure with safe fallbacks
+                if (!campaign || typeof campaign !== 'object') {
+                    console.warn('Invalid campaign object found:', campaign);
+                    return {
+                        id: 'invalid_' + Date.now(),
+                        name: 'Invalid Campaign',
+                        status: 'error',
+                        metrics: { impressions: 0, clicks: 0, conversions: 0, spend: 0 },
+                        sponsorId: 'unknown',
+                        startDate: new Date().toISOString(),
+                        endDate: new Date().toISOString(),
+                        budget: 0
+                    };
+                }
+                
+                return {
+                    ...campaign,
+                    metrics: campaign.metrics || { impressions: 0, clicks: 0, conversions: 0, spend: 0 },
+                    status: campaign.status || 'scheduled',
+                    name: campaign.name || 'Untitled Campaign',
+                    sponsorId: campaign.sponsorId || 'unknown',
+                    startDate: campaign.startDate || new Date().toISOString(),
+                    endDate: campaign.endDate || new Date().toISOString(),
+                    budget: campaign.budget || 0
+                };
+            });
+        } catch (error) {
+            console.error('Error in getAllCampaigns:', error);
+            return [];
+        }
     }
 
     getActiveCampaigns() {
@@ -140,24 +176,43 @@ class CampaignManager {
     }
 
     async recordImpression(campaignId) {
-        const campaign = this.campaigns.get(campaignId);
-        if (campaign) {
-            campaign.metrics.impressions++;
-            campaign.updatedAt = Date.now();
-            await this.saveCampaigns();
+        try {
+            const campaign = this.campaigns.get(campaignId);
+            if (campaign) {
+                // Ensure metrics object exists
+                if (!campaign.metrics) {
+                    campaign.metrics = { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
+                }
+                campaign.metrics.impressions++;
+                campaign.updatedAt = Date.now();
+                await this.saveCampaigns();
+            }
+        } catch (error) {
+            console.error('Failed to record impression:', error);
         }
     }
 
     async recordClick(campaignId) {
-        const campaign = this.campaigns.get(campaignId);
-        if (campaign) {
-            campaign.metrics.clicks++;
-            campaign.updatedAt = Date.now();
-            await this.saveCampaigns();
+        try {
+            const campaign = this.campaigns.get(campaignId);
+            if (campaign) {
+                // Ensure metrics object exists
+                if (!campaign.metrics) {
+                    campaign.metrics = { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
+                }
+                campaign.metrics.clicks++;
+                campaign.updatedAt = Date.now();
+                await this.saveCampaigns();
+            }
+        } catch (error) {
+            console.error('Failed to record click:', error);
         }
     }
 
     generateCampaignHTML(campaign) {
+        // Graceful fallback for campaign metrics
+        const metrics = campaign.metrics || { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
+        
         const statusColor = {
             'scheduled': '#ffc107',
             'active': '#28a745',
@@ -170,8 +225,8 @@ class CampaignManager {
             <div class="campaign-card" data-campaign-id="${campaign.id}">
                 <div class="campaign-header">
                     <div class="campaign-title">
-                        <h6>${campaign.name}</h6>
-                        <span class="campaign-status" style="background-color: ${statusColor}">${campaign.status}</span>
+                        <h6>${campaign.name || 'Untitled Campaign'}</h6>
+                        <span class="campaign-status" style="background-color: ${statusColor}">${campaign.status || 'unknown'}</span>
                     </div>
                     <div class="campaign-actions">
                         <button class="btn-small btn-secondary edit-campaign" data-campaign-id="${campaign.id}">✏️</button>
@@ -181,22 +236,22 @@ class CampaignManager {
                 
                 <div class="campaign-details">
                     <div class="campaign-info">
-                        <small>Sponsor: ${campaign.sponsorId}</small>
-                        <small>Period: ${new Date(campaign.startDate).toLocaleDateString()} - ${new Date(campaign.endDate).toLocaleDateString()}</small>
-                        <small>Budget: $${campaign.budget}</small>
+                        <small>Sponsor: ${campaign.sponsorId || 'Unknown'}</small>
+                        <small>Period: ${campaign.startDate ? new Date(campaign.startDate).toLocaleDateString() : 'TBD'} - ${campaign.endDate ? new Date(campaign.endDate).toLocaleDateString() : 'TBD'}</small>
+                        <small>Budget: $${campaign.budget || 0}</small>
                     </div>
                     
                     <div class="campaign-metrics">
                         <div class="metric-item">
-                            <span class="metric-value">${campaign.metrics.impressions}</span>
+                            <span class="metric-value">${metrics.impressions}</span>
                             <span class="metric-label">Impressions</span>
                         </div>
                         <div class="metric-item">
-                            <span class="metric-value">${campaign.metrics.clicks}</span>
+                            <span class="metric-value">${metrics.clicks}</span>
                             <span class="metric-label">Clicks</span>
                         </div>
                         <div class="metric-item">
-                            <span class="metric-value">${campaign.metrics.clicks > 0 ? ((campaign.metrics.clicks / campaign.metrics.impressions) * 100).toFixed(1) : 0}%</span>
+                            <span class="metric-value">${metrics.clicks > 0 && metrics.impressions > 0 ? ((metrics.clicks / metrics.impressions) * 100).toFixed(1) : 0}%</span>
                             <span class="metric-label">CTR</span>
                         </div>
                     </div>

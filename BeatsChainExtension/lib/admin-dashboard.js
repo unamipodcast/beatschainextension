@@ -33,11 +33,27 @@ class AdminDashboardManager {
     }
 
     async initializeCampaignManager() {
-        if (window.CampaignManager) {
-            this.campaignManager = new CampaignManager();
-            await this.campaignManager.initialize();
-        } else {
-            console.warn('CampaignManager not available');
+        try {
+            if (window.CampaignManager) {
+                this.campaignManager = new CampaignManager();
+                await this.campaignManager.initialize();
+                console.log('✅ Campaign Manager initialized successfully');
+            } else {
+                console.warn('⚠️ CampaignManager not available');
+                this.campaignManager = null;
+            }
+        } catch (error) {
+            console.error('❌ Campaign Manager initialization failed:', error);
+            this.campaignManager = null;
+            // Create a mock campaign manager to prevent errors
+            this.campaignManager = {
+                getAllCampaigns: () => [],
+                generateCampaignHTML: () => '<div class="no-campaigns">Campaign system unavailable</div>',
+                getCampaign: () => null,
+                createCampaign: () => Promise.reject(new Error('Campaign system unavailable')),
+                updateCampaign: () => Promise.reject(new Error('Campaign system unavailable')),
+                deleteCampaign: () => Promise.reject(new Error('Campaign system unavailable'))
+            };
         }
     }
 
@@ -2094,16 +2110,46 @@ class AdminDashboardManager {
     }
 
     generateCampaignsListHTML() {
-        if (!this.campaignManager) {
-            return '<div class="no-campaigns">Campaign Manager not available</div>';
-        }
+        try {
+            if (!this.campaignManager || typeof this.campaignManager.getAllCampaigns !== 'function') {
+                return '<div class="no-campaigns">Campaign Manager not available</div>';
+            }
 
-        const campaigns = this.campaignManager.getAllCampaigns();
-        if (campaigns.length === 0) {
-            return '<div class="no-campaigns">No campaigns created yet</div>';
-        }
+            let campaigns = [];
+            try {
+                campaigns = this.campaignManager.getAllCampaigns() || [];
+            } catch (error) {
+                console.warn('Failed to get campaigns:', error);
+                return '<div class="campaigns-error">Unable to load campaigns. Please refresh.</div>';
+            }
 
-        return campaigns.map(campaign => this.campaignManager.generateCampaignHTML(campaign)).join('');
+            if (campaigns.length === 0) {
+                return '<div class="no-campaigns">No campaigns created yet</div>';
+            }
+
+            return campaigns.map(campaign => {
+                try {
+                    // Ensure campaign has required structure before generating HTML
+                    if (!campaign || typeof campaign !== 'object') {
+                        return '<div class="campaign-error">Invalid campaign data</div>';
+                    }
+                    
+                    // Ensure campaign has metrics property
+                    if (!campaign.metrics) {
+                        campaign.metrics = { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
+                    }
+                    
+                    return this.campaignManager.generateCampaignHTML(campaign);
+                } catch (error) {
+                    console.warn('Failed to generate campaign HTML:', error);
+                    const campaignName = (campaign && campaign.name) ? campaign.name : 'Unknown';
+                    return `<div class="campaign-error">Campaign "${campaignName}" has display issues</div>`;
+                }
+            }).join('');
+        } catch (error) {
+            console.error('Failed to generate campaigns list:', error);
+            return '<div class="campaigns-error">Unable to load campaigns. Please refresh.</div>';
+        }
     }
 
     setupCampaignListEvents(container) {

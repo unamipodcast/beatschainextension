@@ -250,18 +250,30 @@ class BeatsChainApp {
             // Initialize Smart Asset Hub Integration
             await this.initializeSmartAssetHubIntegration();
             
-            // Initialize Monetization Systems
-            await this.initializeMonetizationSystems();
+            // Initialize Monetization Systems with error handling
+            try {
+                await this.initializeMonetizationSystems();
+            } catch (error) {
+                console.log('Monetization systems initialization failed:', error);
+            }
             
             // Force Admin Dashboard initialization for admin users
             if (window.AdminDashboardManager) {
                 try {
                     this.adminDashboard = new AdminDashboardManager();
-                    await this.adminDashboard.initialize(unifiedAuth);
+                    
+                    // Create a mock auth manager if unifiedAuth is not available
+                    const authManager = unifiedAuth || {
+                        hasPermission: () => true,
+                        getUserProfile: () => ({ name: 'Admin User', role: 'admin' }),
+                        isAuthenticated: () => true
+                    };
+                    
+                    await this.adminDashboard.initialize(authManager);
                     console.log('✅ Admin Dashboard force-initialized');
                     
                     // Check if user is admin after authentication
-                    if (unifiedAuth && unifiedAuth.isAuthenticated()) {
+                    if (unifiedAuth && typeof unifiedAuth.isAuthenticated === 'function' && unifiedAuth.isAuthenticated()) {
                         const userProfile = unifiedAuth.getUserProfile();
                         if (userProfile && userProfile.role === 'admin') {
                             console.log('✅ Admin user detected - showing admin UI');
@@ -278,6 +290,12 @@ class BeatsChainApp {
                     }
                 } catch (error) {
                     console.log('⚠️ Admin Dashboard initialization failed:', error.message);
+                    // Create a minimal fallback admin dashboard
+                    this.adminDashboard = {
+                        isInitialized: false,
+                        setupDashboardUI: () => console.log('Admin dashboard unavailable'),
+                        getSponsorContent: () => null
+                    };
                 }
             }
             
@@ -2531,41 +2549,60 @@ Verification: Check Chrome extension storage for transaction details`;
         try {
             // Initialize Admin Dashboard for all users (development mode)
             if (window.AdminDashboardManager) {
-                this.adminDashboard = new AdminDashboardManager();
-                // Create mock auth manager for development
-                const mockAuthManager = {
-                    hasPermission: () => true,
-                    getUserProfile: () => ({ name: 'Admin User', role: 'admin' })
-                };
-                await this.adminDashboard.initialize(mockAuthManager);
-                console.log('✅ Admin Dashboard initialized for development');
+                try {
+                    this.adminDashboard = new AdminDashboardManager();
+                    // Create mock auth manager for development
+                    const mockAuthManager = {
+                        hasPermission: () => true,
+                        getUserProfile: () => ({ name: 'Admin User', role: 'admin' }),
+                        isAuthenticated: () => true
+                    };
+                    await this.adminDashboard.initialize(mockAuthManager);
+                    console.log('✅ Admin Dashboard initialized for development');
+                } catch (adminError) {
+                    console.warn('⚠️ Admin Dashboard initialization failed:', adminError.message);
+                    // Create minimal fallback
+                    this.adminDashboard = {
+                        isInitialized: false,
+                        setupDashboardUI: () => console.log('Admin dashboard unavailable'),
+                        getSponsorContent: () => null
+                    };
+                }
             }
             
             // Initialize Usage Limits Manager
             if (window.UsageLimitsManager) {
-                this.usageLimits = new UsageLimitsManager();
-                await this.usageLimits.initialize(this.authManager, this.adminDashboard);
-                console.log('✅ Usage Limits Manager initialized');
+                try {
+                    this.usageLimits = new UsageLimitsManager();
+                    await this.usageLimits.initialize(this.authManager, this.adminDashboard);
+                    console.log('✅ Usage Limits Manager initialized');
+                } catch (limitsError) {
+                    console.warn('⚠️ Usage Limits Manager initialization failed:', limitsError.message);
+                }
             }
             
             // Initialize Sponsor Content Manager (consent already shown)
             if (window.SponsorContentManager) {
-                this.sponsorContent = new SponsorContentManager();
-                await this.sponsorContent.initialize(this.adminDashboard);
-                await this.sponsorContent.ensureCompliance();
-                
-                // Enhance existing systems with sponsor content
-                if (this.isrcManager) {
-                    this.sponsorContent.enhanceISRCGeneration(this.isrcManager);
+                try {
+                    this.sponsorContent = new SponsorContentManager();
+                    await this.sponsorContent.initialize(this.adminDashboard);
+                    await this.sponsorContent.ensureCompliance();
+                    
+                    // Enhance existing systems with sponsor content
+                    if (this.isrcManager) {
+                        this.sponsorContent.enhanceISRCGeneration(this.isrcManager);
+                    }
+                    this.sponsorContent.enhancePackageGeneration(this);
+                    
+                    console.log('✅ Sponsor Content Manager initialized');
+                    window.sponsorContentManager = this.sponsorContent;
+                } catch (sponsorError) {
+                    console.warn('⚠️ Sponsor Content Manager initialization failed:', sponsorError.message);
                 }
-                this.sponsorContent.enhancePackageGeneration(this);
-                
-                console.log('✅ Sponsor Content Manager initialized');
-                window.sponsorContentManager = this.sponsorContent;
             }
             
         } catch (error) {
-            console.log('Monetization systems initialization failed:', error);
+            console.log('⚠️ Monetization systems initialization failed:', error.message);
         }
     }
     
