@@ -3,7 +3,7 @@ class ISRCMintingManager {
   constructor() {
     this.isrcManager = new ISRCManager();
     this.metadataWriter = new MetadataWriter();
-    this.sponsorManager = new SponsorContentManager();
+    this.sponsorManager = window.SponsorContentManager ? new SponsorContentManager() : null;
     this.currentISRC = null;
     this.sponsorEnabled = true;
   }
@@ -121,10 +121,14 @@ class ISRCMintingManager {
 
   async loadSponsorContent() {
     try {
-      const sponsorData = await this.sponsorManager.getSponsorContent('isrc-minting');
-      
-      if (sponsorData) {
-        this.renderSponsorContent(sponsorData);
+      if (this.sponsorManager && typeof this.sponsorManager.getSponsorContent === 'function') {
+        const sponsorData = await this.sponsorManager.getSponsorContent('isrc-minting');
+        
+        if (sponsorData) {
+          this.renderSponsorContent(sponsorData);
+        }
+      } else {
+        console.log('Sponsor manager not available or method missing');
       }
       
     } catch (error) {
@@ -162,7 +166,7 @@ class ISRCMintingManager {
     }
 
     // Track sponsor engagement
-    if (enabled) {
+    if (enabled && this.sponsorManager && typeof this.sponsorManager.trackEngagement === 'function') {
       this.sponsorManager.trackEngagement('isrc-sponsor-enabled');
     }
   }
@@ -227,7 +231,7 @@ class ISRCMintingManager {
       });
 
       // Track sponsor revenue if enabled
-      if (this.sponsorEnabled) {
+      if (this.sponsorEnabled && this.sponsorManager && typeof this.sponsorManager.trackRevenue === 'function') {
         await this.sponsorManager.trackRevenue('isrc-minting', 2.50);
       }
 

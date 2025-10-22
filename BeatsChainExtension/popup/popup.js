@@ -1,6 +1,10 @@
 // Import config manager
 import config from '../lib/config.js';
 
+// Global unified system variables
+let unifiedAuth = null;
+let walletContext = null;
+
 // BeatsChain Extension Popup Logic - COMPLETE WORKING VERSION
 class BeatsChainApp {
     constructor() {
@@ -207,8 +211,8 @@ class BeatsChainApp {
             try {
                 // PHASE 1: Initialize unified wallet context
                 if (window.WalletContextManager) {
-                    this.walletContext = new WalletContextManager();
-                    const walletReady = await this.walletContext.initialize();
+                    walletContext = new WalletContextManager();
+                    const walletReady = await walletContext.initialize();
                     console.log('✅ Unified wallet context initialized');
                 }
                 
