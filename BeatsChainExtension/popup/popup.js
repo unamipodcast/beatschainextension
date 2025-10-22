@@ -6023,7 +6023,9 @@ document.addEventListener('visibilitychange', () => {
         window.beatsChainApp.audioManager.pauseAllAudio();
     }
 });
-    // CONSOLIDATED SPONSOR DISPLAY METHODS - PREVENT DUPLICATES
+
+// CONSOLIDATED SPONSOR DISPLAY METHODS - PREVENT DUPLICATES
+class SponsorDisplayManager {
     displayISRCGenerationSponsored() {
         // Check if already displayed to prevent duplicates
         if (document.querySelector('.isrc-generation-sponsor')) {
@@ -6224,3 +6226,7 @@ document.addEventListener('visibilitychange', () => {
         document.body.appendChild(sponsorDiv);
         console.log('✅ Consistent post-package sponsor displayed');
     }
+}
+
+// Initialize sponsor display manager
+window.sponsorDisplayManager = new SponsorDisplayManager();
