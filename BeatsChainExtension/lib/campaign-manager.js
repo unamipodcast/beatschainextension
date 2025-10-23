@@ -46,6 +46,7 @@ class CampaignManager {
         if (data.name?.length > 50) errors.push('Campaign name must be 50 characters or less');
         
         if (!data.sponsorId) errors.push('Sponsor selection is required');
+        if (!data.placement) errors.push('Placement selection is required');
         
         if (!data.startDate) errors.push('Start date is required');
         if (!data.endDate) errors.push('End date is required');
@@ -290,13 +291,29 @@ class CampaignManager {
                         </div>
                         
                         <div class="form-row">
-                            <label for="campaign-placement">Placement</label>
-                            <select id="campaign-placement" class="form-input">
-                                <option value="after_isrc" ${campaign?.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
-                                <option value="before_package" ${campaign?.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
-                                <option value="after_package" ${campaign?.placement === 'after_package' ? 'selected' : ''}>After Package Generation</option>
-                                <option value="after_minting" ${campaign?.placement === 'after_minting' ? 'selected' : ''}>After NFT Minting</option>
+                            <label for="campaign-placement">Placement *</label>
+                            <select id="campaign-placement" class="form-input" required>
+                                <option value="">Select Placement</option>
+                                <optgroup label="Radio System Placements">
+                                    <option value="after_isrc" ${campaign?.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
+                                    <option value="validation" ${campaign?.placement === 'validation' ? 'selected' : ''}>After Validation</option>
+                                    <option value="before_package" ${campaign?.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
+                                    <option value="post_package" ${campaign?.placement === 'post_package' ? 'selected' : ''}>After Package Complete</option>
+                                    <option value="during_download" ${campaign?.placement === 'during_download' ? 'selected' : ''}>During Download</option>
+                                </optgroup>
+                                <optgroup label="Mint/NFT System Placements">
+                                    <option value="before_mint_nft" ${campaign?.placement === 'before_mint_nft' ? 'selected' : ''}>Before Mint NFT</option>
+                                    <option value="after_minting" ${campaign?.placement === 'after_minting' ? 'selected' : ''}>After NFT Minting</option>
+                                    <option value="ipfs_upload" ${campaign?.placement === 'ipfs_upload' ? 'selected' : ''}>During IPFS Upload</option>
+                                    <option value="metadata_creation" ${campaign?.placement === 'metadata_creation' ? 'selected' : ''}>After Metadata Creation</option>
+                                </optgroup>
+                                <optgroup label="Cross-Platform Placements">
+                                    <option value="licensing_proceed" ${campaign?.placement === 'licensing_proceed' ? 'selected' : ''}>Proceed to Licensing</option>
+                                    <option value="analytics_view" ${campaign?.placement === 'analytics_view' ? 'selected' : ''}>Analytics Dashboard</option>
+                                    <option value="profile_view" ${campaign?.placement === 'profile_view' ? 'selected' : ''}>Profile Section</option>
+                                </optgroup>
                             </select>
+                            <small class="field-help">Choose where the sponsor content will appear</small>
                         </div>
                         
                         <div class="form-grid-two-col">

@@ -76,11 +76,26 @@ class AdminDashboardManager {
 
     getDefaultSponsorTemplates() {
         return {
-            default: {
-                name: 'BeatsChain',
-                message: 'Powered by BeatsChain - Professional Music Tools',
+            // Core BeatsChain Sponsors
+            beatschain_premium: {
+                name: 'BeatsChain Premium',
+                message: 'Unlock advanced features with BeatsChain Premium',
                 logo: null,
-                website: 'https://beatschain.com'
+                website: 'https://beatschain.com/premium'
+            },
+            beatschain_pro: {
+                name: 'BeatsChain Pro Tools',
+                message: 'Professional music creation and distribution tools',
+                logo: null,
+                website: 'https://beatschain.com/pro'
+            },
+            
+            // Radio System Sponsors
+            samro_compliance: {
+                name: 'SAMRO Compliance Pro',
+                message: 'Ensure full SAMRO compliance with automated documentation',
+                logo: null,
+                website: 'https://samro.org.za'
             },
             radiomonitor: {
                 name: 'Radiomonitor South Africa',
@@ -88,11 +103,63 @@ class AdminDashboardManager {
                 logo: null,
                 website: 'https://radiomonitor.co.za'
             },
-            samro: {
-                name: 'SAMRO',
-                message: 'South African Music Rights Organisation',
+            radio_boost: {
+                name: 'Radio Boost Service',
+                message: 'Professional radio promotion and playlist placement',
                 logo: null,
-                website: 'https://samro.org.za'
+                website: 'https://radioboost.com'
+            },
+            music_promotion: {
+                name: 'Music Promotion Pro',
+                message: 'Professional music promotion and airplay tracking',
+                logo: null,
+                website: 'https://musicpromotion.pro'
+            },
+            airplay_tracker: {
+                name: 'Airplay Analytics',
+                message: 'Monitor airplay and measure radio campaign success',
+                logo: null,
+                website: 'https://airplayanalytics.com'
+            },
+            
+            // Mint/NFT System Sponsors
+            nft_marketplace: {
+                name: 'NFT Marketplace Pro',
+                message: 'List your music NFTs on premium marketplaces',
+                logo: null,
+                website: 'https://nftmarketplace.pro'
+            },
+            polygon_tools: {
+                name: 'Polygon Tools Suite',
+                message: 'Advanced Polygon blockchain tools for music NFTs',
+                logo: null,
+                website: 'https://polygon.technology'
+            },
+            ipfs_storage: {
+                name: 'IPFS Storage Pro',
+                message: 'Premium decentralized storage for your music assets',
+                logo: null,
+                website: 'https://ipfs.io'
+            },
+            royalty_manager: {
+                name: 'Royalty Manager',
+                message: 'Automated royalty distribution and tracking',
+                logo: null,
+                website: 'https://royaltymanager.com'
+            },
+            
+            // Cross-Platform Sponsors
+            music_analytics: {
+                name: 'Music Analytics Pro',
+                message: 'Comprehensive analytics for radio and NFT performance',
+                logo: null,
+                website: 'https://musicanalytics.pro'
+            },
+            licensing_hub: {
+                name: 'Licensing Hub',
+                message: 'Streamline music licensing for radio and digital platforms',
+                logo: null,
+                website: 'https://licensinghub.com'
             }
         };
     }
@@ -549,12 +616,24 @@ class AdminDashboardManager {
                             <div class="form-row">
                                 <label for="sponsor-placement">Placement:</label>
                                 <select id="sponsor-placement" class="form-input">
-                                    <option value="after_isrc" ${this.sponsorConfig.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
-                                    <option value="licensing_proceed" ${this.sponsorConfig.placement === 'licensing_proceed' ? 'selected' : ''}>Proceed to Licensing</option>
-                                    <option value="before_mint_nft" ${this.sponsorConfig.placement === 'before_mint_nft' ? 'selected' : ''}>Before Mint NFT</option>
-                                    <option value="before_package" ${this.sponsorConfig.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
-                                    <option value="after_package" ${this.sponsorConfig.placement === 'after_package' ? 'selected' : ''}>After Package Generation</option>
-                                    <option value="after_minting" ${this.sponsorConfig.placement === 'after_minting' ? 'selected' : ''}>After NFT Minting</option>
+                                    <optgroup label="Radio System Placements">
+                                        <option value="after_isrc" ${this.sponsorConfig.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
+                                        <option value="validation" ${this.sponsorConfig.placement === 'validation' ? 'selected' : ''}>After Validation</option>
+                                        <option value="before_package" ${this.sponsorConfig.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
+                                        <option value="post_package" ${this.sponsorConfig.placement === 'post_package' ? 'selected' : ''}>After Package Complete</option>
+                                        <option value="during_download" ${this.sponsorConfig.placement === 'during_download' ? 'selected' : ''}>During Download</option>
+                                    </optgroup>
+                                    <optgroup label="Mint/NFT System Placements">
+                                        <option value="before_mint_nft" ${this.sponsorConfig.placement === 'before_mint_nft' ? 'selected' : ''}>Before Mint NFT</option>
+                                        <option value="after_minting" ${this.sponsorConfig.placement === 'after_minting' ? 'selected' : ''}>After NFT Minting</option>
+                                        <option value="ipfs_upload" ${this.sponsorConfig.placement === 'ipfs_upload' ? 'selected' : ''}>During IPFS Upload</option>
+                                        <option value="metadata_creation" ${this.sponsorConfig.placement === 'metadata_creation' ? 'selected' : ''}>After Metadata Creation</option>
+                                    </optgroup>
+                                    <optgroup label="Cross-Platform Placements">
+                                        <option value="licensing_proceed" ${this.sponsorConfig.placement === 'licensing_proceed' ? 'selected' : ''}>Proceed to Licensing</option>
+                                        <option value="analytics_view" ${this.sponsorConfig.placement === 'analytics_view' ? 'selected' : ''}>Analytics Dashboard</option>
+                                        <option value="profile_view" ${this.sponsorConfig.placement === 'profile_view' ? 'selected' : ''}>Profile Section</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
@@ -2530,14 +2609,23 @@ class AdminDashboardManager {
 
     formatPlacementName(placement) {
         const names = {
+            // Radio System
             'after_isrc': 'After ISRC',
             'validation': 'After Validation',
             'before_package': 'Before Package',
             'post_package': 'Post Package',
-            'after_license': 'After License',
-            'before_minting': 'Before Minting',
+            'during_download': 'During Download',
+            
+            // Mint/NFT System
+            'before_mint_nft': 'Before Mint NFT',
             'after_minting': 'After Minting',
-            'during_download': 'During Download'
+            'ipfs_upload': 'IPFS Upload',
+            'metadata_creation': 'Metadata Creation',
+            
+            // Cross-Platform
+            'licensing_proceed': 'Licensing',
+            'analytics_view': 'Analytics',
+            'profile_view': 'Profile'
         };
         return names[placement] || placement;
     }
