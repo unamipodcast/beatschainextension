@@ -61,15 +61,22 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 12px;
+    gap: 16px;
+    padding: 8px 12px;
+    background: rgba(0, 214, 122, 0.05);
+    border-radius: var(--bc-radius-lg);
+    border: 1px solid rgba(0, 214, 122, 0.1);
+    margin-bottom: 12px;
 }
 
 .brand-logo {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--bc-radius);
     flex-shrink: 0;
     filter: brightness(1.1);
+    box-shadow: 0 2px 8px rgba(0, 214, 122, 0.2);
+    border: 2px solid rgba(0, 214, 122, 0.3);
 }
 
 .brand-text {

@@ -1394,19 +1394,8 @@ Verification: Check Chrome extension storage for transaction details`;
                 await window.publicAssetHub.refreshAssets();
             }
             
-            // Check if we need to generate mock data
-            const existing = await chrome.storage.local.get(['nftAssets', 'campaigns', 'isrcRegistry']);
-            const hasData = (existing.nftAssets && existing.nftAssets.length > 0) || 
-                           (existing.campaigns && existing.campaigns.length > 0) || 
-                           (existing.isrcRegistry && existing.isrcRegistry.length > 0);
-            
-            if (!hasData) {
-                console.log('🔧 No existing data found, generating mock data for demo...');
-                await MockDataGenerator.generateMockData();
-                // Refresh the hub after generating mock data
-                await window.publicAssetHub.refreshAssets();
-                console.log('✅ Mock data generated and hub refreshed');
-            }
+            // Load existing data only - no automatic mock data generation
+            console.log('✅ Asset hub loaded with existing data only');
             
             // Activate Smart Asset Hub Integration if available
             if (this.smartAssetHubIntegration && window.publicAssetHub) {
@@ -2123,8 +2112,16 @@ Verification: Check Chrome extension storage for transaction details`;
             if (profileName) profileName.textContent = userProfile.name || 'Artist';
             if (profileEmail) profileEmail.textContent = userProfile.email || '';
             
-            // Update wallet info
-            const walletAddress = await walletContext.getCurrentAddress();
+            // Update wallet info with null checks
+            let walletAddress = null;
+            if (walletContext && walletContext.getCurrentAddress) {
+                try {
+                    walletAddress = await walletContext.getCurrentAddress();
+                } catch (walletError) {
+                    console.warn('Failed to get wallet address:', walletError);
+                }
+            }
+            
             if (profileWallet && walletAddress) {
                 profileWallet.textContent = `${walletAddress.substring(0, 6)}...${walletAddress.substring(-4)}`;
             }

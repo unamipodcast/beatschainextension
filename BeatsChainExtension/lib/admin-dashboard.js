@@ -107,10 +107,22 @@ class AdminDashboardManager {
                 lastReset: Date.now()
             };
             
-            // Ensure all required properties exist
+            // Ensure all required properties exist with clean initialization
             if (!this.usageStats.dailyPackages) this.usageStats.dailyPackages = {};
             if (!this.usageStats.userPackages) this.usageStats.userPackages = {};
             if (typeof this.usageStats.totalPackages !== 'number') this.usageStats.totalPackages = 0;
+            
+            // Clear any demo data contamination
+            if (this.usageStats.totalPackages > 100) {
+                console.warn('Detected demo data contamination, resetting usage stats');
+                this.usageStats = {
+                    totalPackages: 0,
+                    dailyPackages: {},
+                    userPackages: {},
+                    lastReset: Date.now()
+                };
+                await chrome.storage.local.set({ usage_stats: this.usageStats });
+            }
             
         } catch (error) {
             console.error('Failed to load usage stats:', error);
@@ -125,65 +137,75 @@ class AdminDashboardManager {
     
     async loadRecentImplementationsData() {
         try {
-            // Load Chrome AI Revenue Optimizer data
-            const aiOptimizerData = await chrome.storage.local.get(['ai_optimization_metrics', 'chrome_ai_revenue_optimizer']);
+            // Load only real usage stats - no demo data aggregation
+            const realUsageStats = this.usageStats || {};
             
-            // Load Revenue Management System data
-            const revenueData = await chrome.storage.local.get(['revenue_management']);
+            // Use only actual usage statistics
+            const totalPackages = realUsageStats.totalPackages || 0;
+            const radioPackages = realUsageStats.packageTypes?.radio || 0;
+            const mintPackages = realUsageStats.packageTypes?.mint || 0;
+            const isrcGenerated = realUsageStats.isrcUsage || 0;
+            const ipfsStored = realUsageStats.ipfsUsage || 0;
             
-            // Load Package Measurement System data
-            const packageData = await chrome.storage.local.get(['package_measurement_data']);
-            
-            // Load ISRC Manager data
-            const isrcData = await chrome.storage.local.get(['isrc_registry']);
-            
-            // Load Asset Hub data
-            const assetData = await chrome.storage.local.get(['nftAssets', 'campaigns']);
-            
-            // Aggregate data from recent implementations
-            const totalPackages = (this.usageStats.totalPackages || 0) + 
-                                (packageData.package_measurement_data?.totalPackages || 0);
-            
-            const radioPackages = (this.usageStats.packageTypes?.radio || 0) + 
-                                (packageData.package_measurement_data?.radioPackages || 0);
-            
-            const mintPackages = (this.usageStats.packageTypes?.mint || 0) + 
-                               (packageData.package_measurement_data?.mintPackages || 0);
-            
-            const isrcGenerated = (this.usageStats.isrcUsage || 0) + 
-                                (isrcData.isrc_registry?.length || 0);
-            
-            const ipfsStored = (this.usageStats.ipfsUsage || 0) + 
-                             (assetData.nftAssets?.length || 0);
-            
-            // Chrome AI Optimization metrics
+            // Chrome AI Optimization metrics - load from storage
             let aiOptimization = null;
-            if (aiOptimizerData.ai_optimization_metrics || aiOptimizerData.chrome_ai_revenue_optimizer) {
-                const metrics = aiOptimizerData.ai_optimization_metrics || {};
-                const optimizer = aiOptimizerData.chrome_ai_revenue_optimizer || {};
-                
-                aiOptimization = {
-                    enabled: optimizer.enabled || false,
-                    costSavings: metrics.costSavings || 0,
-                    revenueEnhancement: metrics.revenueEnhancement || 0,
-                    processedAssets: metrics.processedAssets || 0,
-                    optimizedCampaigns: metrics.optimizedCampaigns || 0,
-                    totalBenefit: (metrics.costSavings || 0) + (metrics.revenueEnhancement || 0)
-                };
+            try {
+                const aiData = await chrome.storage.local.get(['ai_optimization_metrics', 'chrome_ai_revenue_optimizer']);
+                if (aiData.ai_optimization_metrics || aiData.chrome_ai_revenue_optimizer) {
+                    const metrics = aiData.ai_optimization_metrics || {};
+                    const optimizer = aiData.chrome_ai_revenue_optimizer || {};
+                    
+                    aiOptimization = {
+                        enabled: optimizer.enabled || false,
+                        costSavings: metrics.costSavings || 0,
+                        revenueEnhancement: metrics.revenueEnhancement || 0,
+                        processedAssets: metrics.processedAssets || 0,
+                        optimizedCampaigns: metrics.optimizedCampaigns || 0,
+                        totalBenefit: (metrics.costSavings || 0) + (metrics.revenueEnhancement || 0)
+                    };
+                }
+            } catch (error) {
+                console.warn('Failed to load AI optimization data:', error);
             }
             
-            // Revenue Management System data
+            // Revenue Management System data - load from storage
             let revenueManagement = null;
-            if (revenueData.revenue_management) {
-                const revenue = revenueData.revenue_management;
-                revenueManagement = {
-                    totalRevenue: this.calculateTotalRevenue(revenue),
-                    monthlyRevenue: this.calculateMonthlyRevenue(revenue),
-                    activeCampaigns: revenue.campaigns ? revenue.campaigns.size : 0,
-                    pendingInvoices: revenue.payments?.pending?.length || 0
-                };
+            try {
+                const revenueData = await chrome.storage.local.get(['revenue_management']);
+                if (revenueData.revenue_management) {
+                    const revenue = revenueData.revenue_management;
+                    revenueManagement = {
+                        totalRevenue: this.calculateTotalRevenue(revenue),
+                        monthlyRevenue: this.calculateMonthlyRevenue(revenue),
+                        activeCampaigns: revenue.campaigns ? revenue.campaigns.size : 0,
+                        pendingInvoices: revenue.payments?.pending?.length || 0
+                    };
+                }
+            } catch (error) {
+                console.warn('Failed to load revenue management data:', error);
             }
             
+            // Initialize AI optimizer if available
+            if (window.ChromeAIRevenueOptimizer) {
+                try {
+                    const aiOptimizer = new ChromeAIRevenueOptimizer();
+                    const isAvailable = await aiOptimizer.initialize();
+                    if (isAvailable) {
+                        const summary = aiOptimizer.getOptimizationSummary();
+                        aiOptimization = {
+                            enabled: summary.isAIEnabled,
+                            costSavings: summary.costSavings.total || 0,
+                            revenueEnhancement: summary.revenueEnhancement.total || 0,
+                            processedAssets: 0,
+                            optimizedCampaigns: 0,
+                            totalBenefit: summary.totalBenefit || 0
+                        };
+                    }
+                } catch (error) {
+                    console.log('AI optimizer initialization failed:', error);
+                }
+            }
+
             return {
                 totalPackages,
                 radioPackages,
@@ -191,18 +213,18 @@ class AdminDashboardManager {
                 isrcGenerated,
                 ipfsStored,
                 aiOptimization,
-                revenueManagement,
+                revenueManagement: null,
                 lastUpdated: Date.now()
             };
             
         } catch (error) {
             console.error('Failed to load recent implementations data:', error);
             return {
-                totalPackages: this.usageStats.totalPackages || 0,
-                radioPackages: this.usageStats.packageTypes?.radio || 0,
-                mintPackages: this.usageStats.packageTypes?.mint || 0,
-                isrcGenerated: this.usageStats.isrcUsage || 0,
-                ipfsStored: this.usageStats.ipfsUsage || 0,
+                totalPackages: 0,
+                radioPackages: 0,
+                mintPackages: 0,
+                isrcGenerated: 0,
+                ipfsStored: 0,
                 aiOptimization: null,
                 revenueManagement: null
             };
@@ -224,19 +246,33 @@ class AdminDashboardManager {
     }
 
     async setupDashboardUI() {
-        // Find or create admin dashboard section
+        // Prevent duplicate admin dashboard creation
         let adminSection = document.getElementById('admin-dashboard-section');
         
-        if (!adminSection) {
+        if (adminSection) {
+            // Clear existing content to prevent stacking
+            const adminContent = adminSection.querySelector('#admin-content');
+            if (adminContent) {
+                adminContent.innerHTML = '';
+            }
+        } else {
             adminSection = this.createAdminDashboardSection();
         }
 
-        await this.populateDashboard(adminSection);
+        if (adminSection) {
+            await this.populateDashboard(adminSection);
+        }
     }
 
     createAdminDashboardSection() {
         const profileSection = document.getElementById('profile-section');
         if (!profileSection) return null;
+
+        // Check if admin section already exists to prevent duplicates
+        const existingAdmin = document.getElementById('admin-dashboard-section');
+        if (existingAdmin) {
+            return existingAdmin;
+        }
 
         const adminSection = document.createElement('div');
         adminSection.id = 'admin-dashboard-section';
@@ -251,8 +287,6 @@ class AdminDashboardManager {
             <div class="admin-content" id="admin-content">
                 <!-- Admin content will be populated here -->
             </div>
-            
-            <!-- Artist Profile sections will be made collapsible by popup.js -->
         `;
         
         // Insert at TOP of profile section, not append
@@ -797,29 +831,22 @@ class AdminDashboardManager {
                         <button class="collapse-btn" id="analytics-summary-toggle" type="button">▼</button>
                     </div>
                     <div class="samro-content" id="analytics-summary-content">
-                        <div class="summary-cards">
-                            <div class="summary-card">
-                                <h6>Package Generation</h6>
-                                <div class="metric">
-                                    <span class="metric-value">${this.usageStats.totalPackages}</span>
-                                    <span class="metric-label">Total Packages</span>
-                                </div>
-                                <div class="metric">
-                                    <span class="metric-value">${this.getTodayPackageCount()}</span>
-                                    <span class="metric-label">Today</span>
-                                </div>
+                        <div class="analytics-metrics" style="display: flex; flex-direction: column; gap: 12px;">
+                            <div class="metric-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-radius: 6px;">
+                                <span class="metric-label">Total Packages:</span>
+                                <span class="metric-value" style="font-weight: bold; color: #007bff;">${this.usageStats?.totalPackages || 0}</span>
                             </div>
-                            
-                            <div class="summary-card">
-                                <h6>User Activity</h6>
-                                <div class="metric">
-                                    <span class="metric-value">${Object.keys(this.usageStats.userPackages || {}).length}</span>
-                                    <span class="metric-label">Active Users</span>
-                                </div>
-                                <div class="metric">
-                                    <span class="metric-value">${this.getAuthenticatedUserCount()}</span>
-                                    <span class="metric-label">Signed In</span>
-                                </div>
+                            <div class="metric-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-radius: 6px;">
+                                <span class="metric-label">Today:</span>
+                                <span class="metric-value" style="font-weight: bold; color: #28a745;">${this.getTodayPackageCount()}</span>
+                            </div>
+                            <div class="metric-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-radius: 6px;">
+                                <span class="metric-label">Active Users:</span>
+                                <span class="metric-value" style="font-weight: bold; color: #6f42c1;">${this.getActiveUserCount()}</span>
+                            </div>
+                            <div class="metric-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-radius: 6px;">
+                                <span class="metric-label">Signed In:</span>
+                                <span class="metric-value" style="font-weight: bold; color: #fd7e14;">${this.getAuthenticatedUserCount()}</span>
                             </div>
                         </div>
                     </div>
@@ -1963,10 +1990,7 @@ class AdminDashboardManager {
         try {
             const today = new Date().toDateString();
             const dailyPackages = this.usageStats?.dailyPackages || {};
-            const count = dailyPackages[today] || 0;
-            // Add real-time data from recent activity
-            const recentActivity = this.getRecentActivity();
-            return count + recentActivity.todayPackages;
+            return dailyPackages[today] || 0;
         } catch (error) {
             console.warn('Error getting today package count:', error);
             return 0;
@@ -1977,13 +2001,20 @@ class AdminDashboardManager {
         try {
             // Count users with non-anonymous IDs
             const users = this.usageStats?.userPackages || {};
-            const authenticatedCount = Object.keys(users).filter(id => !id.startsWith('anon_')).length;
-            // Add current authenticated user if not already counted
-            const currentUser = this.getCurrentUser();
-            return authenticatedCount + (currentUser ? 1 : 0);
+            return Object.keys(users).filter(id => !id.startsWith('anon_')).length;
         } catch (error) {
             console.warn('Error getting authenticated user count:', error);
-            return 1; // At least the current admin user
+            return 0;
+        }
+    }
+
+    getActiveUserCount() {
+        try {
+            const users = this.usageStats?.userPackages || {};
+            return Object.keys(users).length;
+        } catch (error) {
+            console.warn('Error getting active user count:', error);
+            return 0;
         }
     }
 
@@ -2002,9 +2033,9 @@ class AdminDashboardManager {
             const today = new Date().toDateString();
             const dailyActivity = this.usageStats?.dailyActivity || {};
             const todayActivity = dailyActivity[today] || { users: new Set() };
-            return todayActivity.users ? todayActivity.users.size : 1;
+            return todayActivity.users ? todayActivity.users.size : 0;
         } catch (error) {
-            return 1; // At least the current user
+            return 0;
         }
     }
 

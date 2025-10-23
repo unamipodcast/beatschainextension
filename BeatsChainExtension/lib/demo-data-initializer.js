@@ -350,16 +350,7 @@ class DemoDataInitializer {
     }
 }
 
-// Auto-initialize demo data when script loads
+// Export demo data initializer but DO NOT auto-initialize
 window.DemoDataInitializer = DemoDataInitializer;
 
-// Initialize demo data automatically for demonstration
-(async () => {
-    try {
-        const demoInitializer = new DemoDataInitializer();
-        await demoInitializer.initialize();
-        await demoInitializer.updateUsageStats();
-    } catch (error) {
-        console.log('Demo data initialization skipped:', error.message);
-    }
-})();
+// Demo data initialization is now manual only - no automatic mock data

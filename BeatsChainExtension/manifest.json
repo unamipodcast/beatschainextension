@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "BeatsChain - FREE Music NFT Minter",
   "version": "2.7.0",
-  "description": "Mint your beats as Solana NFTs for FREE! Phase 3: Production security with admin wallet management, Phantom integration, AI licensing, and professional radio packages.",
+  "description": "Professional music NFT minting platform for Solana blockchain. Features: FREE minting, ISRC generation, radio submission packages, AI-powered licensing, admin dashboard, sponsor content management, and comprehensive analytics. Perfect for producers, artists, and music professionals.",
   "permissions": [
     "storage",
     "identity",
