@@ -106,9 +106,20 @@ class AdminDashboardManager {
                 userPackages: {},
                 lastReset: Date.now()
             };
+            
+            // Ensure all required properties exist
+            if (!this.usageStats.dailyPackages) this.usageStats.dailyPackages = {};
+            if (!this.usageStats.userPackages) this.usageStats.userPackages = {};
+            if (typeof this.usageStats.totalPackages !== 'number') this.usageStats.totalPackages = 0;
+            
         } catch (error) {
             console.error('Failed to load usage stats:', error);
-            this.usageStats = { totalPackages: 0, dailyPackages: {}, userPackages: {} };
+            this.usageStats = { 
+                totalPackages: 0, 
+                dailyPackages: {}, 
+                userPackages: {},
+                lastReset: Date.now()
+            };
         }
     }
     
@@ -1957,19 +1968,35 @@ class AdminDashboardManager {
     }
 
     getTodayPackageCount() {
-        const today = new Date().toDateString();
-        return this.usageStats.dailyPackages[today] || 0;
+        try {
+            const today = new Date().toDateString();
+            const dailyPackages = this.usageStats?.dailyPackages || {};
+            return dailyPackages[today] || 0;
+        } catch (error) {
+            console.warn('Error getting today package count:', error);
+            return 0;
+        }
     }
 
     getAuthenticatedUserCount() {
-        // Count users with non-anonymous IDs
-        const users = this.usageStats.userPackages || {};
-        return Object.keys(users).filter(id => !id.startsWith('anon_')).length;
+        try {
+            // Count users with non-anonymous IDs
+            const users = this.usageStats?.userPackages || {};
+            return Object.keys(users).filter(id => !id.startsWith('anon_')).length;
+        } catch (error) {
+            console.warn('Error getting authenticated user count:', error);
+            return 0;
+        }
     }
 
     getAnonymousUserCount() {
-        const users = this.usageStats.userPackages || {};
-        return Object.keys(users).filter(id => id.startsWith('anon_')).length;
+        try {
+            const users = this.usageStats?.userPackages || {};
+            return Object.keys(users).filter(id => id.startsWith('anon_')).length;
+        } catch (error) {
+            console.warn('Error getting anonymous user count:', error);
+            return 0;
+        }
     }
 
     getActiveUsersToday() {
