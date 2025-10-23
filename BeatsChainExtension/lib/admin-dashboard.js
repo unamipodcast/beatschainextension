@@ -1034,17 +1034,9 @@ class AdminDashboardManager {
                         </div>
                         
                         <div class="user-list" id="user-list">
-                            <div class="user-item">
-                                <div class="user-info">
-                                    <span class="user-id">user_12345</span>
-                                    <span class="user-type">Authenticated</span>
-                                    <span class="user-packages">${Math.floor(Math.random() * 50)} packages</span>
-                                </div>
-                                <div class="user-actions">
-                                    <button class="btn-small btn-secondary">👁️ View</button>
-                                    <button class="btn-small btn-danger">🚫 Block</button>
-                                </div>
-                            </div>
+                            <div class="user-list-placeholder">
+                            <p style="color: #666; font-style: italic; text-align: center; padding: 20px;">User management features available in full admin panel</p>
+                        </div>
                         </div>
                         
                         <div class="user-actions-bulk">
@@ -1971,7 +1963,10 @@ class AdminDashboardManager {
         try {
             const today = new Date().toDateString();
             const dailyPackages = this.usageStats?.dailyPackages || {};
-            return dailyPackages[today] || 0;
+            const count = dailyPackages[today] || 0;
+            // Add real-time data from recent activity
+            const recentActivity = this.getRecentActivity();
+            return count + recentActivity.todayPackages;
         } catch (error) {
             console.warn('Error getting today package count:', error);
             return 0;
@@ -1982,10 +1977,13 @@ class AdminDashboardManager {
         try {
             // Count users with non-anonymous IDs
             const users = this.usageStats?.userPackages || {};
-            return Object.keys(users).filter(id => !id.startsWith('anon_')).length;
+            const authenticatedCount = Object.keys(users).filter(id => !id.startsWith('anon_')).length;
+            // Add current authenticated user if not already counted
+            const currentUser = this.getCurrentUser();
+            return authenticatedCount + (currentUser ? 1 : 0);
         } catch (error) {
             console.warn('Error getting authenticated user count:', error);
-            return 0;
+            return 1; // At least the current admin user
         }
     }
 
@@ -2000,8 +1998,14 @@ class AdminDashboardManager {
     }
 
     getActiveUsersToday() {
-        // Mock implementation - would track daily active users
-        return Math.floor(Math.random() * 10) + 1;
+        try {
+            const today = new Date().toDateString();
+            const dailyActivity = this.usageStats?.dailyActivity || {};
+            const todayActivity = dailyActivity[today] || { users: new Set() };
+            return todayActivity.users ? todayActivity.users.size : 1;
+        } catch (error) {
+            return 1; // At least the current user
+        }
     }
 
     async exportAnalyticsData() {
@@ -2507,6 +2511,41 @@ class AdminDashboardManager {
         return names[placement] || placement;
     }
 
+    getRecentActivity() {
+        try {
+            const today = new Date().toDateString();
+            const recentActivity = JSON.parse(localStorage.getItem('recent_activity') || '{}');
+            return {
+                todayPackages: recentActivity[today]?.packages || 0,
+                todayUsers: recentActivity[today]?.users || 0
+            };
+        } catch (error) {
+            return { todayPackages: 0, todayUsers: 0 };
+        }
+    }
+
+    getCurrentUser() {
+        try {
+            if (window.unifiedAuth && typeof window.unifiedAuth.isAuthenticated === 'function') {
+                return window.unifiedAuth.isAuthenticated() ? window.unifiedAuth.getUserProfile() : null;
+            }
+            return { name: 'Admin User', address: '0xc84799A904EeB5C57aBBBc40176E7dB8be202C10' };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    getTotalUserCount() {
+        try {
+            const users = this.usageStats?.userPackages || {};
+            const totalUsers = Object.keys(users).length;
+            const currentUser = this.getCurrentUser();
+            return totalUsers + (currentUser ? 1 : 0);
+        } catch (error) {
+            return 1;
+        }
+    }
+
     async recordPackageGeneration(userId = 'anonymous', packageType = 'radio', packageData = {}) {
         try {
             this.usageStats.totalPackages++;
@@ -2532,6 +2571,16 @@ class AdminDashboardManager {
             if (packageData.hasIPFS) {
                 this.usageStats.ipfsUsage = (this.usageStats.ipfsUsage || 0) + 1;
             }
+            
+            // Update daily activity tracking
+            if (!this.usageStats.dailyActivity) {
+                this.usageStats.dailyActivity = {};
+            }
+            if (!this.usageStats.dailyActivity[today]) {
+                this.usageStats.dailyActivity[today] = { users: new Set(), packages: 0 };
+            }
+            this.usageStats.dailyActivity[today].users.add(userId);
+            this.usageStats.dailyActivity[today].packages++;
             
             await chrome.storage.local.set({ usage_stats: this.usageStats });
             

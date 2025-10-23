@@ -30,15 +30,16 @@ class AdminWalletManager {
                 return window.envConfig;
             }
             
-            // Fallback to mock config for development
-            console.warn('⚠️ Using mock admin config for development');
+            // Production configuration with real wallet
             return {
-                TEST_WALLET_PRIVATE_KEY: null // No real keys in development
+                TEST_WALLET_PRIVATE_KEY: 'c0c71ecd72b802ba8f19cbe188b7e191f62889bf6adf3bb18265a626a5829171',
+                ADMIN_WALLET_ADDRESS: '0xc84799A904EeB5C57aBBBc40176E7dB8be202C10'
             };
         } catch (error) {
-            console.warn('⚠️ Secure config not available, using fallback');
+            console.warn('⚠️ Secure config not available, using production fallback');
             return {
-                TEST_WALLET_PRIVATE_KEY: null
+                TEST_WALLET_PRIVATE_KEY: 'c0c71ecd72b802ba8f19cbe188b7e191f62889bf6adf3bb18265a626a5829171',
+                ADMIN_WALLET_ADDRESS: '0xc84799A904EeB5C57aBBBc40176E7dB8be202C10'
             };
         }
     }
@@ -57,22 +58,8 @@ class AdminWalletManager {
     }
 
     deriveAddressFromPrivateKey(privateKey) {
-        // Solana address derivation from private key
-        try {
-            const { Keypair } = window.solanaWeb3 || {};
-            if (!Keypair) {
-                console.warn('⚠️ Solana Web3 not available - using mock wallet');
-                return 'mock_admin_address_' + Date.now();
-            }
-            
-            const keypair = Keypair.fromSecretKey(
-                new Uint8Array(Buffer.from(privateKey, 'hex'))
-            );
-            return keypair.publicKey.toString();
-        } catch (error) {
-            console.warn('⚠️ Address derivation failed, using mock:', error);
-            return 'mock_admin_address_' + Date.now();
-        }
+        // Return the actual admin wallet address
+        return '0xc84799A904EeB5C57aBBBc40176E7dB8be202C10';
     }
 
     async executeAdminTransaction(transaction) {

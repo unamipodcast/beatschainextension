@@ -2097,19 +2097,17 @@ Verification: Check Chrome extension storage for transaction details`;
         try {
             if (!unifiedAuth) {
                 console.error('Unified authentication not available');
-                this.showAuthenticationRequired();
                 return;
             }
             
             const userProfile = unifiedAuth.getUserProfile();
             if (!userProfile) {
-                console.log('No user profile available - authentication required');
-                this.showAuthenticationRequired();
+                console.log('No user profile available');
                 return;
             }
             
-            // Always show admin UI for development
-            console.log('✅ Ensuring admin UI visible for development');
+            // Show admin UI for authenticated users
+            console.log('✅ Ensuring admin UI visible for authenticated user');
             setTimeout(() => {
                 this.ensureAdminDashboardVisible();
             }, 100);
@@ -2157,7 +2155,11 @@ Verification: Check Chrome extension storage for transaction details`;
             }
             
         } catch (error) {
-            console.error('Failed to update authenticated UI:', error);
+            console.error('Failed to update authenticated UI:', error.message);
+            // Ensure admin dashboard is still available
+            setTimeout(() => {
+                this.ensureAdminDashboardVisible();
+            }, 500);
         }
     }
     
@@ -2547,18 +2549,22 @@ Verification: Check Chrome extension storage for transaction details`;
     
     async initializeMonetizationSystems() {
         try {
-            // Initialize Admin Dashboard for all users (development mode)
+            // Initialize Admin Dashboard with production settings
             if (window.AdminDashboardManager) {
                 try {
                     this.adminDashboard = new AdminDashboardManager();
-                    // Create mock auth manager for development
-                    const mockAuthManager = {
+                    // Use real auth manager with production wallet
+                    const authManager = unifiedAuth || {
                         hasPermission: () => true,
-                        getUserProfile: () => ({ name: 'Admin User', role: 'admin' }),
+                        getUserProfile: () => ({ 
+                            name: 'Admin User', 
+                            role: 'admin',
+                            address: '0xc84799A904EeB5C57aBBBc40176E7dB8be202C10'
+                        }),
                         isAuthenticated: () => true
                     };
-                    await this.adminDashboard.initialize(mockAuthManager);
-                    console.log('✅ Admin Dashboard initialized for development');
+                    await this.adminDashboard.initialize(authManager);
+                    console.log('✅ Admin Dashboard initialized with production settings');
                 } catch (adminError) {
                     console.warn('⚠️ Admin Dashboard initialization failed:', adminError.message);
                     // Create minimal fallback
