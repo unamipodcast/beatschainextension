@@ -91,7 +91,8 @@ class AdminWalletManager {
             return { success: true, signature };
         } catch (error) {
             console.error('Admin transaction failed:', error);
-            return { success: false, error: error.message };
+            const errorMessage = error && error.message ? error.message : (typeof error === 'string' ? error : 'Unknown error');
+            return { success: false, error: errorMessage };
         }
     }
 

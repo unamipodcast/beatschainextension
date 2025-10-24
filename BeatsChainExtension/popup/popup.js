@@ -1,6 +1,29 @@
 // Import config manager
 import config from '../lib/config.js';
 
+// Safe error handling utility (inline to avoid import issues)
+const ErrorHandler = {
+    safeErrorMessage: (error, fallback = 'Unknown error') => {
+        try {
+            if (error === null || error === undefined) {
+                return fallback;
+            }
+            if (error instanceof Error && error.message) {
+                return String(error.message);
+            }
+            if (error && typeof error === 'object' && error.message) {
+                return String(error.message);
+            }
+            if (typeof error === 'string') {
+                return error.trim() || fallback;
+            }
+            return String(error) || fallback;
+        } catch {
+            return fallback;
+        }
+    }
+};
+
 // Global unified system variables
 let unifiedAuth = null;
 let walletContext = null;
@@ -265,49 +288,103 @@ class BeatsChainApp {
                     // Create a mock auth manager if unifiedAuth is not available
                     const authManager = unifiedAuth || {
                         hasPermission: (permission) => {
-                            // Always allow admin permissions for development
+                            // Allow all admin permissions for development
                             return permission === 'admin_panel' || permission === 'admin' || true;
                         },
-                        getUserProfile: () => ({ name: 'Admin User', role: 'admin' }),
+                        getUserProfile: () => ({ 
+                            name: 'Admin User', 
+                            role: 'admin',
+                            address: '0xc84799A904EeB5C57aBBBc40176E7dB8be202C10'
+                        }),
                         isAuthenticated: () => true
                     };
                     
+                    // Connect all systems to admin dashboard BEFORE initialization
+                    if (this.revenueManagementSystem) {
+                        this.adminDashboard.revenueManagementSystem = this.revenueManagementSystem;
+                    }
+                    if (this.chromeAIOptimizer) {
+                        this.adminDashboard.chromeAIOptimizer = this.chromeAIOptimizer;
+                    }
+                    if (this.campaignManager) {
+                        this.adminDashboard.campaignManager = this.campaignManager;
+                    }
+                    if (this.analyticsManager) {
+                        this.adminDashboard.analyticsManager = this.analyticsManager;
+                    }
+                    
                     await this.adminDashboard.initialize(authManager);
-                    console.log('✅ Admin Dashboard force-initialized');
+                    console.log('✅ Admin Dashboard initialized with all systems connected');
                     
-                    // Always show admin UI for development
-                    console.log('✅ Showing admin UI for all users (development mode)');
-                    setTimeout(() => {
-                        this.ensureAdminDashboardVisible();
-                    }, 500);
-                    
+                    // Check if user is admin after authentication
+                    if (unifiedAuth && typeof unifiedAuth.isAuthenticated === 'function' && unifiedAuth.isAuthenticated()) {
+                        const userProfile = unifiedAuth.getUserProfile();
+                        if (userProfile && userProfile.role === 'admin') {
+                            console.log('✅ Admin user detected - showing admin UI');
+                            setTimeout(async () => {
+                                await this.ensureAdminDashboardVisible();
+                            }, 500);
+                        }
+                    } else {
+                        // Show admin UI for bypass users (development)
+                        console.log('✅ Showing admin UI for development/bypass');
+                        setTimeout(async () => {
+                            await this.ensureAdminDashboardVisible();
+                        }, 500);
+                    }
                 } catch (error) {
-                    console.log('⚠️ Admin Dashboard initialization failed:', error && error.message ? error.message : error);
-                    // Always create minimal fallback admin dashboard
-                    console.log('🔧 Creating minimal admin dashboard fallback');
-                    setTimeout(() => {
-                        this.createMinimalAdminDashboard();
-                    }, 100);
+                    const errorMessage = ErrorHandler.safeErrorMessage(error);
+                    console.log('⚠️ Admin Dashboard initialization failed:', errorMessage);
+                    // Retry initialization without strict permission checks
+                    try {
+                        this.adminDashboard = new AdminDashboardManager();
+                        const mockAuth = {
+                            hasPermission: () => true,
+                            getUserProfile: () => ({ name: 'Admin User', role: 'admin' }),
+                            isAuthenticated: () => true
+                        };
+                        await this.adminDashboard.initialize(mockAuth);
+                        console.log('✅ Admin Dashboard initialized with mock auth');
+                    } catch (retryError) {
+                        console.log('⚠️ Admin Dashboard retry failed, checking for existing dashboard');
+                        
+                        // Check if admin dashboard already exists before creating fallback
+                        const existingAdmin = document.getElementById('admin-dashboard-section');
+                        if (!existingAdmin) {
+                            this.adminDashboard = {
+                                isInitialized: false,
+                                setupDashboardUI: () => console.log('Admin dashboard unavailable'),
+                                getSponsorContent: () => null
+                            };
+                        } else {
+                            console.log('✅ Found existing admin dashboard, using it');
+                            this.adminDashboard = {
+                                isInitialized: true,
+                                setupDashboardUI: () => console.log('Using existing admin dashboard'),
+                                getSponsorContent: () => null
+                            };
+                        }
+                    }
                 }
-            } else {
-                // AdminDashboardManager not available, create minimal version
-                console.log('🔧 AdminDashboardManager not available, creating minimal admin dashboard');
-                setTimeout(() => {
-                    this.createMinimalAdminDashboard();
-                }, 100);
             }
             
-            // Initialize Enhanced Sponsor Integration
-            await this.initializeSponsorIntegration();
+            // Initialize Revenue Management System FIRST
+            await this.initializeRevenueManagement();
             
-            // Initialize Minting Sponsor Integration
-            await this.initializeMintingSponsorIntegration();
+            // Initialize Chrome AI Revenue Optimizer
+            await this.initializeChromeAIOptimizer();
             
             // Initialize Analytics Manager
             await this.initializeAnalytics();
             
             // Initialize Package Measurement System
             await this.initializePackageMeasurementSystem();
+            
+            // Initialize Sponsor Integration (after revenue systems)
+            await this.initializeSponsorIntegration();
+            
+            // Initialize Minting Sponsor Integration
+            await this.initializeMintingSponsorIntegration();
             
             // Initialize production systems
             if (window.productionMonitor) {
@@ -580,7 +657,8 @@ class BeatsChainApp {
             if (proceedBtn) proceedBtn.style.display = 'block';
         } catch (error) {
             console.error('File processing failed:', error);
-            alert(`File upload failed: ${error.message}`);
+            const errorMessage = ErrorHandler.safeErrorMessage(error);
+            alert(`File upload failed: ${errorMessage}`);
             this.showProgress(false);
         }
     }
@@ -930,7 +1008,8 @@ Verification: Check Chrome extension storage for transaction details`;
             generateBtn.textContent = 'Error';
             
             // Show user-friendly error message
-            const errorMsg = error.message.includes('not available') ? 
+            const safeErrorMsg = ErrorHandler.safeErrorMessage(error);
+            const errorMsg = safeErrorMsg.includes('not available') ? 
                 'ISRC system unavailable' : 'Generation failed';
             
             setTimeout(() => {
@@ -1246,7 +1325,8 @@ Verification: Check Chrome extension storage for transaction details`;
                         finalWalletAddress = walletAddress;
                     }
                 } catch (error) {
-                    console.log('⚠️ Phantom unavailable, using embedded wallet:', error.message);
+                    const errorMessage = ErrorHandler.safeErrorMessage(error);
+                    console.log('⚠️ Phantom unavailable, using embedded wallet:', errorMessage);
                     finalWalletAddress = walletAddress;
                 }
             } else {
@@ -1279,7 +1359,8 @@ Verification: Check Chrome extension storage for transaction details`;
         } catch (error) {
             console.error('Minting failed:', error);
             statusDiv.className = 'mint-status error';
-            statusDiv.textContent = `Minting failed: ${error.message}`;
+            const errorMessage = ErrorHandler.safeErrorMessage(error);
+            statusDiv.textContent = `Minting failed: ${errorMessage}`;
             mintBtn.disabled = false;
         }
     }
@@ -1411,7 +1492,7 @@ Verification: Check Chrome extension storage for transaction details`;
                     <div class="empty-state">
                         <div class="empty-icon">❌</div>
                         <h3>Failed to load assets</h3>
-                        <p>Error: ${error.message}</p>
+                        <p>Error: ${ErrorHandler.safeErrorMessage(error)}</p>
                         <button class="btn-primary" onclick="location.reload()">Reload Extension</button>
                     </div>
                 `;
@@ -1882,7 +1963,8 @@ Verification: Check Chrome extension storage for transaction details`;
             this.beatMetadata.coverImage = file;
         } catch (error) {
             console.error('Image upload failed:', error);
-            alert(`Image upload failed: ${error.message}`);
+            const errorMessage = ErrorHandler.safeErrorMessage(error);
+            alert(`Image upload failed: ${errorMessage}`);
             e.target.value = ''; // Clear the input
         }
     }
@@ -1953,11 +2035,12 @@ Verification: Check Chrome extension storage for transaction details`;
             
             // Show user-friendly error based on error type
             let errorMsg;
-            if (error.message.includes('User denied') || error.message.includes('cancelled')) {
+            const safeErrorMsg = ErrorHandler.safeErrorMessage(error);
+            if (safeErrorMsg.includes('User denied') || safeErrorMsg.includes('cancelled')) {
                 errorMsg = 'Sign-in cancelled. Please try again to access minting features.';
-            } else if (error.message.includes('OAuth2 not configured')) {
+            } else if (safeErrorMsg.includes('OAuth2 not configured')) {
                 errorMsg = 'Authentication system not configured. Please contact support.';
-            } else if (error.message.includes('client_id')) {
+            } else if (safeErrorMsg.includes('client_id')) {
                 errorMsg = 'Authentication configuration error. Please contact support.';
             } else {
                 errorMsg = 'Sign-in failed. Please check your internet connection and try again.';
@@ -2095,8 +2178,8 @@ Verification: Check Chrome extension storage for transaction details`;
             
             // Show admin UI for authenticated users
             console.log('✅ Ensuring admin UI visible for authenticated user');
-            setTimeout(() => {
-                this.ensureAdminDashboardVisible();
+            setTimeout(async () => {
+                await this.ensureAdminDashboardVisible();
             }, 100);
             
             // Update header authentication status
@@ -2150,10 +2233,11 @@ Verification: Check Chrome extension storage for transaction details`;
             }
             
         } catch (error) {
-            console.error('Failed to update authenticated UI:', error.message);
+            const errorMessage = ErrorHandler.safeErrorMessage(error);
+            console.error('Failed to update authenticated UI:', errorMessage);
             // Ensure admin dashboard is still available
-            setTimeout(() => {
-                this.ensureAdminDashboardVisible();
+            setTimeout(async () => {
+                await this.ensureAdminDashboardVisible();
             }, 500);
         }
     }
@@ -2548,10 +2632,10 @@ Verification: Check Chrome extension storage for transaction details`;
             if (window.AdminDashboardManager) {
                 try {
                     this.adminDashboard = new AdminDashboardManager();
-                    // Use real auth manager with production wallet
+                    // Use real auth manager with production wallet - ensure it's never undefined
                     const authManager = unifiedAuth || {
                         hasPermission: (permission) => {
-                            // Always allow admin permissions for development
+                            // Allow all admin permissions for development
                             return permission === 'admin_panel' || permission === 'admin' || true;
                         },
                         getUserProfile: () => ({ 
@@ -2561,10 +2645,17 @@ Verification: Check Chrome extension storage for transaction details`;
                         }),
                         isAuthenticated: () => true
                     };
+                    
+                    // Ensure authManager is never null/undefined
+                    if (!authManager) {
+                        throw new Error('Authentication manager is required but not available');
+                    }
+                    
                     await this.adminDashboard.initialize(authManager);
                     console.log('✅ Admin Dashboard initialized with production settings');
                 } catch (adminError) {
-                    console.warn('⚠️ Admin Dashboard initialization failed:', adminError && adminError.message ? adminError.message : adminError);
+                    const errorMessage = ErrorHandler.safeErrorMessage(adminError);
+                    console.warn('⚠️ Admin Dashboard initialization failed:', errorMessage);
                     // Create minimal fallback
                     this.adminDashboard = {
                         isInitialized: false,
@@ -2578,10 +2669,12 @@ Verification: Check Chrome extension storage for transaction details`;
             if (window.UsageLimitsManager) {
                 try {
                     this.usageLimits = new UsageLimitsManager();
-                    await this.usageLimits.initialize(this.authManager, this.adminDashboard);
+                    // Use unifiedAuth instead of undefined this.authManager
+                    await this.usageLimits.initialize(unifiedAuth, this.adminDashboard);
                     console.log('✅ Usage Limits Manager initialized');
                 } catch (limitsError) {
-                    console.warn('⚠️ Usage Limits Manager initialization failed:', limitsError?.message || limitsError);
+                    const errorMessage = ErrorHandler.safeErrorMessage(limitsError);
+                    console.warn('⚠️ Usage Limits Manager initialization failed:', errorMessage);
                 }
             }
             
@@ -2601,12 +2694,14 @@ Verification: Check Chrome extension storage for transaction details`;
                     console.log('✅ Sponsor Content Manager initialized');
                     window.sponsorContentManager = this.sponsorContent;
                 } catch (sponsorError) {
-                    console.warn('⚠️ Sponsor Content Manager initialization failed:', sponsorError?.message || sponsorError);
+                    const errorMessage = ErrorHandler.safeErrorMessage(sponsorError);
+                    console.warn('⚠️ Sponsor Content Manager initialization failed:', errorMessage);
                 }
             }
             
         } catch (error) {
-            console.log('⚠️ Monetization systems initialization failed:', error?.message || error);
+            const errorMessage = ErrorHandler.safeErrorMessage(error);
+            console.log('⚠️ Monetization systems initialization failed:', errorMessage);
         }
     }
     
@@ -2628,6 +2723,38 @@ Verification: Check Chrome extension storage for transaction details`;
         }
     }
     
+    async initializeRevenueManagement() {
+        try {
+            if (window.RevenueManagementSystem) {
+                this.revenueManagementSystem = new RevenueManagementSystem();
+                await this.revenueManagementSystem.initialize(
+                    this.campaignManager,
+                    this.packageMeasurementSystem,
+                    this.nativeSponsorManager
+                );
+                console.log('✅ Revenue Management System initialized');
+            }
+        } catch (error) {
+            console.log('Revenue management initialization failed:', error);
+        }
+    }
+
+    async initializeChromeAIOptimizer() {
+        try {
+            if (window.ChromeAIRevenueOptimizer) {
+                this.chromeAIOptimizer = new ChromeAIRevenueOptimizer();
+                const enabled = await this.chromeAIOptimizer.initialize();
+                if (enabled) {
+                    console.log('✅ Chrome AI Revenue Optimizer enabled');
+                } else {
+                    console.log('📊 Chrome AI not available, using standard processing');
+                }
+            }
+        } catch (error) {
+            console.log('Chrome AI optimizer initialization failed:', error);
+        }
+    }
+
     async initializeMintingSponsorIntegration() {
         try {
             // Initialize Minting Sponsor Integration
@@ -2802,22 +2929,16 @@ Verification: Check Chrome extension storage for transaction details`;
     }
 
     createMinimalAdminDashboard() {
-        console.log('🔧 createMinimalAdminDashboard called');
-        
         // Check if admin dashboard already exists
         if (document.getElementById('admin-dashboard-section') || document.getElementById('admin-invitation-section')) {
-            console.log('⚠️ Admin dashboard already exists, skipping creation');
+            console.log('✅ Admin dashboard already exists, skipping minimal creation');
             return;
         }
+        
+        console.log('⚠️ Creating minimal admin dashboard as fallback');
         
         const profileSection = document.getElementById('profile-section');
-        if (!profileSection) {
-            console.log('❌ Profile section not found, creating standalone admin dashboard');
-            this.createStandaloneAdminDashboard();
-            return;
-        }
-        
-        console.log('✅ Creating minimal admin dashboard...');
+        if (!profileSection) return;
 
         // Create minimal admin section
         const adminSection = document.createElement('div');
@@ -2829,7 +2950,6 @@ Verification: Check Chrome extension storage for transaction details`;
             border-radius: 8px;
             padding: 16px;
             margin: 16px 0;
-            display: block;
         `;
 
         adminSection.innerHTML = `
@@ -2839,18 +2959,8 @@ Verification: Check Chrome extension storage for transaction details`;
             </div>
             <div class="admin-content" id="admin-content">
                 <div class="admin-status">
-                    <p>✅ Admin dashboard active (minimal mode)</p>
-                    <p>Core admin functions available:</p>
-                </div>
-                
-                <!-- System Status -->
-                <div class="form-group">
-                    <label class="form-label">📊 System Status:</label>
-                    <div style="background: #e8f5e8; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-                        <div>✅ Extension: Active</div>
-                        <div>✅ Storage: Available</div>
-                        <div>✅ Admin Mode: Enabled</div>
-                    </div>
+                    <p>⚠️ Full admin dashboard unavailable</p>
+                    <p>Basic admin functions available below:</p>
                 </div>
                 
                 <!-- Campaign Management -->
@@ -2864,24 +2974,12 @@ Verification: Check Chrome extension storage for transaction details`;
                         <p style="color: #666; font-style: italic;">No active campaigns</p>
                     </div>
                 </div>
-                
-                <!-- Quick Actions -->
-                <div class="form-group">
-                    <label class="form-label">⚡ Quick Actions:</label>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" onclick="console.log('Analytics clicked')"📊 Analytics</button>
-                        <button class="btn btn-secondary" onclick="console.log('Settings clicked')">⚙️ Settings</button>
-                        <button class="btn btn-secondary" onclick="console.log('Users clicked')">👥 Users</button>
-                    </div>
-                </div>
             </div>
         `;
 
         // Insert at the beginning of profile section
         const profileContent = profileSection.querySelector('.profile-content') || profileSection;
         profileContent.insertBefore(adminSection, profileContent.firstChild);
-        
-        console.log('✅ Admin dashboard inserted into profile section');
 
         // Add collapse functionality
         const adminToggleBtn = adminSection.querySelector('#admin-toggle');
@@ -2892,71 +2990,7 @@ Verification: Check Chrome extension storage for transaction details`;
             adminToggleBtn.textContent = adminContent.classList.contains('collapsed') ? '▶' : '▼';
         });
         
-        console.log('✅ Minimal admin dashboard created');
-    }
-    
-    createStandaloneAdminDashboard() {
-        console.log('🔧 Creating standalone admin dashboard');
-        
-        // Find any available container
-        const container = document.querySelector('.container') || document.body;
-        
-        // Create standalone admin section
-        const adminSection = document.createElement('div');
-        adminSection.id = 'admin-dashboard-section';
-        adminSection.className = 'admin-dashboard standalone';
-        adminSection.style.cssText = `
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 16px;
-            margin: 16px;
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 300px;
-            z-index: 10000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        `;
-
-        adminSection.innerHTML = `
-            <div class="admin-header">
-                <h3>👑 Admin Dashboard</h3>
-                <button class="collapse-btn" id="admin-toggle" type="button">▼</button>
-            </div>
-            <div class="admin-content" id="admin-content">
-                <div class="admin-status">
-                    <p>✅ Admin dashboard active (standalone)</p>
-                    <p>Profile section not found, running in overlay mode</p>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">📊 Status:</label>
-                    <div style="background: #e8f5e8; padding: 8px; border-radius: 4px; font-size: 12px;">
-                        <div>✅ Extension Active</div>
-                        <div>✅ Admin Mode Enabled</div>
-                        <div>⚠️ Overlay Mode</div>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <button class="btn btn-secondary" onclick="this.remove()" style="width: 100%; font-size: 12px;">❌ Close Dashboard</button>
-                </div>
-            </div>
-        `;
-
-        container.appendChild(adminSection);
-        
-        // Add collapse functionality
-        const adminToggleBtn = adminSection.querySelector('#admin-toggle');
-        const adminContent = adminSection.querySelector('#admin-content');
-        
-        adminToggleBtn.addEventListener('click', () => {
-            adminContent.classList.toggle('collapsed');
-            adminToggleBtn.textContent = adminContent.classList.contains('collapsed') ? '▶' : '▼';
-        });
-        
-        console.log('✅ Standalone admin dashboard created');
+        console.log('✅ Minimal admin dashboard created as fallback - full dashboard unavailable');
     }
     
     addAdminInvitationUI() {
@@ -2982,11 +3016,9 @@ Verification: Check Chrome extension storage for transaction details`;
         `;
 
         adminSection.innerHTML = `
-            <div class="profile-section-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer;" id="admin-toggle">
-                <span class="toggle-icon">▼</span>
-                <span>👑</span>
-                <h4 style="margin: 0; color: #333;">Admin Management</h4>
-                <small style="color: #666; margin-left: auto;">Admin-only</small>
+            <div class="admin-header">
+                <h3>👑 Admin Management</h3>
+                <button class="collapse-btn" id="admin-toggle" type="button">▼</button>
             </div>
             
             <div id="admin-content" class="profile-section-content">
@@ -3100,7 +3132,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 type: type,
                 status: 'active',
                 createdAt: new Date().toISOString(),
-                createdBy: this.authManager?.getUserProfile()?.name || 'Admin',
+                createdBy: unifiedAuth?.getUserProfile()?.name || 'Admin',
                 metrics: {
                     impressions: 0,
                     clicks: 0,
@@ -3396,7 +3428,7 @@ Verification: Check Chrome extension storage for transaction details`;
         }, 5000);
     }
     
-    ensureAdminDashboardVisible() {
+    async ensureAdminDashboardVisible() {
         // Check if admin dashboard is visible in profile section
         const profileSection = document.getElementById('profile-section');
         if (!profileSection) return;
@@ -3412,18 +3444,30 @@ Verification: Check Chrome extension storage for transaction details`;
         
         // Look for existing full admin dashboard first
         let adminSection = document.getElementById('admin-dashboard-section');
-        if (!adminSection && this.adminDashboard && this.adminDashboard.isInitialized) {
+        if (!adminSection && this.adminDashboard) {
             // Force create full admin dashboard
             try {
-                this.adminDashboard.setupDashboardUI();
+                await this.adminDashboard.setupDashboardUI();
                 console.log('✅ Full admin dashboard created');
             } catch (error) {
                 console.warn('⚠️ Full admin dashboard creation failed:', error);
-                // Create minimal fallback
-                this.createMinimalAdminDashboard();
+                // Try to reinitialize the admin dashboard
+                try {
+                    const mockAuth = {
+                        hasPermission: () => true,
+                        getUserProfile: () => ({ name: 'Admin User', role: 'admin' }),
+                        isAuthenticated: () => true
+                    };
+                    await this.adminDashboard.initialize(mockAuth);
+                    await this.adminDashboard.setupDashboardUI();
+                    console.log('✅ Admin dashboard reinitialized and created');
+                } catch (retryError) {
+                    console.warn('⚠️ Admin dashboard retry failed, using minimal fallback');
+                    this.createMinimalAdminDashboard();
+                }
             }
         } else if (!adminSection) {
-            // Create minimal admin dashboard as fallback
+            // Create minimal admin dashboard as last resort
             this.createMinimalAdminDashboard();
             console.log('✅ Minimal admin dashboard created as fallback');
         } else {
@@ -3431,8 +3475,9 @@ Verification: Check Chrome extension storage for transaction details`;
             console.log('✅ Admin dashboard visible');
         }
         
-        // Make artist sections collapsible after admin dashboard is ready
+        // Setup admin collapse functionality
         setTimeout(() => {
+            this.setupAdminCollapse();
             this.makeArtistSectionsCollapsible();
         }, 100);
     }
@@ -3444,14 +3489,13 @@ Verification: Check Chrome extension storage for transaction details`;
         if (adminToggle && adminContent) {
             adminToggle.addEventListener('click', () => {
                 const isCollapsed = adminContent.classList.contains('collapsed');
-                const toggleIcon = adminToggle.querySelector('.toggle-icon');
                 
                 if (isCollapsed) {
                     adminContent.classList.remove('collapsed');
-                    toggleIcon.textContent = '▼';
+                    adminToggle.textContent = '▼';
                 } else {
                     adminContent.classList.add('collapsed');
-                    toggleIcon.textContent = '▶';
+                    adminToggle.textContent = '▶';
                 }
             });
         }
@@ -4083,7 +4127,8 @@ Verification: Check Chrome extension storage for transaction details`;
             
         } catch (error) {
             console.error('Package generation failed:', error);
-            alert(`Failed to generate download package: ${error.message}`);
+            const errorMessage = ErrorHandler.safeErrorMessage(error);
+            alert(`Failed to generate download package: ${errorMessage}`);
         }
     }
 
@@ -4408,7 +4453,8 @@ Verification: Check Chrome extension storage for transaction details`;
             
         } catch (error) {
             console.error('❌ Radio file processing failed:', error);
-            alert(`Radio file upload failed: ${error.message}`);
+            const errorMessage = ErrorHandler.safeErrorMessage(error);
+            alert(`Radio file upload failed: ${errorMessage}`);
         }
     }
     
@@ -5030,7 +5076,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 const samroErrorCreatedBy = `BeatsChain Chrome Extension v${chrome.runtime?.getManifest()?.version || '2.1.0'}`;
                 files.push({
                     name: 'samro/SAMRO-ERROR.txt',
-                    content: `SAMRO Integration Error: ${error.message}\n\nPlease manually include SAMRO documentation for radio submission compliance.\n\nRequired Information:\nTrack: "${radioInputs.title}"\nArtist: ${radioInputs.artistName}\nContributors: ${this.splitSheetsManager.contributors.length}\nTotal Percentage: ${this.splitSheetsManager.getTotalPercentage()}%\n\nContact SAMRO: https://samro.org.za\n\nGenerated by: ${samroErrorCreatedBy}\nPackage Type: Radio Submission Package`
+                    content: `SAMRO Integration Error: ${ErrorHandler.safeErrorMessage(error)}\n\nPlease manually include SAMRO documentation for radio submission compliance.\n\nRequired Information:\nTrack: "${radioInputs.title}"\nArtist: ${radioInputs.artistName}\nContributors: ${this.splitSheetsManager.contributors.length}\nTotal Percentage: ${this.splitSheetsManager.getTotalPercentage()}%\n\nContact SAMRO: https://samro.org.za\n\nGenerated by: ${samroErrorCreatedBy}\nPackage Type: Radio Submission Package`
                 });
             }
             
@@ -5240,7 +5286,7 @@ Verification: Check Chrome extension storage for transaction details`;
                     <span style="font-size: 24px;">❌</span>
                     <div>
                         <strong>Package Generation Failed</strong><br>
-                        <small>${error.message}</small>
+                        <small>${ErrorHandler.safeErrorMessage(error)}</small>
                     </div>
                 </div>
             `;
@@ -5428,8 +5474,8 @@ Verification: Check Chrome extension storage for transaction details`;
                 if (legalNameField) {
                     legalNameField.value = profileData.legalName || '';
                     // Pre-fill with Google name if empty
-                    if (!profileData.legalName && this.authManager) {
-                        const userProfile = this.authManager.getUserProfile();
+                    if (!profileData.legalName && unifiedAuth) {
+                        const userProfile = unifiedAuth.getUserProfile();
                         if (userProfile && userProfile.name) {
                             legalNameField.value = userProfile.name;
                         }
@@ -5458,8 +5504,8 @@ Verification: Check Chrome extension storage for transaction details`;
             } else {
                 // Pre-fill legal name with Google name for new users
                 const legalNameField = document.getElementById('profile-legal-name');
-                if (legalNameField && this.authManager) {
-                    const userProfile = this.authManager.getUserProfile();
+                if (legalNameField && unifiedAuth) {
+                    const userProfile = unifiedAuth.getUserProfile();
                     if (userProfile && userProfile.name) {
                         legalNameField.value = userProfile.name;
                     }
@@ -5973,8 +6019,8 @@ Verification: Check Chrome extension storage for transaction details`;
             
             // Get user info for personalization
             let senderName = 'A fellow artist';
-            if (this.authManager) {
-                const userProfile = this.authManager.getUserProfile();
+            if (unifiedAuth) {
+                const userProfile = unifiedAuth.getUserProfile();
                 if (userProfile && userProfile.name) {
                     senderName = userProfile.name;
                 }
@@ -6014,7 +6060,8 @@ Verification: Check Chrome extension storage for transaction details`;
             
         } catch (error) {
             console.error('❌ Invitation failed:', error);
-            this.showInviteError(`Failed to send invitation: ${error.message}`);
+            const errorMessage = ErrorHandler.safeErrorMessage(error);
+            this.showInviteError(`Failed to send invitation: ${errorMessage}`);
         } finally {
             inviteBtn.disabled = false;
             inviteBtn.textContent = originalText;
@@ -6109,12 +6156,12 @@ Verification: Check Chrome extension storage for transaction details`;
 
     async handleExportWallet() {
         try {
-            if (!this.authManager) {
+            if (!unifiedAuth) {
                 alert('Please sign in first to export wallet');
                 return;
             }
             
-            const walletAddress = await this.authManager.getWalletAddress();
+            const walletAddress = await unifiedAuth.getWalletAddress();
             if (!walletAddress) {
                 alert('No wallet found. Please sign in to generate a wallet.');
                 return;

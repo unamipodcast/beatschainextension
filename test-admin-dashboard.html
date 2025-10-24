@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        #profile-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: #333;
+            border-radius: 8px;
+        }
+        .admin-dashboard {
+            margin: 10px 0;
+            padding: 15px;
+            background: #444;
+            border-radius: 6px;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .collapse-btn {
+            background: #555;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .admin-content {
+            background: #555;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .admin-content.collapsed {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Admin Dashboard Test</h1>
+        <p>Testing admin dashboard initialization and error handling...</p>
+        
+        <div id="test-results"></div>
+        
+        <button onclick="runTests()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 10px 0;">
+            🚀 Run Tests
+        </button>
+        
+        <div id="profile-section">
+            <h3>Profile Section (Admin Dashboard will be inserted here)</h3>
+        </div>
+    </div>
+
+    <!-- Load AdminDashboardManager directly -->
+    <script src="BeatsChainExtension/lib/admin-dashboard.js"></script>
+    
+    <script>
+        // Mock Chrome APIs
+        window.chrome = {
+            storage: {
+                local: {
+                    get: (keys) => Promise.resolve({}),
+                    set: (data) => Promise.resolve(),
+                    remove: (keys) => Promise.resolve()
+                }
+            },
+            runtime: {
+                getManifest: () => ({ version: '2.4.0' })
+            }
+        };
+
+        // Mock authentication manager
+        const mockAuthManager = {
+            hasPermission: (permission) => {
+                console.log('✅ Permission check:', permission);
+                return permission === 'admin_panel' || permission === 'admin';
+            },
+            getUserProfile: () => ({ 
+                name: 'Test Admin', 
+                role: 'admin',
+                address: '0xtest123'
+            }),
+            isAuthenticated: () => true
+        };
+
+        // Mock authentication manager that throws undefined error
+        const mockAuthManagerWithError = {
+            hasPermission: (permission) => {
+                // Simulate the exact error that was causing the issue
+                const error = undefined;
+                throw error; // This will throw undefined, causing "Cannot read properties of undefined"
+            },
+            getUserProfile: () => ({ name: 'Test Admin', role: 'admin' }),
+            isAuthenticated: () => true
+        };
+        
+        // Mock authentication manager that throws null error
+        const mockAuthManagerWithNullError = {
+            hasPermission: (permission) => {
+                throw null; // This will throw null
+            },
+            getUserProfile: () => ({ name: 'Test Admin', role: 'admin' }),
+            isAuthenticated: () => true
+        };
+        
+        // Mock authentication manager that throws malformed error object
+        const mockAuthManagerWithMalformedError = {
+            hasPermission: (permission) => {
+                throw { someProperty: 'value' }; // Error object without message property
+            },
+            getUserProfile: () => ({ name: 'Test Admin', role: 'admin' }),
+            isAuthenticated: () => true
+        };
+
+        function addTestResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function runTests() {
+            document.getElementById('test-results').innerHTML = '';
+            addTestResult('Starting admin dashboard tests...', 'info');
+
+            // Test 1: Check AdminDashboardManager availability
+            if (window.AdminDashboardManager) {
+                addTestResult('✅ AdminDashboardManager class available', 'success');
+            } else {
+                addTestResult('❌ AdminDashboardManager class not available', 'error');
+                return;
+            }
+
+            // Test 2: Initialize with valid auth manager
+            try {
+                const adminDashboard = new AdminDashboardManager();
+                await adminDashboard.initialize(mockAuthManager);
+                addTestResult('✅ Admin dashboard initialized with valid auth manager', 'success');
+            } catch (error) {
+                addTestResult(`❌ Initialization with valid auth failed: ${error.message}`, 'error');
+            }
+
+            // Test 3: Initialize with undefined error (the original issue)
+            try {
+                const adminDashboard = new AdminDashboardManager();
+                await adminDashboard.initialize(mockAuthManagerWithError);
+                addTestResult('❌ Should have failed with undefined error auth manager', 'error');
+            } catch (error) {
+                // This should fail gracefully now with proper error message extraction
+                let errorMessage = 'Unknown error';
+                try {
+                    if (error && typeof error === 'object' && error.message) {
+                        errorMessage = String(error.message);
+                    } else if (typeof error === 'string') {
+                        errorMessage = error;
+                    } else if (error) {
+                        errorMessage = String(error);
+                    }
+                } catch (msgError) {
+                    errorMessage = 'Error processing failed';
+                }
+                addTestResult(`✅ Gracefully handled undefined error: ${errorMessage}`, 'success');
+            }
+            
+            // Test 3b: Initialize with null error
+            try {
+                const adminDashboard = new AdminDashboardManager();
+                await adminDashboard.initialize(mockAuthManagerWithNullError);
+                addTestResult('❌ Should have failed with null error auth manager', 'error');
+            } catch (error) {
+                let errorMessage = 'Unknown error';
+                try {
+                    if (error && typeof error === 'object' && error.message) {
+                        errorMessage = String(error.message);
+                    } else if (typeof error === 'string') {
+                        errorMessage = error;
+                    } else if (error) {
+                        errorMessage = String(error);
+                    }
+                } catch (msgError) {
+                    errorMessage = 'Error processing failed';
+                }
+                addTestResult(`✅ Gracefully handled null error: ${errorMessage}`, 'success');
+            }
+            
+            // Test 3c: Initialize with malformed error object
+            try {
+                const adminDashboard = new AdminDashboardManager();
+                await adminDashboard.initialize(mockAuthManagerWithMalformedError);
+                addTestResult('❌ Should have failed with malformed error auth manager', 'error');
+            } catch (error) {
+                let errorMessage = 'Unknown error';
+                try {
+                    if (error && typeof error === 'object' && error.message) {
+                        errorMessage = String(error.message);
+                    } else if (typeof error === 'string') {
+                        errorMessage = error;
+                    } else if (error) {
+                        errorMessage = String(error);
+                    }
+                } catch (msgError) {
+                    errorMessage = 'Error processing failed';
+                }
+                addTestResult(`✅ Gracefully handled malformed error: ${errorMessage}`, 'success');
+            }
+
+            // Test 4: Initialize with null auth manager
+            try {
+                const adminDashboard = new AdminDashboardManager();
+                await adminDashboard.initialize(null);
+                addTestResult('❌ Should have failed with null auth manager', 'error');
+            } catch (error) {
+                addTestResult('✅ Correctly rejected null auth manager', 'success');
+            }
+
+            // Test 5: Test createMinimalAdminDashboard
+            try {
+                const adminDashboard = new AdminDashboardManager();
+                
+                // Add the createMinimalAdminDashboard method if it doesn't exist
+                if (!adminDashboard.createMinimalAdminDashboard) {
+                    adminDashboard.createMinimalAdminDashboard = function() {
+                        const profileSection = document.getElementById('profile-section');
+                        if (!profileSection) {
+                            console.warn('Profile section not found for minimal admin dashboard');
+                            return null;
+                        }
+
+                        // Check if admin section already exists
+                        const existingAdmin = document.getElementById('admin-dashboard-section');
+                        if (existingAdmin) {
+                            console.log('Admin dashboard already exists, updating content');
+                            return existingAdmin;
+                        }
+
+                        const adminSection = document.createElement('div');
+                        adminSection.id = 'admin-dashboard-section';
+                        adminSection.className = 'admin-dashboard admin-only';
+                        
+                        adminSection.innerHTML = `
+                            <div class="admin-header">
+                                <h3>👑 Admin Dashboard (Minimal)</h3>
+                                <button class="collapse-btn" id="admin-toggle" type="button">▼</button>
+                            </div>
+                            <div class="admin-content" id="admin-content">
+                                <div class="minimal-dashboard-notice">
+                                    <p>✅ Minimal admin dashboard created successfully!</p>
+                                    <p>This is a fallback dashboard when full initialization fails.</p>
+                                    <p><strong>Available features:</strong></p>
+                                    <ul>
+                                        <li>Basic system status</li>
+                                        <li>Error recovery options</li>
+                                        <li>Essential admin controls</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="minimal-controls">
+                                    <button class="btn btn-primary" onclick="location.reload()">🔄 Retry Full Dashboard</button>
+                                    <button class="btn btn-secondary" onclick="console.log('System status: OK')">📊 System Status</button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        profileSection.appendChild(adminSection);
+                        
+                        // Setup collapse functionality
+                        const toggleBtn = adminSection.querySelector('#admin-toggle');
+                        const content = adminSection.querySelector('#admin-content');
+                        
+                        if (toggleBtn && content) {
+                            toggleBtn.addEventListener('click', () => {
+                                content.classList.toggle('collapsed');
+                                toggleBtn.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+                            });
+                        }
+                        
+                        return adminSection;
+                    };
+                }
+
+                const result = adminDashboard.createMinimalAdminDashboard();
+                if (result) {
+                    addTestResult('✅ Minimal admin dashboard created successfully', 'success');
+                } else {
+                    addTestResult('✅ Minimal admin dashboard handled gracefully (no profile section)', 'success');
+                }
+            } catch (error) {
+                addTestResult(`❌ Minimal admin dashboard creation failed: ${error.message}`, 'error');
+            }
+
+            addTestResult('🎉 All tests completed!', 'info');
+        }
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -62,7 +62,8 @@
       "resources": [
         "assets/Composer-Split-Confirmation.pdf",
         "assets/fallback-sponsor-manifest.json",
-        "lib/env-config.js"
+        "lib/env-config.js",
+        "lib/error-handler.js"
       ],
       "matches": ["<all_urls>"]
     }

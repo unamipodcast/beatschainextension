@@ -379,29 +379,36 @@ class ISRCManager {
             // Get authenticated user ID for unique range calculation
             let userId = 'anonymous';
             
-            // GRACEFUL: Handle missing authentication managers
+            // GRACEFUL: Handle missing authentication managers with comprehensive error handling
             try {
-                if (window.unifiedAuth && window.unifiedAuth.isAuthenticated()) {
+                if (window.unifiedAuth && typeof window.unifiedAuth.isAuthenticated === 'function' && window.unifiedAuth.isAuthenticated()) {
                     const userProfile = window.unifiedAuth.getUserProfile();
-                    if (userProfile && userProfile.id) {
+                    if (userProfile && userProfile.id && typeof userProfile.id === 'string') {
                         userId = userProfile.id;
                     }
                 } else if (window.AuthenticationManager || window.EnhancedAuthenticationManager) {
                     const authManager = window.authManager || 
                         (window.EnhancedAuthenticationManager ? new EnhancedAuthenticationManager() : new AuthenticationManager());
                     
-                    if (authManager.isAuthenticated) {
+                    if (authManager && typeof authManager.isAuthenticated === 'function' && authManager.isAuthenticated()) {
                         const userProfile = authManager.getUserProfile();
-                        if (userProfile && userProfile.id) {
+                        if (userProfile && userProfile.id && typeof userProfile.id === 'string') {
                             userId = userProfile.id;
                         }
                     }
                 }
             } catch (authError) {
                 console.warn('⚠️ Auth check failed, using anonymous:', authError);
+                userId = 'anonymous'; // Ensure userId is always a string
             }
             
-            // FIXED: Generate unique range with 5-digit limit enforcement
+            // CRITICAL: Ensure userId is always a valid string
+            if (!userId || typeof userId !== 'string') {
+                console.warn('⚠️ Invalid userId detected, using anonymous');
+                userId = 'anonymous';
+            }
+            
+            // FIXED: Generate unique range with 5-digit limit enforcement and comprehensive error handling
             const hash = await this.hashUserId(userId);
             const rangeIndex = hash % 90; // Support 90 users per year (90 * 1000 = 90,000 codes)
             const start = 200 + (rangeIndex * 1000); // Each user gets 1000 numbers
@@ -414,28 +421,57 @@ class ISRCManager {
                 return { start: 200, end: 1199, userId: 'fallback', rangeIndex: 0 };
             }
             
-            console.log('ISRC range calculated:', JSON.stringify({ start, end, userId: userId.substring(0, 8), rangeIndex }));
+            // CRITICAL FIX: Safe userId handling for logging
+            const safeUserId = (userId && typeof userId === 'string') ? userId.substring(0, 8) : 'anonymous';
+            console.log('ISRC range calculated:', JSON.stringify({ start, end, userId: safeUserId, rangeIndex }));
             return { start, end, userId, rangeIndex };
             
         } catch (error) {
             console.warn('User range calculation failed, using default:', error);
-            return { start: 200, end: 1199, userId: 'default', rangeIndex: 0 };
+            // CRITICAL: Ensure safe fallback with proper error structure
+            return { 
+                start: 200, 
+                end: 1199, 
+                userId: 'default', 
+                rangeIndex: 0,
+                error: true,
+                errorMessage: error.message || 'Unknown error'
+            };
         }
     }
     
     async hashUserId(userId) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(userId + 'beatschain-isrc-salt');
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = new Uint8Array(hashBuffer);
-        
-        // Convert first 4 bytes to number
-        let hash = 0;
-        for (let i = 0; i < 4; i++) {
-            hash = (hash << 8) + hashArray[i];
+        try {
+            // CRITICAL: Ensure userId is a valid string
+            if (!userId || typeof userId !== 'string') {
+                console.warn('⚠️ Invalid userId for hashing, using fallback');
+                userId = 'anonymous';
+            }
+            
+            const encoder = new TextEncoder();
+            const data = encoder.encode(userId + 'beatschain-isrc-salt');
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = new Uint8Array(hashBuffer);
+            
+            // Convert first 4 bytes to number
+            let hash = 0;
+            for (let i = 0; i < 4; i++) {
+                hash = (hash << 8) + hashArray[i];
+            }
+            
+            return Math.abs(hash);
+        } catch (error) {
+            console.warn('⚠️ Crypto hashing failed, using simple fallback:', error);
+            // Simple fallback hash for when crypto.subtle is unavailable
+            let hash = 0;
+            const str = (userId || 'anonymous') + 'beatschain-isrc-salt';
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return Math.abs(hash);
         }
-        
-        return Math.abs(hash);
     }
 
     sanitizeInput(input) {

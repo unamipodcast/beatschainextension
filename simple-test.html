@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Script Test</title>
+</head>
+<body>
+    <h1>Script Loading Test</h1>
+    <div id="result">Loading...</div>
+    
+    <script>
+        // Test if we can load the admin dashboard script
+        const script = document.createElement('script');
+        script.src = 'BeatsChainExtension/lib/admin-dashboard.js';
+        script.onload = () => {
+            document.getElementById('result').innerHTML = '✅ Script loaded successfully. AdminDashboardManager available: ' + (!!window.AdminDashboardManager);
+        };
+        script.onerror = (error) => {
+            document.getElementById('result').innerHTML = '❌ Script failed to load: ' + error;
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

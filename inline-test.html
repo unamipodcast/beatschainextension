@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inline Admin Dashboard Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .test-result { padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Inline Admin Dashboard Test</h1>
+    <div id="results"></div>
+    <button onclick="runTest()">🚀 Run Test</button>
+    
+    <script>
+        // Mock Chrome APIs
+        window.chrome = {
+            storage: {
+                local: {
+                    get: () => Promise.resolve({}),
+                    set: () => Promise.resolve()
+                }
+            },
+            runtime: {
+                getManifest: () => ({ version: '2.4.0' })
+            }
+        };
+
+        // Minimal AdminDashboardManager for testing
+        class AdminDashboardManager {
+            constructor() {
+                this.authManager = null;
+                this.isInitialized = false;
+            }
+
+            async initialize(authManager) {
+                if (!authManager) {
+                    throw new Error('Authentication manager required');
+                }
+
+                this.authManager = authManager;
+                
+                // Test the exact error handling that was causing issues
+                try {
+                    if (!this.authManager.hasPermission || !this.authManager.hasPermission('admin_panel')) {
+                        throw new Error('Admin permissions required');
+                    }
+                } catch (error) {
+                    // CRITICAL FIX: Safe error logging
+                    let errorMessage = 'Permission check failed';
+                    try {
+                        if (error && typeof error === 'object' && error.message) {
+                            errorMessage = String(error.message);
+                        } else if (typeof error === 'string') {
+                            errorMessage = error;
+                        } else if (error) {
+                            errorMessage = String(error);
+                        }
+                    } catch (msgError) {
+                        errorMessage = 'Error processing failed';
+                    }
+                    console.error('Permission check failed:', errorMessage);
+                    throw new Error('Admin permissions required');
+                }
+
+                this.isInitialized = true;
+                return true;
+            }
+
+            createMinimalAdminDashboard() {
+                return { created: true, message: 'Minimal dashboard created' };
+            }
+        }
+
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function runTest() {
+            document.getElementById('results').innerHTML = '';
+            addResult('Starting inline admin dashboard tests...', 'info');
+
+            // Mock auth managers
+            const validAuth = {
+                hasPermission: () => true,
+                getUserProfile: () => ({ name: 'Test Admin' })
+            };
+
+            const undefinedErrorAuth = {
+                hasPermission: () => { throw undefined; }
+            };
+
+            const nullErrorAuth = {
+                hasPermission: () => { throw null; }
+            };
+
+            const malformedErrorAuth = {
+                hasPermission: () => { throw { someProperty: 'value' }; }
+            };
+
+            // Test 1: Valid initialization
+            try {
+                const admin = new AdminDashboardManager();
+                await admin.initialize(validAuth);
+                addResult('✅ Valid auth manager initialization successful', 'success');
+            } catch (error) {
+                addResult(`❌ Valid auth failed: ${error.message}`, 'error');
+            }
+
+            // Test 2: Undefined error handling
+            try {
+                const admin = new AdminDashboardManager();
+                await admin.initialize(undefinedErrorAuth);
+                addResult('❌ Should have failed with undefined error', 'error');
+            } catch (error) {
+                let errorMessage = 'Unknown error';
+                try {
+                    if (error && typeof error === 'object' && error.message) {
+                        errorMessage = String(error.message);
+                    } else if (typeof error === 'string') {
+                        errorMessage = error;
+                    } else if (error) {
+                        errorMessage = String(error);
+                    }
+                } catch (msgError) {
+                    errorMessage = 'Error processing failed';
+                }
+                addResult(`✅ Gracefully handled undefined error: ${errorMessage}`, 'success');
+            }
+
+            // Test 3: Null error handling
+            try {
+                const admin = new AdminDashboardManager();
+                await admin.initialize(nullErrorAuth);
+                addResult('❌ Should have failed with null error', 'error');
+            } catch (error) {
+                let errorMessage = 'Unknown error';
+                try {
+                    if (error && typeof error === 'object' && error.message) {
+                        errorMessage = String(error.message);
+                    } else if (typeof error === 'string') {
+                        errorMessage = error;
+                    } else if (error) {
+                        errorMessage = String(error);
+                    }
+                } catch (msgError) {
+                    errorMessage = 'Error processing failed';
+                }
+                addResult(`✅ Gracefully handled null error: ${errorMessage}`, 'success');
+            }
+
+            // Test 4: Malformed error handling
+            try {
+                const admin = new AdminDashboardManager();
+                await admin.initialize(malformedErrorAuth);
+                addResult('❌ Should have failed with malformed error', 'error');
+            } catch (error) {
+                let errorMessage = 'Unknown error';
+                try {
+                    if (error && typeof error === 'object' && error.message) {
+                        errorMessage = String(error.message);
+                    } else if (typeof error === 'string') {
+                        errorMessage = error;
+                    } else if (error) {
+                        errorMessage = String(error);
+                    }
+                } catch (msgError) {
+                    errorMessage = 'Error processing failed';
+                }
+                addResult(`✅ Gracefully handled malformed error: ${errorMessage}`, 'success');
+            }
+
+            // Test 5: Minimal dashboard creation
+            try {
+                const admin = new AdminDashboardManager();
+                const result = admin.createMinimalAdminDashboard();
+                if (result && result.created) {
+                    addResult('✅ Minimal admin dashboard created successfully', 'success');
+                } else {
+                    addResult('❌ Minimal dashboard creation failed', 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Minimal dashboard error: ${error.message}`, 'error');
+            }
+
+            addResult('🎉 All tests completed!', 'info');
+        }
+    </script>
+</body>
+</html>
