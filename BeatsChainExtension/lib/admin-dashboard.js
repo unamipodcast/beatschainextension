@@ -585,7 +585,7 @@ class AdminDashboardManager {
                         <button class="collapse-btn" id="sponsor-status-toggle" type="button">▼</button>
                     </div>
                     <div class="samro-content" id="sponsor-status-content">
-                        <div class="form-row">
+                        <div class="form-row sponsor-toggle-row">
                             <label class="toggle-switch">
                                 <input type="checkbox" id="sponsor-enabled" ${this.sponsorConfig.enabled ? 'checked' : ''}>
                                 <span class="toggle-slider"></span>
@@ -616,8 +616,16 @@ class AdminDashboardManager {
                                             </div>
                                         </div>
                                     </label>
+                                    <div class="template-actions">
+                                        <button class="btn-small btn-danger delete-sponsor" data-sponsor-id="${key}" type="button">🗑️</button>
+                                    </div>
                                 </div>
                             `).join('')}
+                        </div>
+                        
+                        <div class="sponsor-management-actions">
+                            <button id="add-new-sponsor" class="btn btn-secondary">➕ Add New Sponsor</button>
+                            <button id="bulk-sponsor-actions" class="btn btn-secondary">📋 Bulk Actions</button>
                         </div>
                     </div>
                 </div>
@@ -632,14 +640,74 @@ class AdminDashboardManager {
                         <div class="campaign-actions">
                             <div class="form-row">
                                 <button id="create-campaign-btn" class="btn btn-primary">🚀 Create Campaign</button>
+                                <button id="create-enhanced-campaign-btn" class="btn btn-primary">✨ Create Enhanced Campaign</button>
                                 <button id="refresh-campaigns-btn" class="btn btn-secondary">🔄 Refresh</button>
+                                <button id="campaign-analytics-btn" class="btn btn-secondary">📈 Analytics</button>
                             </div>
                         </div>
                         
-                        <div class="active-campaigns">
-                            <h6>Active Campaigns</h6>
-                            <div id="campaigns-list" class="campaigns-container">
-                                ${this.generateCampaignsListHTML()}
+                        <div class="enhanced-campaigns-section">
+                            <div class="campaigns-header">
+                                <h6>Enhanced Campaign Management</h6>
+                                <div class="campaign-filters">
+                                    <select id="campaign-status-filter" class="form-input">
+                                        <option value="all">All Campaigns</option>
+                                        <option value="active">Active</option>
+                                        <option value="scheduled">Scheduled</option>
+                                        <option value="paused">Paused</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                    <select id="campaign-sponsor-filter" class="form-input">
+                                        <option value="all">All Sponsors</option>
+                                        ${Object.entries(this.sponsorConfig.templates).map(([key, template]) => 
+                                            `<option value="${key}">${template.name}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="campaigns-summary">
+                                <div class="summary-metrics">
+                                    <div class="metric-card enhanced">
+                                        <div class="metric-icon">📊</div>
+                                        <div class="metric-content">
+                                            <span class="metric-value" id="total-campaigns-count">0</span>
+                                            <span class="metric-label">Total Campaigns</span>
+                                        </div>
+                                    </div>
+                                    <div class="metric-card enhanced">
+                                        <div class="metric-icon">🚀</div>
+                                        <div class="metric-content">
+                                            <span class="metric-value" id="active-campaigns-count">0</span>
+                                            <span class="metric-label">Active</span>
+                                        </div>
+                                    </div>
+                                    <div class="metric-card enhanced">
+                                        <div class="metric-icon">💰</div>
+                                        <div class="metric-content">
+                                            <span class="metric-value" id="total-budget-allocated">R0</span>
+                                            <span class="metric-label">Budget Allocated</span>
+                                        </div>
+                                    </div>
+                                    <div class="metric-card enhanced">
+                                        <div class="metric-icon">💸</div>
+                                        <div class="metric-content">
+                                            <span class="metric-value" id="total-spend">R0</span>
+                                            <span class="metric-label">Total Spend</span>
+                                        </div>
+                                    </div>
+                                    <div class="metric-card enhanced">
+                                        <div class="metric-icon">📈</div>
+                                        <div class="metric-content">
+                                            <span class="metric-value" id="average-roi">0%</span>
+                                            <span class="metric-label">Average ROI</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="campaigns-list" class="campaigns-container enhanced">
+                                ${this.generateEnhancedCampaignsListHTML()}
                             </div>
                         </div>
                     </div>
@@ -1494,14 +1562,55 @@ class AdminDashboardManager {
         if (createCampaignBtn) {
             createCampaignBtn.addEventListener('click', () => this.showCreateCampaignForm());
         }
+        
+        const createEnhancedCampaignBtn = container.querySelector('#create-enhanced-campaign-btn');
+        if (createEnhancedCampaignBtn) {
+            createEnhancedCampaignBtn.addEventListener('click', () => this.showCreateEnhancedCampaignForm());
+        }
 
         const refreshCampaignsBtn = container.querySelector('#refresh-campaigns-btn');
         if (refreshCampaignsBtn) {
             refreshCampaignsBtn.addEventListener('click', () => this.refreshCampaignsList());
         }
+        
+        const campaignAnalyticsBtn = container.querySelector('#campaign-analytics-btn');
+        if (campaignAnalyticsBtn) {
+            campaignAnalyticsBtn.addEventListener('click', () => this.showCampaignAnalytics());
+        }
+        
+        // Sponsor deletion events
+        container.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-sponsor')) {
+                const sponsorId = e.target.dataset.sponsorId;
+                this.deleteSponsor(sponsorId);
+            }
+        });
+        
+        // Campaign filters
+        const statusFilter = container.querySelector('#campaign-status-filter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', () => this.filterCampaigns());
+        }
+        
+        const sponsorFilter = container.querySelector('#campaign-sponsor-filter');
+        if (sponsorFilter) {
+            sponsorFilter.addEventListener('change', () => this.filterCampaigns());
+        }
 
         // Campaign list events
         this.setupCampaignListEvents(container);
+        
+        // Add New Sponsor button
+        const addSponsorBtn = container.querySelector('#add-new-sponsor');
+        if (addSponsorBtn) {
+            addSponsorBtn.addEventListener('click', () => this.showAddSponsorForm());
+        }
+        
+        // Bulk Actions button
+        const bulkActionsBtn = container.querySelector('#bulk-sponsor-actions');
+        if (bulkActionsBtn) {
+            bulkActionsBtn.addEventListener('click', () => this.showBulkSponsorActions());
+        }
 
         // System events
         const clearCacheBtn = container.querySelector('#clear-cache');
@@ -1868,7 +1977,15 @@ class AdminDashboardManager {
             `;
         }
 
-        const template = this.sponsorConfig.templates[this.sponsorConfig.currentSponsor];
+        // Safe template access with proper fallback
+        const templates = this.sponsorConfig?.templates || {};
+        const currentSponsor = this.sponsorConfig?.currentSponsor || 'default';
+        const template = templates[currentSponsor] || {
+            name: 'Default Sponsor',
+            message: 'Powered by BeatsChain',
+            logo: null,
+            website: '#'
+        };
         return `
             <div class="sponsor-content" style="border: 2px solid #4CAF50; border-radius: 6px; padding: 16px; background: rgba(76,175,80,0.1);">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
@@ -2116,13 +2233,25 @@ class AdminDashboardManager {
 
     async saveSponsorConfig() {
         try {
+            // Ensure sponsor config structure exists
+            if (!this.sponsorConfig) {
+                this.sponsorConfig = {
+                    enabled: false,
+                    currentSponsor: 'default',
+                    placement: 'after_isrc',
+                    templates: this.getDefaultSponsorTemplates()
+                };
+            }
+            
             // Get current form values
             const messageInput = document.getElementById('sponsor-message');
             const placementSelect = document.getElementById('sponsor-placement');
             
-            if (messageInput) {
+            if (messageInput && this.sponsorConfig.templates && this.sponsorConfig.currentSponsor) {
                 const template = this.sponsorConfig.templates[this.sponsorConfig.currentSponsor];
-                template.message = messageInput.value.trim();
+                if (template) {
+                    template.message = messageInput.value.trim();
+                }
             }
             
             if (placementSelect) {
@@ -2466,12 +2595,12 @@ class AdminDashboardManager {
         this.showCampaignFormModal(formHTML, campaignId);
     }
 
-    showCampaignFormModal(formHTML, editCampaignId = null) {
+    showCampaignFormModal(formHTML, editCampaignId = null, isEnhanced = false) {
         const modalContainer = document.createElement('div');
         modalContainer.innerHTML = formHTML;
         document.body.appendChild(modalContainer);
 
-        const form = modalContainer.querySelector('#campaign-form');
+        const form = modalContainer.querySelector('#campaign-form') || modalContainer.querySelector('#enhanced-campaign-form');
         const closeBtn = modalContainer.querySelector('.close-form-btn');
         const cancelBtn = modalContainer.querySelector('.cancel-campaign-btn');
 
@@ -2484,29 +2613,37 @@ class AdminDashboardManager {
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            await this.handleCampaignFormSubmit(form, editCampaignId);
+            await this.handleCampaignFormSubmit(form, editCampaignId, isEnhanced);
             closeModal();
         });
     }
 
-    async handleCampaignFormSubmit(form, editCampaignId = null) {
+    async handleCampaignFormSubmit(form, editCampaignId = null, isEnhanced = false) {
         try {
-            const formData = new FormData(form);
             const campaignData = {
                 name: form.querySelector('#campaign-name').value,
                 sponsorId: form.querySelector('#campaign-sponsor').value,
                 placement: form.querySelector('#campaign-placement').value,
                 startDate: form.querySelector('#campaign-start-date').value,
                 endDate: form.querySelector('#campaign-end-date').value,
-                budget: form.querySelector('#campaign-budget').value
+                budget: form.querySelector('#campaign-budget').value,
+                dailyBudgetLimit: form.querySelector('#campaign-daily-budget')?.value || 0,
+                schedule: {
+                    type: form.querySelector('#campaign-schedule')?.value || 'continuous'
+                }
             };
 
             if (editCampaignId) {
                 await this.campaignManager.updateCampaign(editCampaignId, campaignData);
                 this.showAdminMessage('Campaign updated successfully', 'success');
             } else {
-                await this.campaignManager.createCampaign(campaignData);
-                this.showAdminMessage('Campaign created successfully', 'success');
+                if (isEnhanced && this.campaignManager.createEnhancedCampaign) {
+                    await this.campaignManager.createEnhancedCampaign(campaignData);
+                    this.showAdminMessage('Enhanced campaign created successfully', 'success');
+                } else {
+                    await this.campaignManager.createCampaign(campaignData);
+                    this.showAdminMessage('Campaign created successfully', 'success');
+                }
             }
 
             this.refreshCampaignsList();
@@ -2536,8 +2673,381 @@ class AdminDashboardManager {
     refreshCampaignsList() {
         const campaignsList = document.getElementById('campaigns-list');
         if (campaignsList) {
-            campaignsList.innerHTML = this.generateCampaignsListHTML();
+            if (campaignsList.classList.contains('enhanced')) {
+                campaignsList.innerHTML = this.generateEnhancedCampaignsListHTML();
+                this.updateCampaignSummaryMetrics();
+            } else {
+                campaignsList.innerHTML = this.generateCampaignsListHTML();
+            }
         }
+    }
+    
+    generateEnhancedCampaignsListHTML() {
+        try {
+            if (!this.campaignManager || typeof this.campaignManager.getAllCampaigns !== 'function') {
+                return '<div class="no-campaigns">Enhanced Campaign Manager not available</div>';
+            }
+
+            let campaigns = [];
+            try {
+                campaigns = this.campaignManager.getAllCampaigns() || [];
+            } catch (error) {
+                console.warn('Failed to get campaigns:', error);
+                return '<div class="campaigns-error">Unable to load campaigns. Please refresh.</div>';
+            }
+
+            if (campaigns.length === 0) {
+                return '<div class="no-campaigns">No enhanced campaigns created yet. Create your first Method 3 campaign!</div>';
+            }
+
+            return campaigns.map(campaign => {
+                try {
+                    return this.generateEnhancedCampaignHTML(campaign);
+                } catch (error) {
+                    console.warn('Failed to generate enhanced campaign HTML:', error);
+                    const campaignName = (campaign && campaign.name) ? campaign.name : 'Unknown';
+                    return `<div class="campaign-error">Enhanced campaign "${campaignName}" has display issues</div>`;
+                }
+            }).join('');
+        } catch (error) {
+            console.error('Failed to generate enhanced campaigns list:', error);
+            return '<div class="campaigns-error">Unable to load enhanced campaigns. Please refresh.</div>';
+        }
+    }
+    
+    generateEnhancedCampaignHTML(campaign) {
+        const metrics = campaign.metrics || { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
+        const performance = campaign.performance || { revenue: 0, ctr: 0, conversionRate: 0 };
+        const roi = this.campaignManager ? this.campaignManager.calculateCampaignROI(campaign.id) : { roi: 0 };
+        
+        const statusColor = {
+            'scheduled': '#ffc107',
+            'active': '#28a745',
+            'paused': '#6c757d',
+            'completed': '#17a2b8',
+            'cancelled': '#dc3545'
+        }[campaign.status] || '#6c757d';
+
+        return `
+            <div class="enhanced-campaign-card" data-campaign-id="${campaign.id}">
+                <div class="campaign-header">
+                    <div class="campaign-title">
+                        <h6>${campaign.name || 'Untitled Campaign'}</h6>
+                        <span class="campaign-status" style="background-color: ${statusColor}">${campaign.status || 'unknown'}</span>
+                        <span class="campaign-type">Method 3</span>
+                    </div>
+                    <div class="campaign-actions">
+                        <button class="btn-small btn-secondary edit-campaign" data-campaign-id="${campaign.id}">✏️</button>
+                        <button class="btn-small btn-info view-analytics" data-campaign-id="${campaign.id}">📈</button>
+                        <button class="btn-small btn-danger delete-campaign" data-campaign-id="${campaign.id}">🗑️</button>
+                    </div>
+                </div>
+                
+                <div class="campaign-details">
+                    <div class="campaign-info">
+                        <small>Sponsor: ${campaign.sponsorId || 'Unknown'}</small>
+                        <small>Period: ${campaign.startDate ? new Date(campaign.startDate).toLocaleDateString() : 'TBD'} - ${campaign.endDate ? new Date(campaign.endDate).toLocaleDateString() : 'TBD'}</small>
+                        <small>Budget: R${campaign.budget || 0} (Daily: R${campaign.dailyBudgetLimit || 0})</small>
+                        <small>Spend: R${campaign.totalSpend || 0}</small>
+                    </div>
+                    
+                    <div class="enhanced-campaign-metrics">
+                        <div class="metric-row">
+                            <div class="metric-item">
+                                <span class="metric-value">${metrics.impressions}</span>
+                                <span class="metric-label">Impressions</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value">${metrics.clicks}</span>
+                                <span class="metric-label">Clicks</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value">${metrics.conversions}</span>
+                                <span class="metric-label">Conversions</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value">R${performance.revenue || 0}</span>
+                                <span class="metric-label">Revenue</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-row">
+                            <div class="metric-item">
+                                <span class="metric-value">${performance.ctr ? performance.ctr.toFixed(1) : (metrics.clicks > 0 && metrics.impressions > 0 ? ((metrics.clicks / metrics.impressions) * 100).toFixed(1) : 0)}%</span>
+                                <span class="metric-label">CTR</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value">${performance.conversionRate ? performance.conversionRate.toFixed(1) : (metrics.conversions > 0 && metrics.clicks > 0 ? ((metrics.conversions / metrics.clicks) * 100).toFixed(1) : 0)}%</span>
+                                <span class="metric-label">Conv Rate</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value ${roi.roi > 0 ? 'positive' : roi.roi < 0 ? 'negative' : ''}">${roi.roi ? roi.roi.toFixed(1) : 0}%</span>
+                                <span class="metric-label">ROI</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value">${campaign.schedule?.type || 'continuous'}</span>
+                                <span class="metric-label">Schedule</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    updateCampaignSummaryMetrics() {
+        try {
+            if (!this.campaignManager) return;
+            
+            const campaigns = this.campaignManager.getAllCampaigns() || [];
+            const activeCampaigns = campaigns.filter(c => c.status === 'active');
+            const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+            const totalSpend = campaigns.reduce((sum, c) => sum + (c.totalSpend || 0), 0);
+            const avgROI = campaigns.length > 0 ? 
+                campaigns.reduce((sum, c) => {
+                    const roi = this.campaignManager.calculateCampaignROI(c.id);
+                    return sum + (roi.roi || 0);
+                }, 0) / campaigns.length : 0;
+            
+            document.getElementById('total-campaigns-count').textContent = campaigns.length;
+            document.getElementById('active-campaigns-count').textContent = activeCampaigns.length;
+            document.getElementById('total-budget-allocated').textContent = `R${totalBudget.toFixed(2)}`;
+            document.getElementById('total-spend').textContent = `R${totalSpend.toFixed(2)}`;
+            document.getElementById('average-roi').textContent = `${avgROI.toFixed(1)}%`;
+        } catch (error) {
+            console.error('Failed to update campaign summary metrics:', error);
+        }
+    }
+    
+    async showCreateEnhancedCampaignForm() {
+        if (!this.campaignManager || !this.campaignManager.createEnhancedCampaign) {
+            this.showAdminMessage('Enhanced Campaign Manager not available', 'error');
+            return;
+        }
+
+        const formHTML = this.generateEnhancedCampaignFormHTML(null, this.sponsorConfig.templates);
+        this.showCampaignFormModal(formHTML, null, true);
+    }
+    
+    generateEnhancedCampaignFormHTML(campaign = null, sponsors = {}) {
+        const isEdit = !!campaign;
+        
+        return `
+            <div class="campaign-form-overlay">
+                <div class="campaign-form-modal enhanced">
+                    <div class="form-header">
+                        <h5>${isEdit ? 'Edit Enhanced Campaign' : 'Create Method 3 Enhanced Campaign'}</h5>
+                        <button class="close-form-btn" type="button">✕</button>
+                    </div>
+                    
+                    <form id="enhanced-campaign-form" class="campaign-form enhanced">
+                        <div class="form-section">
+                            <h6>Basic Information</h6>
+                            <div class="form-row">
+                                <label for="campaign-name">Campaign Name *</label>
+                                <input type="text" id="campaign-name" class="form-input" 
+                                       value="${campaign?.name || ''}" maxlength="100" required>
+                                <small class="field-help">Max 100 characters</small>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="campaign-sponsor">Sponsor *</label>
+                                <select id="campaign-sponsor" class="form-input" required>
+                                    <option value="">Select Sponsor</option>
+                                    ${Object.entries(sponsors).map(([key, sponsor]) => 
+                                        `<option value="${key}" ${campaign?.sponsorId === key ? 'selected' : ''}>${sponsor.name}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-section">
+                            <h6>Targeting & Placement</h6>
+                            <div class="form-row">
+                                <label for="campaign-placement">Primary Placement *</label>
+                                <select id="campaign-placement" class="form-input" required>
+                                    <option value="">Select Placement</option>
+                                    <optgroup label="Radio System Placements">
+                                        <option value="after_isrc" ${campaign?.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
+                                        <option value="validation" ${campaign?.placement === 'validation' ? 'selected' : ''}>After Validation</option>
+                                        <option value="before_package" ${campaign?.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
+                                        <option value="post_package" ${campaign?.placement === 'post_package' ? 'selected' : ''}>After Package Complete</option>
+                                    </optgroup>
+                                    <optgroup label="Mint/NFT System Placements">
+                                        <option value="before_mint_nft" ${campaign?.placement === 'before_mint_nft' ? 'selected' : ''}>Before Mint NFT</option>
+                                        <option value="after_minting" ${campaign?.placement === 'after_minting' ? 'selected' : ''}>After NFT Minting</option>
+                                        <option value="ipfs_upload" ${campaign?.placement === 'ipfs_upload' ? 'selected' : ''}>During IPFS Upload</option>
+                                        <option value="metadata_creation" ${campaign?.placement === 'metadata_creation' ? 'selected' : ''}>After Metadata Creation</option>
+                                    </optgroup>
+                                    <optgroup label="Cross-Platform Placements">
+                                        <option value="licensing_proceed" ${campaign?.placement === 'licensing_proceed' ? 'selected' : ''}>Proceed to Licensing</option>
+                                        <option value="analytics_view" ${campaign?.placement === 'analytics_view' ? 'selected' : ''}>Analytics Dashboard</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-section">
+                            <h6>Budget & Scheduling</h6>
+                            <div class="form-grid-two-col">
+                                <div class="form-row">
+                                    <label for="campaign-start-date">Start Date *</label>
+                                    <input type="datetime-local" id="campaign-start-date" class="form-input" 
+                                           value="${campaign ? new Date(campaign.startDate).toISOString().slice(0, 16) : ''}" required>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <label for="campaign-end-date">End Date *</label>
+                                    <input type="datetime-local" id="campaign-end-date" class="form-input" 
+                                           value="${campaign ? new Date(campaign.endDate).toISOString().slice(0, 16) : ''}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-grid-two-col">
+                                <div class="form-row">
+                                    <label for="campaign-budget">Total Budget (R)</label>
+                                    <input type="number" id="campaign-budget" class="form-input" 
+                                           value="${campaign?.budget || ''}" min="0" step="0.01">
+                                    <small class="field-help">Total campaign budget</small>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <label for="campaign-daily-budget">Daily Limit (R)</label>
+                                    <input type="number" id="campaign-daily-budget" class="form-input" 
+                                           value="${campaign?.dailyBudgetLimit || ''}" min="0" step="0.01">
+                                    <small class="field-help">Daily spending limit</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="campaign-schedule">Schedule Type</label>
+                                <select id="campaign-schedule" class="form-input">
+                                    <option value="continuous" ${campaign?.schedule?.type === 'continuous' ? 'selected' : ''}>Continuous</option>
+                                    <option value="scheduled" ${campaign?.schedule?.type === 'scheduled' ? 'selected' : ''}>Scheduled Hours</option>
+                                    <option value="burst" ${campaign?.schedule?.type === 'burst' ? 'selected' : ''}>Burst Campaign</option>
+                                </select>
+                                <small class="field-help">Campaign scheduling strategy</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary cancel-campaign-btn">Cancel</button>
+                            <button type="submit" class="btn btn-primary">${isEdit ? 'Update Enhanced Campaign' : 'Create Enhanced Campaign'}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    }
+    
+    async deleteSponsor(sponsorId) {
+        if (!sponsorId || sponsorId === 'default') {
+            this.showAdminMessage('Cannot delete default sponsor', 'error');
+            return;
+        }
+        
+        try {
+            // Check dependencies first
+            if (this.campaignManager && this.campaignManager.checkSponsorDependencies) {
+                const dependencies = await this.campaignManager.checkSponsorDependencies(sponsorId);
+                
+                if (dependencies.activeCampaigns.length > 0) {
+                    const campaignNames = dependencies.activeCampaigns.map(c => c.name).join(', ');
+                    this.showAdminMessage(`Cannot delete sponsor. Active campaigns: ${campaignNames}`, 'error');
+                    return;
+                }
+                
+                if (dependencies.scheduledCampaigns.length > 0) {
+                    const proceed = confirm(`This sponsor has ${dependencies.scheduledCampaigns.length} scheduled campaigns. Delete anyway?`);
+                    if (!proceed) {
+                        return;
+                    }
+                }
+            }
+            
+            // Confirm deletion
+            const sponsorName = this.sponsorConfig.templates[sponsorId]?.name || sponsorId;
+            const confirmDelete = confirm(`Are you sure you want to delete sponsor "${sponsorName}"? This action cannot be undone.`);
+            if (!confirmDelete) {
+                return;
+            }
+            
+            this.showAdminMessage('Deleting sponsor...', 'info');
+            
+            // Delete using campaign manager if available
+            if (this.campaignManager && this.campaignManager.deleteSponsor) {
+                const result = await this.campaignManager.deleteSponsor(sponsorId);
+                this.showAdminMessage(result.message, 'success');
+            } else {
+                // Fallback deletion
+                await this.fallbackDeleteSponsor(sponsorId);
+                this.showAdminMessage('Sponsor deleted successfully', 'success');
+            }
+            
+            // Refresh UI
+            await this.setupDashboardUI();
+            
+        } catch (error) {
+            console.error('Sponsor deletion failed:', error);
+            const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
+            this.showAdminMessage(`Sponsor deletion failed: ${errorMessage}`, 'error');
+        }
+    }
+    
+    async fallbackDeleteSponsor(sponsorId) {
+        // Remove from sponsor templates
+        if (this.sponsorConfig.templates && this.sponsorConfig.templates[sponsorId]) {
+            delete this.sponsorConfig.templates[sponsorId];
+            
+            // Update current sponsor if it was the deleted one
+            if (this.sponsorConfig.currentSponsor === sponsorId) {
+                const remainingSponsors = Object.keys(this.sponsorConfig.templates);
+                this.sponsorConfig.currentSponsor = remainingSponsors.length > 0 ? remainingSponsors[0] : 'default';
+            }
+            
+            await chrome.storage.local.set({ sponsor_config: this.sponsorConfig });
+        }
+        
+        // Clean up sponsor assets
+        const key = `sponsor_assets_${sponsorId}`;
+        await chrome.storage.local.remove([key]);
+    }
+    
+    showCampaignAnalytics() {
+        this.showAdminMessage('Campaign analytics dashboard coming soon', 'info');
+        // Switch to analytics tab
+        this.switchTab('analytics');
+    }
+    
+    filterCampaigns() {
+        const statusFilter = document.getElementById('campaign-status-filter')?.value || 'all';
+        const sponsorFilter = document.getElementById('campaign-sponsor-filter')?.value || 'all';
+        
+        const campaignCards = document.querySelectorAll('.enhanced-campaign-card');
+        
+        campaignCards.forEach(card => {
+            const campaignId = card.dataset.campaignId;
+            const campaign = this.campaignManager?.getCampaign(campaignId);
+            
+            if (!campaign) {
+                card.style.display = 'none';
+                return;
+            }
+            
+            let show = true;
+            
+            // Status filter
+            if (statusFilter !== 'all' && campaign.status !== statusFilter) {
+                show = false;
+            }
+            
+            // Sponsor filter
+            if (sponsorFilter !== 'all' && campaign.sponsorId !== sponsorFilter) {
+                show = false;
+            }
+            
+            card.style.display = show ? 'block' : 'none';
+        });
     }
 
     getDailyAnalytics() {
@@ -2847,6 +3357,344 @@ class AdminDashboardManager {
             
         } catch (error) {
             console.error('Failed to record package generation:', error);
+        }
+    }
+    
+    // Sponsor CRUD Operations
+    
+    showAddSponsorForm() {
+        const formHTML = `
+            <div class="sponsor-form-overlay">
+                <div class="sponsor-form-modal">
+                    <div class="form-header">
+                        <h5>Add New Sponsor</h5>
+                        <button class="close-form-btn" type="button">✕</button>
+                    </div>
+                    
+                    <form id="sponsor-form" class="sponsor-form">
+                        <div class="form-row">
+                            <label for="sponsor-id">Sponsor ID *</label>
+                            <input type="text" id="sponsor-id" class="form-input" 
+                                   placeholder="unique_sponsor_id" maxlength="50" required>
+                            <small class="field-help">Unique identifier (letters, numbers, underscores only)</small>
+                        </div>
+                        
+                        <div class="form-row">
+                            <label for="sponsor-name">Sponsor Name *</label>
+                            <input type="text" id="sponsor-name" class="form-input" 
+                                   placeholder="Sponsor Company Name" maxlength="100" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <label for="sponsor-message">Display Message *</label>
+                            <input type="text" id="sponsor-message" class="form-input" 
+                                   placeholder="Professional services for music industry" maxlength="200" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <label for="sponsor-website">Website URL</label>
+                            <input type="url" id="sponsor-website" class="form-input" 
+                                   placeholder="https://sponsor-website.com">
+                        </div>
+                        
+                        <div class="form-row">
+                            <label for="sponsor-category">Category</label>
+                            <select id="sponsor-category" class="form-input">
+                                <option value="music_services">Music Services</option>
+                                <option value="legal_services">Legal Services</option>
+                                <option value="promotion">Music Promotion</option>
+                                <option value="distribution">Distribution</option>
+                                <option value="analytics">Analytics & Tracking</option>
+                                <option value="tools">Music Tools</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary cancel-sponsor-btn">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Add Sponsor</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        this.showSponsorFormModal(formHTML);
+    }
+    
+    showSponsorFormModal(formHTML) {
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = formHTML;
+        document.body.appendChild(modalContainer);
+
+        const form = modalContainer.querySelector('#sponsor-form');
+        const closeBtn = modalContainer.querySelector('.close-form-btn');
+        const cancelBtn = modalContainer.querySelector('.cancel-sponsor-btn');
+
+        const closeModal = () => {
+            document.body.removeChild(modalContainer);
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.handleSponsorFormSubmit(form);
+            closeModal();
+        });
+    }
+    
+    async handleSponsorFormSubmit(form) {
+        try {
+            const sponsorData = {
+                id: form.querySelector('#sponsor-id').value.trim(),
+                name: form.querySelector('#sponsor-name').value.trim(),
+                message: form.querySelector('#sponsor-message').value.trim(),
+                website: form.querySelector('#sponsor-website').value.trim(),
+                category: form.querySelector('#sponsor-category').value
+            };
+            
+            // Validate sponsor ID
+            if (!/^[a-zA-Z0-9_]+$/.test(sponsorData.id)) {
+                throw new Error('Sponsor ID can only contain letters, numbers, and underscores');
+            }
+            
+            // Check if sponsor ID already exists
+            if (this.sponsorConfig.templates[sponsorData.id]) {
+                throw new Error('Sponsor ID already exists');
+            }
+            
+            // Add to sponsor templates
+            this.sponsorConfig.templates[sponsorData.id] = {
+                name: sponsorData.name,
+                message: sponsorData.message,
+                website: sponsorData.website || '#',
+                category: sponsorData.category,
+                logo: null,
+                createdAt: Date.now()
+            };
+            
+            await this.saveSponsorConfig();
+            this.showAdminMessage('Sponsor added successfully', 'success');
+            
+            // Refresh the dashboard
+            await this.setupDashboardUI();
+            
+        } catch (error) {
+            console.error('Failed to add sponsor:', error);
+            this.showAdminMessage(`Failed to add sponsor: ${error.message}`, 'error');
+        }
+    }
+    
+    showBulkSponsorActions() {
+        const actionsHTML = `
+            <div class="bulk-actions-overlay">
+                <div class="bulk-actions-modal">
+                    <div class="form-header">
+                        <h5>Bulk Sponsor Actions</h5>
+                        <button class="close-form-btn" type="button">✕</button>
+                    </div>
+                    
+                    <div class="bulk-actions-content">
+                        <div class="action-section">
+                            <h6>Export/Import</h6>
+                            <div class="form-row">
+                                <button id="export-sponsors" class="btn btn-secondary">📤 Export All Sponsors</button>
+                                <button id="import-sponsors" class="btn btn-secondary">📥 Import Sponsors</button>
+                                <input type="file" id="sponsors-file" accept=".json" hidden>
+                            </div>
+                        </div>
+                        
+                        <div class="action-section">
+                            <h6>Batch Operations</h6>
+                            <div class="form-row">
+                                <button id="activate-all" class="btn btn-success">✅ Activate All</button>
+                                <button id="deactivate-all" class="btn btn-warning">⏸️ Deactivate All</button>
+                            </div>
+                        </div>
+                        
+                        <div class="action-section">
+                            <h6>Maintenance</h6>
+                            <div class="form-row">
+                                <button id="cleanup-unused" class="btn btn-secondary">🧹 Remove Unused</button>
+                                <button id="reset-metrics" class="btn btn-secondary">📊 Reset Metrics</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary close-bulk-btn">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = actionsHTML;
+        document.body.appendChild(modalContainer);
+
+        const closeBtn = modalContainer.querySelector('.close-form-btn');
+        const closeBulkBtn = modalContainer.querySelector('.close-bulk-btn');
+
+        const closeModal = () => {
+            document.body.removeChild(modalContainer);
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        closeBulkBtn.addEventListener('click', closeModal);
+        
+        // Setup bulk action handlers
+        this.setupBulkActionHandlers(modalContainer, closeModal);
+    }
+    
+    setupBulkActionHandlers(container, closeModal) {
+        const exportBtn = container.querySelector('#export-sponsors');
+        const importBtn = container.querySelector('#import-sponsors');
+        const fileInput = container.querySelector('#sponsors-file');
+        const activateAllBtn = container.querySelector('#activate-all');
+        const deactivateAllBtn = container.querySelector('#deactivate-all');
+        const cleanupBtn = container.querySelector('#cleanup-unused');
+        const resetMetricsBtn = container.querySelector('#reset-metrics');
+        
+        exportBtn.addEventListener('click', () => this.exportSponsors());
+        
+        importBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => this.importSponsors(e.target.files[0]));
+        
+        activateAllBtn.addEventListener('click', () => this.bulkActivateSponsors(true));
+        deactivateAllBtn.addEventListener('click', () => this.bulkActivateSponsors(false));
+        
+        cleanupBtn.addEventListener('click', () => this.cleanupUnusedSponsors());
+        resetMetricsBtn.addEventListener('click', () => this.resetSponsorMetrics());
+    }
+    
+    async exportSponsors() {
+        try {
+            const exportData = {
+                sponsors: this.sponsorConfig.templates,
+                exportedAt: new Date().toISOString(),
+                version: '1.0'
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `beatschain-sponsors-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            this.showAdminMessage('Sponsors exported successfully', 'success');
+            
+        } catch (error) {
+            console.error('Export failed:', error);
+            this.showAdminMessage('Export failed', 'error');
+        }
+    }
+    
+    async importSponsors(file) {
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const importData = JSON.parse(text);
+            
+            if (!importData.sponsors || typeof importData.sponsors !== 'object') {
+                throw new Error('Invalid sponsor data format');
+            }
+            
+            let imported = 0;
+            let skipped = 0;
+            
+            Object.entries(importData.sponsors).forEach(([id, sponsor]) => {
+                if (!this.sponsorConfig.templates[id]) {
+                    this.sponsorConfig.templates[id] = {
+                        ...sponsor,
+                        importedAt: Date.now()
+                    };
+                    imported++;
+                } else {
+                    skipped++;
+                }
+            });
+            
+            await this.saveSponsorConfig();
+            this.showAdminMessage(`Import complete: ${imported} added, ${skipped} skipped`, 'success');
+            
+            // Refresh dashboard
+            await this.setupDashboardUI();
+            
+        } catch (error) {
+            console.error('Import failed:', error);
+            this.showAdminMessage('Import failed: Invalid file format', 'error');
+        }
+    }
+    
+    async bulkActivateSponsors(activate) {
+        try {
+            Object.keys(this.sponsorConfig.templates).forEach(sponsorId => {
+                this.sponsorConfig.templates[sponsorId].active = activate;
+            });
+            
+            await this.saveSponsorConfig();
+            this.showAdminMessage(`All sponsors ${activate ? 'activated' : 'deactivated'}`, 'success');
+            
+            await this.setupDashboardUI();
+            
+        } catch (error) {
+            console.error('Bulk activation failed:', error);
+            this.showAdminMessage('Bulk operation failed', 'error');
+        }
+    }
+    
+    async cleanupUnusedSponsors() {
+        if (!confirm('Remove sponsors that have no active campaigns? This cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            let removed = 0;
+            
+            for (const sponsorId of Object.keys(this.sponsorConfig.templates)) {
+                if (this.campaignManager) {
+                    const dependencies = await this.campaignManager.checkSponsorDependencies(sponsorId);
+                    if (dependencies.totalCampaigns === 0) {
+                        delete this.sponsorConfig.templates[sponsorId];
+                        removed++;
+                    }
+                }
+            }
+            
+            await this.saveSponsorConfig();
+            this.showAdminMessage(`Cleanup complete: ${removed} unused sponsors removed`, 'success');
+            
+            await this.setupDashboardUI();
+            
+        } catch (error) {
+            console.error('Cleanup failed:', error);
+            this.showAdminMessage('Cleanup failed', 'error');
+        }
+    }
+    
+    async resetSponsorMetrics() {
+        if (!confirm('Reset all sponsor performance metrics? This cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            // Reset analytics data
+            await chrome.storage.local.remove(['sponsor_analytics', 'placement_metrics']);
+            
+            this.showAdminMessage('Sponsor metrics reset successfully', 'success');
+            
+            // Refresh analytics
+            this.loadSponsorAnalytics();
+            
+        } catch (error) {
+            console.error('Metrics reset failed:', error);
+            this.showAdminMessage('Metrics reset failed', 'error');
         }
     }
 }

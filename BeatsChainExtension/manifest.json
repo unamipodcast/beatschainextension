@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "BeatsChain - FREE Music NFT Minter",
-  "version": "2.7.0",
-  "description": "Professional music NFT minting platform for Solana blockchain. Features: FREE minting, ISRC generation, radio submission packages, AI-powered licensing, admin dashboard, sponsor content management, and comprehensive analytics. Perfect for producers, artists, and music professionals.",
+  "name": "BeatsChain Music NFT Minter",
+  "version": "2.7.1",
+  "description": "Professional music NFT minting for Solana blockchain. Create music NFTs with ISRC codes, generate radio submission packages, AI licensing, and comprehensive analytics. Perfect for music producers and artists.",
   "permissions": [
     "storage",
     "identity",
@@ -42,13 +42,7 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
-  "oauth2": {
-    "client_id": "239753403483-58n7vlbvs1nsu9qnf1qmoenh2cjjimbc.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/userinfo.profile"
-    ]
-  },
+
   "homepage_url": "https://www.unamifoundation.org/legal/beatschain-privacy-policy",
   "content_scripts": [
     {

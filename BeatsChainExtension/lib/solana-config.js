@@ -1,4 +1,7 @@
-// Solana-First Configuration Manager
+/**
+ * Solana Configuration Manager
+ * Handles Solana network configuration and endpoints
+ */
 class SolanaConfig {
     constructor() {
         this.network = 'devnet';

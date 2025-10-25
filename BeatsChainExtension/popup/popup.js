@@ -1,5 +1,4 @@
-// Import config manager
-import config from '../lib/config.js';
+// Config manager is available as window.config (no import needed)
 
 // Safe error handling utility (inline to avoid import issues)
 const ErrorHandler = {

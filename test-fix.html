@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Module Fix</title>
+</head>
+<body>
+    <h1>Testing Module Import Fix</h1>
+    <div id="status">Loading...</div>
+    
+    <script src="BeatsChainExtension/lib/config.js"></script>
+    <script>
+        // Test if config is available
+        if (window.config) {
+            document.getElementById('status').innerHTML = '✅ Config loaded successfully';
+            console.log('✅ Config manager available:', window.config);
+        } else {
+            document.getElementById('status').innerHTML = '❌ Config not loaded';
+            console.error('❌ Config manager not available');
+        }
+        
+        // Test config initialization
+        window.config.initialize().then(() => {
+            console.log('✅ Config initialized successfully');
+        }).catch(error => {
+            console.error('❌ Config initialization failed:', error);
+        });
+    </script>
+</body>
+</html>
