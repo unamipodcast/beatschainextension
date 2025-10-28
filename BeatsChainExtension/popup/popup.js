@@ -2044,6 +2044,21 @@ Verification: Check Chrome extension storage for transaction details`;
             signInBtn.textContent = originalText;
             signInBtn.disabled = false;
             
+            // Handle connection errors specifically
+            if (error.message.includes('-106') || error.message.includes('Connection failed')) {
+                console.log('🔄 Using bypass authentication for connection issues');
+                try {
+                    const bypassResult = await unifiedAuth.bypassAuth();
+                    if (bypassResult.success) {
+                        await this.updateAuthenticatedUI(bypassResult);
+                        this.hideAuthenticationRequired();
+                        return;
+                    }
+                } catch (bypassError) {
+                    console.warn('Bypass also failed:', bypassError);
+                }
+            }
+            
             // Show user-friendly error based on error type
             let errorMsg;
             const safeErrorMsg = ErrorHandler.safeErrorMessage(error);
@@ -3881,8 +3896,73 @@ Verification: Check Chrome extension storage for transaction details`;
             return;
         }
 
-        // Use consistent styling for post-package sponsor
-        this.displayConsistentPostPackageSponsor(fileCount, title);
+        // Check if user has consented to sponsor content
+        if (!this.partnerConsentGiven) {
+            return;
+        }
+
+        const sponsorDiv = document.createElement('div');
+        sponsorDiv.className = 'post-package-sponsor';
+        sponsorDiv.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(0, 214, 122, 0.95); border: 2px solid rgba(0, 214, 122, 0.4);
+            border-radius: 16px; padding: 20px; max-width: 350px;
+            box-shadow: 0 8px 32px rgba(0, 214, 122, 0.3); z-index: 10002;
+            font-size: 13px; color: white; backdrop-filter: blur(15px);
+        `;
+        
+        sponsorDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <span style="font-size: 28px;">🎵</span>
+                <div>
+                    <strong style="color: white; font-size: 16px;">Package Ready!</strong>
+                    <div style="color: rgba(255,255,255,0.9); font-size: 12px;">${fileCount} files downloaded</div>
+                </div>
+                <button id="dismiss-sponsor" style="background: none; border: none; color: rgba(255,255,255,0.8); cursor: pointer; font-size: 20px; margin-left: auto;">&times;</button>
+            </div>
+            <p style="margin: 0 0 12px 0; color: white; font-weight: 500;">
+                Your radio submission package is ready! Consider these next steps:
+            </p>
+            <div style="font-size: 13px; line-height: 1.5; color: rgba(255,255,255,0.95); margin-bottom: 16px;">
+                <div>📻 Submit to radio stations</div>
+                <div>📈 Track airplay performance</div>
+                <div>🎯 Promote to music directors</div>
+            </div>
+            <div style="text-align: center;">
+                <a href="#" class="sponsor-link" style="color: white; font-weight: 600; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 6px; text-decoration: none; display: inline-block;">Learn More →</a>
+            </div>
+            <p style="color: rgba(255,255,255,0.7); font-size: 10px; margin: 12px 0 0 0; text-align: center;">
+                <span style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 3px;">SPONSORED</span>
+            </p>
+        `;
+        
+        // Track display
+        this.trackSponsorDisplay('post-package');
+        
+        // Dismiss functionality
+        sponsorDiv.querySelector('#dismiss-sponsor').addEventListener('click', () => {
+            this.trackSponsorInteraction('dismissed', 'post-package');
+            sponsorDiv.remove();
+        });
+        
+        // Sponsor link click
+        const link = sponsorDiv.querySelector('.sponsor-link');
+        if (link) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.trackSponsorInteraction('clicked', 'post-package');
+                console.log('Post-package sponsor link clicked');
+            });
+        }
+        
+        // Auto-dismiss after 15 seconds
+        setTimeout(() => {
+            if (sponsorDiv.parentNode) {
+                sponsorDiv.remove();
+            }
+        }, 15000);
+        
+        document.body.appendChild(sponsorDiv);
     }
     
     displayFallbackPostPackageSponsor(fileCount, title) {
@@ -3959,10 +4039,10 @@ Verification: Check Chrome extension storage for transaction details`;
         modal.innerHTML = `
             <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
             <h2 style="color: #333; margin: 0 0 16px 0;">Professional Package Services</h2>
-            <p style="color: #666; line-height: 1.5; margin: 0 0 16px 0;">
+            <p style="color: #333; line-height: 1.5; margin: 0 0 16px 0; font-weight: 500;">
                 While your radio package is being generated, consider professional services to enhance your submission.
             </p>
-            <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">
+            <p style="color: #333; line-height: 1.5; margin: 0 0 24px 0;">
                 Our verified partners offer mastering, distribution, and promotion services for radio-ready tracks.
             </p>
             
@@ -3981,7 +4061,7 @@ Verification: Check Chrome extension storage for transaction details`;
                         <h4 style="margin: 0 0 4px 0; color: #333; font-size: 14px; font-weight: 600;">
                             Radio Package Enhancement
                         </h4>
-                        <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; line-height: 1.4;">
+                        <p style="margin: 0 0 8px 0; color: #333; font-size: 13px; line-height: 1.4; font-weight: 500;">
                             Professional mastering, ISRC registration, and radio plugging services to maximize your submission success.
                         </p>
                         <a href="#" class="sponsor-link" style="color: #00d67a; font-size: 12px; text-decoration: none; font-weight: 500;">
@@ -3996,7 +4076,7 @@ Verification: Check Chrome extension storage for transaction details`;
                     background: #007bff; color: white; border: none;
                     padding: 12px 24px; border-radius: 6px; cursor: not-allowed;
                     font-size: 14px; font-weight: 500; opacity: 0.6;
-                ">Continue (<span id="countdown-package">3</span>s)</button>
+                ">Continue (<span id="countdown-package">12</span>s)</button>
             </div>
             
             <p style="color: #999; font-size: 12px; margin: 16px 0 0 0;">
@@ -4008,8 +4088,8 @@ Verification: Check Chrome extension storage for transaction details`;
         modalOverlay.appendChild(modal);
         document.body.appendChild(modalOverlay);
 
-        // Start 3-second countdown (shorter for package generation)
-        let countdown = 3;
+        // Start 12-second countdown for sponsored content
+        let countdown = 12;
         const countdownElement = modal.querySelector('#countdown-package');
         const continueButton = modal.querySelector('#continue-package');
         
@@ -4054,7 +4134,7 @@ Verification: Check Chrome extension storage for transaction details`;
             if (modalOverlay.parentNode) {
                 document.body.removeChild(modalOverlay);
             }
-        }, 4000);
+        }, 13000);
     }
     
     recordPackageSuccess(packageData) {
@@ -5512,6 +5592,11 @@ Verification: Check Chrome extension storage for transaction details`;
             
             // Show prominent download success message with sponsored content
             this.showRadioPackageSuccess(formatCount, sanitizedTitle);
+            
+            // Show floating sponsored content after download
+            setTimeout(() => {
+                this.displayPostPackageSponsor(formatCount, sanitizedTitle);
+            }, 2000);
             
             // Store radio submission in history
             this.storeRadioSubmission(radioMetadata, formatCount);
