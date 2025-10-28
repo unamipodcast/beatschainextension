@@ -494,18 +494,38 @@ class ISRCManager {
                 return; // Not in radio section
             }
 
-            // Get radio sponsor integration if available
-            if (window.app && window.app.radioSponsorIntegration) {
+            // Get radio sponsor integration if available - comprehensive fix
+            const radioIntegration = window.app?.radioSponsorIntegration || 
+                                   window.radioSponsorIntegration ||
+                                   (window.RadioSponsorIntegration ? new RadioSponsorIntegration() : null);
+            
+            if (radioIntegration && typeof radioIntegration.displayAfterISRCGeneration === 'function') {
                 // Delay to allow ISRC display to update first
                 setTimeout(() => {
-                    window.app.radioSponsorIntegration.displayAfterISRCGeneration();
+                    radioIntegration.displayAfterISRCGeneration();
                 }, 1500);
                 console.log('🎯 Radio sponsor content triggered after ISRC generation:', isrc);
             } else {
-                console.log('⚠️ Radio sponsor integration not available');
+                console.warn('⚠️ Radio sponsor integration not available comprehensive fix , study mint system at isrc');
+                // Fallback: Try to initialize radio sponsor integration
+                this.initializeRadioSponsorIntegration();
             }
         } catch (error) {
             console.warn('⚠️ Failed to trigger radio sponsor content:', error);
+        }
+    }
+
+    // Fallback initialization for radio sponsor integration
+    initializeRadioSponsorIntegration() {
+        try {
+            if (window.RadioSponsorIntegration && window.app) {
+                const integration = new RadioSponsorIntegration();
+                window.app.radioSponsorIntegration = integration;
+                integration.initialize(window.app);
+                console.log('✅ Radio sponsor integration initialized from ISRC manager');
+            }
+        } catch (error) {
+            console.warn('⚠️ Failed to initialize radio sponsor integration:', error);
         }
     }
 
