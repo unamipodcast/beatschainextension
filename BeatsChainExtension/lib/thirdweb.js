@@ -87,7 +87,7 @@ class SolanaManager {
             console.log('✅ Audio uploaded with embedded metadata:', audioUri);
             
             // Upload cover image if provided
-            let imageUri = "ipfs://QmYourDefaultCover";
+            let imageUri = "ipfs://QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
             if (metadata.coverImage) {
                 imageUri = await this.uploadFileToIPFS(metadata.coverImage);
                 console.log('✅ Cover image uploaded:', imageUri);
@@ -204,7 +204,7 @@ class SolanaManager {
         } catch (error) {
             console.error('Hash generation failed:', error);
             // Ultimate fallback
-            return 'QmFallback' + Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
+            return 'QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG';
         }
     }
 

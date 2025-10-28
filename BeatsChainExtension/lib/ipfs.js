@@ -131,7 +131,7 @@ class IPFSManager {
             const metadata = {
                 name: this.sanitizeMetadata(nftData.title),
                 description: this.sanitizeMetadata(nftData.description),
-                image: this.validateUrl(nftData.imageUrl) || 'https://ipfs.io/ipfs/QmBeatsChainDefaultImage',
+                image: this.validateUrl(nftData.imageUrl) || 'https://ipfs.io/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG',
                 animation_url: this.validateUrl(nftData.audioUrl),
                 external_url: 'https://beatschain.app',
                 attributes: [

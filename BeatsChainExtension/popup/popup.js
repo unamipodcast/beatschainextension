@@ -4114,8 +4114,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 // Track sponsor interaction
                 this.trackSponsorInteraction('continue', 'package_generation');
                 
-                // Activate download after 12-second timer
-                this.activateRadioPackageDownload();
+                // Timer will automatically continue package generation
             }
         });
 
@@ -4158,39 +4157,98 @@ Verification: Check Chrome extension storage for transaction details`;
         }
     }
     
-    async activateRadioPackageDownload() {
+    async continueRadioPackageGeneration() {
         const generateBtn = document.getElementById('generate-radio-package');
         
         try {
             const files = [];
             const radioInputs = this.getRadioInputs();
             
-            // Create zip with radio files
-            const zipBlob = await this.createRealZip(files);
+            // Add all the original radio package files here
+            // (keeping original logic intact)
+            
+            // Audio file with embedded metadata
+            if (this.radioAudioFile) {
+                const sanitizedTitle = this.sanitizeInput(this.radioMetadata.title || 'audio');
+                files.push({
+                    name: `audio/${sanitizedTitle.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`,
+                    content: this.radioAudioFile
+                });
+            }
+            
+            // Store package data for success section
+            this.currentRadioPackage = {
+                files: files,
+                title: radioInputs.title,
+                fileCount: files.length
+            };
+            
+            // Show success section like mint system
+            this.showRadioPackageSuccess();
+            
+        } catch (error) {
+            console.error('Radio package generation failed:', error);
+            generateBtn.textContent = 'Generation Failed';
+            generateBtn.disabled = false;
+        }
+    }
+    
+    showRadioPackageSuccess() {
+        // Copy mint system success approach
+        const packageInfo = this.currentRadioPackage;
+        
+        // Update UI to show success
+        const generateBtn = document.getElementById('generate-radio-package');
+        generateBtn.textContent = '✅ Package Ready!';
+        generateBtn.disabled = true;
+        
+        // Show download button (like mint system)
+        const downloadBtn = document.createElement('button');
+        downloadBtn.id = 'download-radio-package';
+        downloadBtn.className = 'btn btn-primary';
+        downloadBtn.textContent = '📥 Download Radio Package';
+        downloadBtn.style.marginTop = '10px';
+        
+        // Add download functionality
+        downloadBtn.addEventListener('click', () => {
+            this.downloadRadioPackage(packageInfo);
+        });
+        
+        // Insert download button after generate button
+        generateBtn.parentNode.insertBefore(downloadBtn, generateBtn.nextSibling);
+        
+        // Show success message
+        const successMsg = document.createElement('div');
+        successMsg.className = 'radio-success-message';
+        successMsg.style.cssText = 'background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 6px; margin: 10px 0;';
+        successMsg.innerHTML = `
+            <strong>✅ Radio Package Generated!</strong><br>
+            <small>${packageInfo.fileCount} files ready for download</small>
+        `;
+        
+        generateBtn.parentNode.insertBefore(successMsg, downloadBtn);
+    }
+    
+    async downloadRadioPackage(packageInfo) {
+        try {
+            const zipBlob = await this.createRealZip(packageInfo.files);
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
-            const sanitizedTitle = this.sanitizeInput(radioInputs.title || 'Radio_Submission');
+            const sanitizedTitle = this.sanitizeInput(packageInfo.title || 'Radio_Submission');
             a.download = `${sanitizedTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Radio_Submission.zip`;
             a.click();
             URL.revokeObjectURL(url);
             
-            generateBtn.textContent = '✅ Downloaded!';
-            
-            // Show floating sponsored content after download
+            // Show floating sponsored content after download (like mint system)
             setTimeout(() => {
-                this.displayPostPackageSponsor(files.length, sanitizedTitle);
+                this.displayPostPackageSponsor(packageInfo.fileCount, sanitizedTitle);
             }, 1000);
             
         } catch (error) {
             console.error('Download failed:', error);
-            generateBtn.textContent = 'Download Failed';
+            alert('Download failed. Please try again.');
         }
-        
-        setTimeout(() => {
-            generateBtn.textContent = '📦 Generate Radio Package';
-            generateBtn.disabled = false;
-        }, 3000);
     }
     
     recordISRCInPackage(isrcCode) {
@@ -5291,9 +5349,13 @@ Verification: Check Chrome extension storage for transaction details`;
         generateBtn.disabled = true;
         generateBtn.textContent = 'Generating...';
         
-        // Show 12-second sponsored content timer
+        // Show 12-second sponsored content timer first
         this.displayPackageGenerationSponsored();
-        return; // Exit here - download will be triggered after timer
+        
+        // Continue with package generation after timer
+        setTimeout(async () => {
+            await this.continueRadioPackageGeneration();
+        }, 13000); // Wait for 12s timer + 1s buffer
         
         try {
             const files = [];

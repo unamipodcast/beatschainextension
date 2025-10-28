@@ -86,8 +86,8 @@ class IPFSAssetManager {
                         tier: "premium",
                         website: "https://example.com/legal",
                         assets: {
-                            logo: "QmLegalServicesLogo123",
-                            banner: "QmLegalServicesBanner456"
+                            logo: "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+                            banner: "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"
                         }
                     },
                     {
@@ -114,8 +114,8 @@ class IPFSAssetManager {
                         tier: "basic",
                         website: "https://example.com/promotion",
                         assets: {
-                            logo: "QmPromotionLogo345",
-                            banner: "QmPromotionBanner678"
+                            logo: "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+                            banner: "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"
                         }
                     },
                     {
@@ -128,8 +128,8 @@ class IPFSAssetManager {
                         tier: "premium",
                         website: "https://example.com/distribution",
                         assets: {
-                            logo: "QmDistributionLogo901",
-                            banner: "QmDistributionBanner234"
+                            logo: "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+                            banner: "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"
                         }
                     }
                 ]
