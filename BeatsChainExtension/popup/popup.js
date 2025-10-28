@@ -383,6 +383,9 @@ class BeatsChainApp {
             // Initialize Minting Sponsor Integration
             await this.initializeMintingSponsorIntegration();
             
+            // Initialize Radio Sponsor Integration
+            await this.initializeRadioSponsorIntegration();
+            
             // Initialize Chrome AI Revenue Optimizer
             await this.initializeChromeAIOptimizer();
             
@@ -2793,6 +2796,18 @@ Verification: Check Chrome extension storage for transaction details`;
         }
     }
     
+    async initializeRadioSponsorIntegration() {
+        try {
+            // Initialize Radio Sponsor Integration with timers
+            if (window.RadioSponsorIntegration) {
+                this.radioSponsorIntegration = RadioSponsorIntegration.enhanceApp(this);
+                console.log('✅ Radio Sponsor Integration initialized with timers');
+            }
+        } catch (error) {
+            console.log('Radio sponsor integration initialization failed:', error);
+        }
+    }
+    
     async initializeAnalytics() {
         try {
             if (window.AnalyticsManager) {
@@ -3917,6 +3932,131 @@ Verification: Check Chrome extension storage for transaction details`;
         document.body.appendChild(sponsorDiv);
     }
     
+    displayPackageGenerationSponsored() {
+        // Check if user has consented to sponsor content
+        if (!this.partnerConsentGiven) {
+            return;
+        }
+
+        // Create modal overlay for package generation sponsor content
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'package-generation-sponsor-modal';
+        modalOverlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9); z-index: 20000;
+            display: flex; align-items: center; justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background: white; border-radius: 12px; padding: 32px;
+            max-width: 500px; width: 90%; text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            position: relative;
+        `;
+
+        modal.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+            <h2 style="color: #333; margin: 0 0 16px 0;">Professional Package Services</h2>
+            <p style="color: #666; line-height: 1.5; margin: 0 0 16px 0;">
+                While your radio package is being generated, consider professional services to enhance your submission.
+            </p>
+            <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">
+                Our verified partners offer mastering, distribution, and promotion services for radio-ready tracks.
+            </p>
+            
+            <div class="sponsor-content" style="
+                background: rgba(0, 214, 122, 0.05);
+                border-radius: 8px;
+                border-left: 4px solid #00d67a;
+                border: 1px solid rgba(0, 214, 122, 0.2);
+                padding: 16px;
+                margin: 20px 0;
+                text-align: left;
+            ">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 24px;">📢</div>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 4px 0; color: #333; font-size: 14px; font-weight: 600;">
+                            Radio Package Enhancement
+                        </h4>
+                        <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; line-height: 1.4;">
+                            Professional mastering, ISRC registration, and radio plugging services to maximize your submission success.
+                        </p>
+                        <a href="#" class="sponsor-link" style="color: #00d67a; font-size: 12px; text-decoration: none; font-weight: 500;">
+                            Learn More →
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+                <button id="continue-package" class="btn btn-primary" disabled style="
+                    background: #007bff; color: white; border: none;
+                    padding: 12px 24px; border-radius: 6px; cursor: not-allowed;
+                    font-size: 14px; font-weight: 500; opacity: 0.6;
+                ">Continue (<span id="countdown-package">3</span>s)</button>
+            </div>
+            
+            <p style="color: #999; font-size: 12px; margin: 16px 0 0 0;">
+                <span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span>
+                Professional partner content
+            </p>
+        `;
+
+        modalOverlay.appendChild(modal);
+        document.body.appendChild(modalOverlay);
+
+        // Start 3-second countdown (shorter for package generation)
+        let countdown = 3;
+        const countdownElement = modal.querySelector('#countdown-package');
+        const continueButton = modal.querySelector('#continue-package');
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                continueButton.disabled = false;
+                continueButton.style.cursor = 'pointer';
+                continueButton.style.opacity = '1';
+                continueButton.innerHTML = 'Continue';
+            }
+        }, 1000);
+
+        // Handle continue button click
+        continueButton.addEventListener('click', () => {
+            if (countdown <= 0) {
+                document.body.removeChild(modalOverlay);
+                
+                // Track sponsor interaction
+                this.trackSponsorInteraction('continue', 'package_generation');
+            }
+        });
+
+        // Handle sponsor link click
+        const sponsorLink = modal.querySelector('.sponsor-link');
+        if (sponsorLink) {
+            sponsorLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.trackSponsorInteraction('clicked', 'package_generation');
+                console.log('Package generation sponsor link clicked');
+            });
+        }
+
+        // Track sponsor impression
+        this.trackSponsorDisplay('package_generation');
+        
+        // Auto-close after countdown
+        setTimeout(() => {
+            if (modalOverlay.parentNode) {
+                document.body.removeChild(modalOverlay);
+            }
+        }, 4000);
+    }
+    
     recordPackageSuccess(packageData) {
         if (this.analyticsManager) {
             this.analyticsManager.recordPackageSuccess(packageData);
@@ -4571,10 +4711,14 @@ Verification: Check Chrome extension storage for transaction details`;
             
             console.log('✅ Radio file processed successfully with analysis displayed');
             
+            // Return success for radio sponsor integration hook
+            return true;
+            
         } catch (error) {
             console.error('❌ Radio file processing failed:', error);
             const errorMessage = ErrorHandler.safeErrorMessage(error);
             alert(`Radio file upload failed: ${errorMessage}`);
+            return false;
         }
     }
     

@@ -41,47 +41,7 @@ class AuthenticationManager {
                     if (chrome.runtime.lastError) {
                         const errorMessage = chrome.runtime.lastError.message || 'OAuth authentication failed';
                         console.error('OAuth error:', errorMessage);
-                        
-                        // Enhanced error handling for specific OAuth issues
-                        if (errorMessage.includes('bad client id') || errorMessage.includes('client_id')) {
-                            console.error('❌ OAuth Client ID Error - Using development bypass');
-                            
-                            // Automatically use bypass for development
-                            try {
-                                const bypassResult = await this.bypassAuth();
-                                if (bypassResult.success) {
-                                    console.log('✅ Development bypass successful');
-                                    resolve(bypassResult);
-                                    return;
-                                }
-                            } catch (bypassError) {
-                                console.error('Development bypass failed:', bypassError);
-                            }
-                            
-                            reject(new Error('Authentication configuration error. Extension needs Chrome Web Store publication for OAuth2.'));
-                            return;
-                        }
-                        
-                        if (errorMessage.includes('OAuth2 not configured')) {
-                            console.error('❌ OAuth2 not configured in manifest');
-                            reject(new Error('OAuth2 not configured. Extension needs to be published to Chrome Web Store.'));
-                            return;
-                        }
-                        
-                        // Try development bypass for unpublished extensions
-                        console.log('🔧 Attempting development authentication bypass...');
-                        try {
-                            const bypassResult = await this.bypassAuth();
-                            if (bypassResult.success) {
-                                console.log('✅ Development bypass successful');
-                                resolve(bypassResult);
-                                return;
-                            }
-                        } catch (bypassError) {
-                            console.error('Development bypass failed:', bypassError);
-                        }
-                        
-                        reject(new Error('Google sign-in failed. Please ensure extension is installed from Chrome Web Store and try again.'));
+                        reject(new Error('Google sign-in failed: ' + errorMessage));
                         return;
                     }
                     
@@ -145,42 +105,7 @@ class AuthenticationManager {
         });
     }
 
-    // Development bypass for unpublished extensions
-    async bypassAuth() {
-        console.log('⚠️ Using authentication bypass for development/testing');
-        
-        const mockProfile = {
-            id: 'dev_user_' + Date.now(),
-            email: 'developer@beatschain.com',
-            name: 'BeatsChain Developer',
-            verified_email: true,
-            picture: null,
-            role: 'admin',
-            permissions: ['admin_panel', 'sponsor_management', 'user_management']
-        };
-        
-        // Store mock authentication data
-        this.accessToken = 'dev_token_' + Date.now();
-        this.userProfile = mockProfile;
-        this.authenticated = true;
-        
-        await chrome.storage.local.set({
-            'auth_token': this.accessToken,
-            'user_profile': this.userProfile,
-            'auth_timestamp': Date.now(),
-            'auth_bypass': true
-        });
-        
-        // Generate wallet for bypass user
-        await this.generateUserWallet();
-        
-        return {
-            success: true,
-            user: this.userProfile,
-            token: this.accessToken,
-            bypass: true
-        };
-    }
+
 
     async generateUserWallet() {
         try {

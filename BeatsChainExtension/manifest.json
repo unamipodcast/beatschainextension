@@ -8,10 +8,13 @@
     "identity",
     "activeTab"
   ],
+  "oauth2": {
+    "client_id": "239753403483-58n7vlbvs1nsu9qnf1qmoenh2cjjimbc.apps.googleusercontent.com",
+    "scopes": ["email", "profile", "openid"]
+  },
   "host_permissions": [
     "https://*.ipfs.io/*",
     "https://api.pinata.cloud/*",
-    "https://api.devnet.solana.com/*",
     "https://api.mainnet-beta.solana.com/*",
     "https://solana-api.projectserum.com/*",
     "https://engine.thirdweb.com/*",
