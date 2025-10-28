@@ -2913,3 +2913,1132 @@ textarea:focus {
     text-transform: uppercase;
     margin-left: 6px;
 }
+
+/* ===== RADIO SYSTEM ENHANCEMENTS ===== */
+
+/* Enhanced Radio Layout - Reduced Navigation Panel with Sponsor Integration */
+.radio-content {
+    display: flex;
+    gap: 16px; /* Reduced from 20px */
+    min-height: 500px;
+    position: relative;
+    /* Ensure sponsor content can overlay properly */
+    z-index: 1;
+}
+
+.radio-navigation {
+    flex: 0 0 180px; /* Reduced from 250px to save space */
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 16px; /* Reduced from 20px */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.radio-main-content {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow-y: auto;
+    min-height: 480px;
+    max-height: 600px;
+    scroll-behavior: smooth;
+    position: relative;
+    padding-right: 24px; /* Extra space for floating content */
+    /* Performance optimizations for radio content */
+    will-change: scroll-position;
+    transform: translateZ(0);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bc-accent-green) rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive Radio Layout */
+@media (max-width: 768px) {
+    .radio-content {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .radio-navigation {
+        flex: none;
+        max-height: 200px;
+        padding: 12px;
+    }
+    
+    .radio-main-content {
+        padding-right: 20px;
+        max-height: 400px;
+    }
+}
+
+/* Floating Sponsor Content for Radio System */
+.floating-sponsor-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    max-width: 320px;
+    z-index: 10001;
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: slideInUp 0.3s ease-out;
+    font-family: var(--bc-font-family);
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Radio Sponsor Section Styling - Consistent with Minting */
+.minting-sponsor-section {
+    margin: 15px 0;
+    padding: 16px;
+    background: rgba(0, 214, 122, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid var(--bc-accent-green);
+    border: 1px solid rgba(0, 214, 122, 0.2);
+    position: relative;
+    font-family: var(--bc-font-family);
+}
+
+.minting-sponsor-section .sponsor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.minting-sponsor-section .sponsor-label {
+    font-size: 11px;
+    color: var(--bc-text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.minting-sponsor-section .sponsor-close {
+    background: none;
+    border: none;
+    color: var(--bc-text-muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.minting-sponsor-section .sponsor-close:hover {
+    color: var(--bc-text-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.minting-sponsor-section .sponsor-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.minting-sponsor-section .sponsor-visual {
+    font-size: 24px;
+    width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.minting-sponsor-section .sponsor-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.minting-sponsor-section .sponsor-info h4 {
+    margin: 0 0 4px 0;
+    color: var(--bc-text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.minting-sponsor-section .sponsor-info p {
+    margin: 0 0 8px 0;
+    color: var(--bc-text-secondary);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.minting-sponsor-section .sponsor-link {
+    color: var(--bc-accent-green);
+    font-size: 12px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.minting-sponsor-section .sponsor-link:hover {
+    color: var(--bc-accent-green-hover);
+    text-decoration: underline;
+}
+
+.minting-sponsor-section .sponsor-context {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.minting-sponsor-section .sponsor-context small {
+    color: var(--bc-text-muted);
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+/* ISRC Generation Enhanced Styling */
+.isrc-generate-btn {
+    background: var(--bc-accent-green) !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+    font-family: var(--bc-font-family) !important;
+}
+
+.isrc-generate-btn:hover:not(:disabled) {
+    background: var(--bc-accent-green-hover) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 214, 122, 0.3);
+}
+
+.isrc-generate-btn:disabled {
+    background: #6c757d !important;
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+/* ISRC Input Group Styling */
+.isrc-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.isrc-input-group .form-input {
+    flex: 1;
+}
+
+.isrc-input-group .isrc-generate-btn {
+    flex-shrink: 0;
+    margin-top: 0;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Radio Step Indicator Compact - Enhanced */
+.step-indicator .step {
+    padding: 10px 12px; /* Slightly increased for better touch targets */
+    margin-bottom: 6px; /* Reduced margin */
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.step-indicator .step:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(2px);
+}
+
+.step-indicator .step.active {
+    background: var(--bc-accent-green);
+    color: white;
+    border-color: var(--bc-accent-green);
+    box-shadow: 0 2px 8px rgba(0, 214, 122, 0.3);
+}
+
+.step-indicator .step.completed {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.step-number {
+    display: inline-block;
+    width: 22px; /* Slightly larger for better visibility */
+    height: 22px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 22px;
+    margin-right: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.step.active .step-number {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.step.completed .step-number {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.step-label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    flex: 1;
+}
+
+/* Package Limits Context Styling */
+.package-limits-context {
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: rgba(33, 150, 243, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.limits-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.current-limit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.limit-icon {
+    font-size: 16px;
+}
+
+.limit-text {
+    color: var(--bc-text-primary);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.upgrade-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.upgrade-text {
+    color: var(--bc-text-secondary);
+    font-size: 12px;
+}
+
+/* Package Summary Enhanced - FIXED VISIBILITY */
+.package-summary {
+    background: rgba(0, 214, 122, 0.05);
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(0, 214, 122, 0.2);
+    border-left: 4px solid var(--bc-accent-green);
+}
+
+.package-summary h5 {
+    margin: 0 0 12px 0;
+    color: var(--bc-text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.package-summary ul {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.package-summary li {
+    margin: 6px 0;
+    color: var(--bc-text-primary) !important; /* FIXED: Use white text */
+    background: rgba(0, 214, 122, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 13px;
+    border: 1px solid rgba(0, 214, 122, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.package-info {
+    background: rgba(33, 150, 243, 0.05);
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    border-left: 4px solid #2196F3;
+}
+
+.package-info p {
+    margin: 8px 0;
+    color: var(--bc-text-primary) !important; /* FIXED: Use white text */
+    background: rgba(33, 150, 243, 0.1);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 13px;
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    line-height: 1.4;
+}
+
+.package-info p strong {
+    color: #2196F3;
+    font-weight: 600;
+}
+
+/* Radio Sponsor Integration Enhancements */
+.radio-sponsor-placement {
+    position: relative;
+    margin: 16px 0;
+}
+
+.sponsor-placement-after-upload {
+    margin-top: 20px;
+}
+
+.sponsor-placement-before-package {
+    margin-bottom: 20px;
+}
+
+.sponsor-placement-during-package {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 10002;
+}
+
+.sponsor-placement-post-success {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10003;
+}
+
+/* Enhanced ISRC Section */
+.isrc-section {
+    background: rgba(156, 39, 176, 0.05);
+    border: 1px solid rgba(156, 39, 176, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    border-left: 4px solid #9c27b0;
+}
+
+.isrc-section h4 {
+    color: var(--bc-text-primary);
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ISRC Validation Indicator */
+.isrc-validation-indicator {
+    margin-left: 8px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* ISRC Message Styling */
+.isrc-message {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Radio System Performance Optimizations */
+.radio-step {
+    /* Prevent layout shifts during step transitions */
+    contain: layout style;
+    min-height: 200px;
+    will-change: opacity, transform;
+}
+
+.radio-step.active {
+    /* Smooth step transitions */
+    animation: radioStepSlideIn 0.3s ease-out;
+}
+
+@keyframes radioStepSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Sponsor Content Animations */
+.minting-sponsor-section {
+    animation: sponsorFadeIn 0.4s ease-out;
+    will-change: opacity, transform;
+}
+
+@keyframes sponsorFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ISRC Generation Loading States */
+.isrc-generate-btn.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.isrc-generate-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mobile Responsive Enhancements */
+@media (max-width: 600px) {
+    .radio-content {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .radio-navigation {
+        flex: none;
+        max-height: 150px;
+        padding: 12px;
+    }
+    
+    .step-indicator {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .step {
+        flex: 1;
+        min-width: 80px;
+        padding: 8px;
+        text-align: center;
+    }
+    
+    .step-number {
+        margin-right: 4px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        font-size: 10px;
+    }
+    
+    .step-label {
+        font-size: 10px;
+    }
+    
+    .radio-main-content {
+        padding: 16px;
+        padding-right: 16px;
+        max-height: 500px;
+    }
+    
+    .step-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .step-actions .btn {
+        width: 100%;
+    }
+    
+    /* Mobile floating sponsor adjustments */
+    .floating-sponsor-container {
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    /* Mobile package summary */
+    .package-summary li {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .package-info p {
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+}
+
+/* Enhanced Focus States for Accessibility */
+.form-input:focus,
+.btn:focus,
+.step:focus {
+    outline: 2px solid var(--bc-accent-green);
+    outline-offset: 2px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .minting-sponsor-section {
+        border-width: 2px;
+        background: rgba(0, 214, 122, 0.1);
+    }
+    
+    .floating-sponsor-container {
+        border-width: 2px;
+        background: rgba(0, 0, 0, 0.9);
+    }
+    
+    .isrc-generate-btn {
+        border: 2px solid var(--bc-accent-green) !important;
+    }
+}
+
+/* ===== RADIO-SPECIFIC SPONSOR ENHANCEMENTS ===== */
+
+/* Radio Industry Sponsor Categories */
+.sponsor-category-image-services {
+    border-left-color: #ff6b35;
+    background: rgba(255, 107, 53, 0.05);
+    border-color: rgba(255, 107, 53, 0.2);
+}
+
+.sponsor-category-metadata-services {
+    border-left-color: #2196F3;
+    background: rgba(33, 150, 243, 0.05);
+    border-color: rgba(33, 150, 243, 0.2);
+}
+
+.sponsor-category-legal-services {
+    border-left-color: #9c27b0;
+    background: rgba(156, 39, 176, 0.05);
+    border-color: rgba(156, 39, 176, 0.2);
+}
+
+.sponsor-category-compliance-services {
+    border-left-color: #f44336;
+    background: rgba(244, 67, 54, 0.05);
+    border-color: rgba(244, 67, 54, 0.2);
+}
+
+.sponsor-category-professional-services {
+    border-left-color: #ff9800;
+    background: rgba(255, 152, 0, 0.05);
+    border-color: rgba(255, 152, 0, 0.2);
+}
+
+.sponsor-category-content-services {
+    border-left-color: #607d8b;
+    background: rgba(96, 125, 139, 0.05);
+    border-color: rgba(96, 125, 139, 0.2);
+}
+
+.sponsor-category-premium-services {
+    border-left-color: #ffd700;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
+    border-color: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 2px 12px rgba(255, 215, 0, 0.2);
+}
+
+.sponsor-category-audio-services {
+    border-left-color: var(--bc-accent-green);
+    background: rgba(0, 214, 122, 0.05);
+    border-color: rgba(0, 214, 122, 0.2);
+}
+
+.sponsor-category-isrc-services {
+    border-left-color: #9c27b0;
+    background: rgba(156, 39, 176, 0.05);
+    border-color: rgba(156, 39, 176, 0.2);
+}
+
+.sponsor-category-radio-submission {
+    border-left-color: #e91e63;
+    background: rgba(233, 30, 99, 0.05);
+    border-color: rgba(233, 30, 99, 0.2);
+}
+
+.sponsor-category-distribution-services {
+    border-left-color: #3f51b5;
+    background: rgba(63, 81, 181, 0.05);
+    border-color: rgba(63, 81, 181, 0.2);
+}
+
+.sponsor-category-promotion-services {
+    border-left-color: #ff5722;
+    background: rgba(255, 87, 34, 0.05);
+    border-color: rgba(255, 87, 34, 0.2);
+}
+
+.sponsor-category-analytics-services {
+    border-left-color: #795548;
+    background: rgba(121, 85, 72, 0.05);
+    border-color: rgba(121, 85, 72, 0.2);
+}
+
+.sponsor-category-sa-radio-services {
+    border-left-color: #4caf50;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.05));
+    border-color: rgba(76, 175, 80, 0.3);
+    position: relative;
+}
+
+.sponsor-category-sa-radio-services::before {
+    content: '🇿🇦';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.sponsor-category-broadcasting-services {
+    border-left-color: #673ab7;
+    background: rgba(103, 58, 183, 0.05);
+    border-color: rgba(103, 58, 183, 0.2);
+}
+
+.sponsor-category-airplay-services {
+    border-left-color: #009688;
+    background: rgba(0, 150, 136, 0.05);
+    border-color: rgba(0, 150, 136, 0.2);
+}
+
+/* Enhanced Floating Sponsor Containers for Different Categories */
+.floating-sponsor-container.premium {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.95), rgba(255, 193, 7, 0.9));
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+    color: #000;
+}
+
+.floating-sponsor-container.premium .sponsor-label {
+    color: rgba(0, 0, 0, 0.7);
+}
+
+.floating-sponsor-container.premium .sponsor-info h4 {
+    color: #000;
+}
+
+.floating-sponsor-container.premium .sponsor-info p {
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.floating-sponsor-container.premium .sponsor-link {
+    color: #d84315;
+    font-weight: 600;
+}
+
+.floating-sponsor-container.sa-radio {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.95), rgba(139, 195, 74, 0.9));
+    border: 2px solid rgba(76, 175, 80, 0.4);
+    box-shadow: 0 8px 32px rgba(76, 175, 80, 0.3);
+}
+
+.floating-sponsor-container.compliance {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.95), rgba(233, 30, 99, 0.9));
+    border: 2px solid rgba(244, 67, 54, 0.4);
+    box-shadow: 0 8px 32px rgba(244, 67, 54, 0.3);
+}
+
+/* Radio Sponsor Placement Timing Indicators */
+.sponsor-timing-indicator {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    z-index: 1;
+}
+
+.sponsor-timing-1200ms::after { content: '1.2s'; }
+.sponsor-timing-1000ms::after { content: '1.0s'; }
+.sponsor-timing-800ms::after { content: '0.8s'; }
+.sponsor-timing-900ms::after { content: '0.9s'; }
+.sponsor-timing-1100ms::after { content: '1.1s'; }
+.sponsor-timing-700ms::after { content: '0.7s'; }
+.sponsor-timing-600ms::after { content: '0.6s'; }
+.sponsor-timing-500ms::after { content: '0.5s'; }
+.sponsor-timing-1500ms::after { content: '1.5s'; }
+.sponsor-timing-15000ms::after { content: '15s'; }
+
+/* Enhanced Radio Sponsor Visual Hierarchy */
+.minting-sponsor-section.radio-essential-component {
+    position: relative;
+    overflow: hidden;
+}
+
+.minting-sponsor-section.radio-essential-component::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--bc-accent-green), transparent);
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Radio Industry Sponsor Icons */
+.sponsor-visual.image-services::before { content: '🖼️'; }
+.sponsor-visual.metadata-services::before { content: '📝'; }
+.sponsor-visual.legal-services::before { content: '⚖️'; }
+.sponsor-visual.compliance-services::before { content: '🏛️'; }
+.sponsor-visual.professional-services::before { content: '📞'; }
+.sponsor-visual.content-services::before { content: '✍️'; }
+.sponsor-visual.premium-services::before { content: '✨'; }
+.sponsor-visual.audio-services::before { content: '🎵'; }
+.sponsor-visual.isrc-services::before { content: '🎯'; }
+.sponsor-visual.radio-submission::before { content: '📻'; }
+.sponsor-visual.distribution-services::before { content: '📦'; }
+.sponsor-visual.promotion-services::before { content: '🚀'; }
+.sponsor-visual.analytics-services::before { content: '📊'; }
+.sponsor-visual.sa-radio-services::before { content: '🇿🇦'; }
+.sponsor-visual.broadcasting-services::before { content: '📡'; }
+.sponsor-visual.airplay-services::before { content: '📈'; }
+
+/* Enhanced Package Component Coverage Indicators */
+.package-component-coverage {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0;
+    padding: 12px;
+    background: rgba(0, 214, 122, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(0, 214, 122, 0.2);
+}
+
+.component-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.component-indicator.covered {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.component-indicator.missing {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.component-indicator::before {
+    content: attr(data-icon);
+    font-size: 12px;
+}
+
+/* Radio System Coverage Progress */
+.coverage-progress {
+    margin: 16px 0;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.coverage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.coverage-title {
+    color: var(--bc-text-primary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.coverage-percentage {
+    color: var(--bc-accent-green);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.coverage-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.coverage-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--bc-accent-green), #4caf50);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* Enhanced CORS Resolution Indicators */
+.cors-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 8px;
+}
+
+.cors-status-indicator.resolved {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.cors-status-indicator.pending {
+    background: rgba(255, 152, 0, 0.2);
+    color: #ff9800;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.cors-status-indicator::before {
+    content: '🔒';
+    font-size: 8px;
+}
+
+.cors-status-indicator.resolved::before {
+    content: '✅';
+}
+
+/* South African Radio Market Styling */
+.sa-radio-market {
+    position: relative;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.05));
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-left: 4px solid #4caf50;
+}
+
+.sa-radio-market::after {
+    content: '🇿🇦 SA Radio';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Enhanced Mobile Responsiveness for Radio Sponsors */
+@media (max-width: 600px) {
+    .floating-sponsor-container {
+        bottom: 60px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .minting-sponsor-section {
+        margin: 12px 0;
+        padding: 12px;
+    }
+    
+    .sponsor-visual {
+        font-size: 20px;
+        width: 32px;
+    }
+    
+    .sponsor-info h4 {
+        font-size: 13px;
+    }
+    
+    .sponsor-info p {
+        font-size: 12px;
+    }
+    
+    .sponsor-link {
+        font-size: 11px;
+    }
+    
+    .package-component-coverage {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .component-indicator {
+        justify-content: center;
+        padding: 6px 12px;
+    }
+}
+
+/* High Performance Animations for Radio Sponsors */
+.radio-sponsor-entrance {
+    animation: radioSponsorSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes radioSponsorSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.radio-sponsor-exit {
+    animation: radioSponsorSlideOut 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+}
+
+@keyframes radioSponsorSlideOut {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+}
+
+/* Enhanced Accessibility for Radio Sponsors */
+.minting-sponsor-section[role="banner"] {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+}
+
+.minting-sponsor-section:focus-within {
+    outline: 2px solid var(--bc-accent-green);
+    outline-offset: 2px;
+}
+
+.sponsor-close:focus {
+    outline: 2px solid var(--bc-accent-green);
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+
+.sponsor-link:focus {
+    outline: 2px solid var(--bc-accent-green);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Screen Reader Support */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .minting-sponsor-section,
+    .floating-sponsor-container,
+    .radio-step.active,
+    .radio-sponsor-entrance,
+    .radio-sponsor-exit {
+        animation: none;
+    }
+    
+    .btn,
+    .step,
+    .upload-area {
+        transition: none;
+    }
+    
+    .collapse-btn {
+        transition: none;
+    }
+    
+    .coverage-fill {
+        transition: none;
+    }
+    
+    .shimmer {
+        animation: none;
+    }
+}

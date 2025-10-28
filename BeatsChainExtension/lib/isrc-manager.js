@@ -115,6 +115,9 @@ class ISRCManager {
                     artistName: artistName.substring(0, 20)
                 });
                 
+                // Trigger radio sponsor content after ISRC generation
+                this.triggerRadioSponsorContent(isrc);
+                
                 return isrc;
                 
             } catch (storageError) {
@@ -480,6 +483,30 @@ class ISRCManager {
             .replace(/[<>"'&]/g, '')
             .trim()
             .substring(0, 100);
+    }
+
+    // NEW: Trigger radio sponsor content after ISRC generation
+    triggerRadioSponsorContent(isrc) {
+        try {
+            // Check if we're in radio context
+            const radioSection = document.getElementById('radio-section');
+            if (!radioSection || !radioSection.classList.contains('active')) {
+                return; // Not in radio section
+            }
+
+            // Get radio sponsor integration if available
+            if (window.app && window.app.radioSponsorIntegration) {
+                // Delay to allow ISRC display to update first
+                setTimeout(() => {
+                    window.app.radioSponsorIntegration.displayAfterISRCGeneration();
+                }, 1500);
+                console.log('🎯 Radio sponsor content triggered after ISRC generation:', isrc);
+            } else {
+                console.log('⚠️ Radio sponsor integration not available');
+            }
+        } catch (error) {
+            console.warn('⚠️ Failed to trigger radio sponsor content:', error);
+        }
     }
 
     // Integration with existing systems

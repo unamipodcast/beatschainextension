@@ -19,7 +19,7 @@ class UnifiedAuthenticationManager {
             
             // Check existing authentication data
             const stored = await chrome.storage.local.get([
-                'auth_token', 'user_profile', 'auth_bypass', 
+                'auth_token', 'user_profile', 
                 'enhanced_wallet_address', 'wallet_address'
             ]);
             
@@ -51,7 +51,9 @@ class UnifiedAuthenticationManager {
         const adminEmails = [
             'admin@beatschain.com',
             'developer@beatschain.com', 
-            'info@unamifoundation.org'
+            'info@unamifoundation.org',
+            'deannecoole5@gmail.com',
+            'sihle.zuma680@gmail.com'
         ];
         return adminEmails.includes(email) ? 'admin' : 'user';
     }
@@ -66,13 +68,7 @@ class UnifiedAuthenticationManager {
 
                 chrome.identity.getAuthToken({ interactive: true }, async (token) => {
                     if (chrome.runtime.lastError) {
-                        // Graceful fallback to bypass for development
-                        try {
-                            const bypassResult = await this.bypassAuth();
-                            resolve(bypassResult);
-                        } catch (bypassError) {
-                            reject(new Error('Authentication failed'));
-                        }
+                        reject(new Error('Google OAuth2 authentication failed: ' + chrome.runtime.lastError.message));
                         return;
                     }
 
@@ -122,37 +118,7 @@ class UnifiedAuthenticationManager {
         });
     }
 
-    async bypassAuth() {
-        const mockProfile = {
-            id: 'dev_user_' + Date.now(),
-            email: 'developer@beatschain.com',
-            name: 'BeatsChain Developer',
-            verified_email: true,
-            role: 'admin'
-        };
-        
-        this.accessToken = 'dev_token_' + Date.now();
-        this.userProfile = mockProfile;
-        this.isAuthenticated = true;
-        this.role = 'admin';
-        this.securityLevel = 'enhanced';
-        
-        await chrome.storage.local.set({
-            'auth_token': this.accessToken,
-            'user_profile': this.userProfile,
-            'auth_bypass': true
-        });
-        
-        await this.generateUnifiedWallet();
-        
-        return {
-            success: true,
-            user: this.userProfile,
-            role: this.role,
-            securityLevel: this.securityLevel,
-            bypass: true
-        };
-    }
+
 
     async generateUnifiedWallet() {
         try {
@@ -224,7 +190,7 @@ class UnifiedAuthenticationManager {
 
             // Clear unified auth data (preserve wallet for migration)
             await chrome.storage.local.remove([
-                'auth_token', 'user_profile', 'auth_timestamp', 'auth_bypass'
+                'auth_token', 'user_profile', 'auth_timestamp'
             ]);
 
             this.isAuthenticated = false;

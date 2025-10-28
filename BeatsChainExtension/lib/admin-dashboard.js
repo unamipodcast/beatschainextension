@@ -55,6 +55,7 @@ class AdminDashboardManager {
         } catch (error) {
             console.warn('⚠️ Dashboard UI setup failed:', error);
             // Continue without UI - admin dashboard will show basic fallback
+            this.showAdminMessage('Admin dashboard UI setup failed: ' + (error?.message || 'Unknown error'), 'error');
         }
         
             this.isInitialized = true;
@@ -157,36 +158,134 @@ class AdminDashboardManager {
                 website: 'https://beatschain.com/pro'
             },
             
-            // Radio System Sponsors
-            samro_compliance: {
+            // Radio System Sponsors - Essential Package Components
+            image_services_pro: {
+                name: 'Professional Image Services',
+                message: 'High-quality cover art design and optimization for radio submissions',
+                logo: null,
+                website: 'https://imageservices.pro'
+            },
+            metadata_services_pro: {
+                name: 'Metadata Enhancement Services',
+                message: 'Professional metadata optimization for radio and streaming platforms',
+                logo: null,
+                website: 'https://metadataservices.pro'
+            },
+            legal_services_pro: {
+                name: 'Music Legal Services',
+                message: 'Professional legal review and split sheet verification for radio submissions',
+                logo: null,
+                website: 'https://musiclegal.co.za'
+            },
+            samro_compliance_pro: {
                 name: 'SAMRO Compliance Pro',
-                message: 'Ensure full SAMRO compliance with automated documentation',
+                message: 'Expert SAMRO documentation and compliance services for South African radio',
                 logo: null,
-                website: 'https://samro.org.za'
+                website: 'https://samrocompliance.co.za'
             },
-            radiomonitor: {
-                name: 'Radiomonitor South Africa',
-                message: 'Professional music monitoring and analytics',
+            professional_services_hub: {
+                name: 'Professional Services Hub',
+                message: 'Complete artist management and professional services for radio campaigns',
                 logo: null,
-                website: 'https://radiomonitor.co.za'
+                website: 'https://professionalservices.co.za'
             },
-            radio_boost: {
-                name: 'Radio Boost Service',
-                message: 'Professional radio promotion and playlist placement',
+            content_creation_pro: {
+                name: 'Content Creation Services',
+                message: 'Professional biography writing and content creation for radio promotion',
                 logo: null,
-                website: 'https://radioboost.com'
+                website: 'https://contentcreation.pro'
             },
-            music_promotion: {
-                name: 'Music Promotion Pro',
-                message: 'Professional music promotion and airplay tracking',
+            premium_services_suite: {
+                name: 'Premium Services Suite',
+                message: 'Unlock premium features and advanced radio submission tools',
                 logo: null,
-                website: 'https://musicpromotion.pro'
+                website: 'https://beatschain.com/premium'
             },
-            airplay_tracker: {
-                name: 'Airplay Analytics',
-                message: 'Monitor airplay and measure radio campaign success',
+            
+            // Radio System Sponsors - Broadcasting Industry
+            radio_mastering_pro: {
+                name: 'Radio Mastering Services',
+                message: 'Professional mastering optimized for South African radio broadcast standards',
                 logo: null,
-                website: 'https://airplayanalytics.com'
+                website: 'https://radiomastering.co.za'
+            },
+            isrc_radio_registration: {
+                name: 'ISRC Radio Registration',
+                message: 'Specialized ISRC registration with radio airplay tracking and royalty management',
+                logo: null,
+                website: 'https://isrcradio.co.za'
+            },
+            radio_plugging_sa: {
+                name: 'SA Radio Plugging Network',
+                message: 'Direct connections to program directors at major South African radio stations',
+                logo: null,
+                website: 'https://radioplugger.co.za'
+            },
+            airplay_promotion_pro: {
+                name: 'Airplay Promotion Services',
+                message: 'Professional radio promotion campaigns with guaranteed airplay tracking',
+                logo: null,
+                website: 'https://airplaypromotion.co.za'
+            },
+            radio_analytics_pro: {
+                name: 'Radio Analytics & Monitoring',
+                message: 'Comprehensive airplay analytics and radio campaign performance tracking',
+                logo: null,
+                website: 'https://radioanalytics.co.za'
+            },
+            
+            // South African Radio Market Specific
+            sabc_submission_pro: {
+                name: 'SABC Submission Services',
+                message: 'Specialized submission services for SABC radio stations and compliance',
+                logo: null,
+                website: 'https://sabcsubmission.co.za'
+            },
+            commercial_radio_network: {
+                name: 'Commercial Radio Network SA',
+                message: 'Direct access to commercial radio stations across South Africa',
+                logo: null,
+                website: 'https://commercialradio.co.za'
+            },
+            community_radio_outreach: {
+                name: 'Community Radio Outreach',
+                message: 'Grassroots promotion through South African community radio stations',
+                logo: null,
+                website: 'https://communityradio.co.za'
+            },
+            
+            // Broadcasting Services
+            program_director_access: {
+                name: 'Program Director Network',
+                message: 'Direct connections to program directors at major radio stations',
+                logo: null,
+                website: 'https://programdirectors.co.za'
+            },
+            music_director_outreach: {
+                name: 'Music Director Connections',
+                message: 'Professional outreach to music directors and playlist curators',
+                logo: null,
+                website: 'https://musicdirectors.co.za'
+            },
+            radio_interview_booking: {
+                name: 'Radio Interview Booking',
+                message: 'Professional booking services for radio interviews and live sessions',
+                logo: null,
+                website: 'https://radiointerviews.co.za'
+            },
+            
+            // Airplay & Analytics Services
+            airplay_monitoring_pro: {
+                name: 'Airplay Monitoring Pro',
+                message: 'Real-time airplay monitoring across all South African radio stations',
+                logo: null,
+                website: 'https://airplaymonitor.co.za'
+            },
+            playlist_placement_pro: {
+                name: 'Playlist Placement Services',
+                message: 'Strategic playlist placement on radio and streaming platforms',
+                logo: null,
+                website: 'https://playlistplacement.co.za'
             },
             
             // Mint/NFT System Sponsors
@@ -657,7 +756,7 @@ class AdminDashboardManager {
                 <!-- Campaign Management Section -->
                 <div class="samro-enhanced-section">
                     <div class="samro-header">
-                        <h5>📢 Campaign Management</h5>
+                        <h5>🚀 Campaign Management</h5>
                         <button class="collapse-btn" id="campaign-management-toggle" type="button">▼</button>
                     </div>
                     <div class="samro-content" id="campaign-management-content">
@@ -810,7 +909,16 @@ class AdminDashboardManager {
                             <div class="form-row">
                                 <label for="sponsor-placement">Placement:</label>
                                 <select id="sponsor-placement" class="form-input">
-                                    <optgroup label="Radio System Placements">
+                                    <optgroup label="Radio System Placements - Essential Package Components">
+                                        <option value="after_cover_upload" ${this.sponsorConfig.placement === 'after_cover_upload' ? 'selected' : ''}>After Cover Image Upload</option>
+                                        <option value="after_metadata" ${this.sponsorConfig.placement === 'after_metadata' ? 'selected' : ''}>After Metadata Entry</option>
+                                        <option value="after_split_sheets" ${this.sponsorConfig.placement === 'after_split_sheets' ? 'selected' : ''}>After Split Sheets</option>
+                                        <option value="after_samro" ${this.sponsorConfig.placement === 'after_samro' ? 'selected' : ''}>After SAMRO Documentation</option>
+                                        <option value="after_contact" ${this.sponsorConfig.placement === 'after_contact' ? 'selected' : ''}>After Contact Information</option>
+                                        <option value="after_biography" ${this.sponsorConfig.placement === 'after_biography' ? 'selected' : ''}>After Artist Biography</option>
+                                        <option value="before_download" ${this.sponsorConfig.placement === 'before_download' ? 'selected' : ''}>Before Package Download</option>
+                                    </optgroup>
+                                    <optgroup label="Radio System Placements - Core Flow">
                                         <option value="after_isrc" ${this.sponsorConfig.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
                                         <option value="validation" ${this.sponsorConfig.placement === 'validation' ? 'selected' : ''}>After Validation</option>
                                         <option value="before_package" ${this.sponsorConfig.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
@@ -3282,9 +3390,25 @@ class AdminDashboardManager {
     }
     
     generateEnhancedCampaignHTML(campaign) {
+        // Ensure campaign object exists and has required properties
+        if (!campaign || typeof campaign !== 'object') {
+            return '<div class="campaign-error">Invalid campaign data</div>';
+        }
+        
         const metrics = campaign.metrics || { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
         const performance = campaign.performance || { revenue: 0, ctr: 0, conversionRate: 0 };
-        const roi = this.campaignManager ? this.campaignManager.calculateCampaignROI(campaign.id) : { roi: 0 };
+        const analytics = campaign.analytics || null;
+        
+        // Safe ROI calculation with null checks
+        let roi = { roi: 0 };
+        try {
+            if (this.campaignManager && typeof this.campaignManager.calculateCampaignROI === 'function') {
+                roi = this.campaignManager.calculateCampaignROI(campaign.id) || { roi: 0 };
+            }
+        } catch (error) {
+            console.warn('ROI calculation failed:', error);
+            roi = { roi: 0 };
+        }
         
         const statusColor = {
             'scheduled': '#ffc107',
@@ -3433,7 +3557,16 @@ class AdminDashboardManager {
                                 <label for="campaign-placement">Primary Placement *</label>
                                 <select id="campaign-placement" class="form-input" required>
                                     <option value="">Select Placement</option>
-                                    <optgroup label="Radio System Placements">
+                                    <optgroup label="Radio System - Essential Package Components">
+                                        <option value="after_cover_upload" ${campaign?.placement === 'after_cover_upload' ? 'selected' : ''}>After Cover Image Upload</option>
+                                        <option value="after_metadata" ${campaign?.placement === 'after_metadata' ? 'selected' : ''}>After Metadata Entry</option>
+                                        <option value="after_split_sheets" ${campaign?.placement === 'after_split_sheets' ? 'selected' : ''}>After Split Sheets</option>
+                                        <option value="after_samro" ${campaign?.placement === 'after_samro' ? 'selected' : ''}>After SAMRO Documentation</option>
+                                        <option value="after_contact" ${campaign?.placement === 'after_contact' ? 'selected' : ''}>After Contact Information</option>
+                                        <option value="after_biography" ${campaign?.placement === 'after_biography' ? 'selected' : ''}>After Artist Biography</option>
+                                        <option value="before_download" ${campaign?.placement === 'before_download' ? 'selected' : ''}>Before Package Download</option>
+                                    </optgroup>
+                                    <optgroup label="Radio System - Core Flow">
                                         <option value="after_isrc" ${campaign?.placement === 'after_isrc' ? 'selected' : ''}>After ISRC Generation</option>
                                         <option value="validation" ${campaign?.placement === 'validation' ? 'selected' : ''}>After Validation</option>
                                         <option value="before_package" ${campaign?.placement === 'before_package' ? 'selected' : ''}>Before Package Generation</option>
@@ -3513,12 +3646,15 @@ class AdminDashboardManager {
         }
         
         try {
-            // Check dependencies first
+            // Check dependencies first with null safety
             if (this.campaignManager && this.campaignManager.checkSponsorDependencies) {
                 const dependencies = await this.campaignManager.checkSponsorDependencies(sponsorId);
                 
-                if (dependencies.activeCampaigns.length > 0) {
-                    const campaignNames = dependencies.activeCampaigns.map(c => c.name).join(', ');
+                if (dependencies && dependencies.activeCampaigns && dependencies.activeCampaigns.length > 0) {
+                    const campaignNames = dependencies.activeCampaigns
+                        .filter(c => c && c.name)
+                        .map(c => c.name)
+                        .join(', ');
                     this.showAdminMessage(`Cannot delete sponsor. Active campaigns: ${campaignNames}`, 'error');
                     return;
                 }
