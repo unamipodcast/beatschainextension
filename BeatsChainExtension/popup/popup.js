@@ -4113,6 +4113,9 @@ Verification: Check Chrome extension storage for transaction details`;
                 
                 // Track sponsor interaction
                 this.trackSponsorInteraction('continue', 'package_generation');
+                
+                // Activate download after 12-second timer
+                this.activateRadioPackageDownload();
             }
         });
 
@@ -4153,6 +4156,41 @@ Verification: Check Chrome extension storage for transaction details`;
         if (this.analyticsManager) {
             this.analyticsManager.recordSponsorInteraction(action, location);
         }
+    }
+    
+    async activateRadioPackageDownload() {
+        const generateBtn = document.getElementById('generate-radio-package');
+        
+        try {
+            const files = [];
+            const radioInputs = this.getRadioInputs();
+            
+            // Create zip with radio files
+            const zipBlob = await this.createRealZip(files);
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            const sanitizedTitle = this.sanitizeInput(radioInputs.title || 'Radio_Submission');
+            a.download = `${sanitizedTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Radio_Submission.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            generateBtn.textContent = '✅ Downloaded!';
+            
+            // Show floating sponsored content after download
+            setTimeout(() => {
+                this.displayPostPackageSponsor(files.length, sanitizedTitle);
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Download failed:', error);
+            generateBtn.textContent = 'Download Failed';
+        }
+        
+        setTimeout(() => {
+            generateBtn.textContent = '📦 Generate Radio Package';
+            generateBtn.disabled = false;
+        }, 3000);
     }
     
     recordISRCInPackage(isrcCode) {
@@ -5253,8 +5291,9 @@ Verification: Check Chrome extension storage for transaction details`;
         generateBtn.disabled = true;
         generateBtn.textContent = 'Generating...';
         
-        // FIXED: Show native sponsor before package generation (prevent duplicates)
-        await this.displayPackageGenerationSponsored();
+        // Show 12-second sponsored content timer
+        this.displayPackageGenerationSponsored();
+        return; // Exit here - download will be triggered after timer
         
         try {
             const files = [];
@@ -5593,10 +5632,7 @@ Verification: Check Chrome extension storage for transaction details`;
             // Show prominent download success message with sponsored content
             this.showRadioPackageSuccess(formatCount, sanitizedTitle);
             
-            // Show floating sponsored content after download
-            setTimeout(() => {
-                this.displayPostPackageSponsor(formatCount, sanitizedTitle);
-            }, 2000);
+
             
             // Store radio submission in history
             this.storeRadioSubmission(radioMetadata, formatCount);
