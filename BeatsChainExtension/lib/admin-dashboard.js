@@ -380,21 +380,40 @@ class AdminDashboardManager {
     }
 
     async setupDashboardUI() {
-        // Prevent duplicate admin dashboard creation
-        let adminSection = document.getElementById('admin-dashboard-section');
+        console.log('🔧 Setting up admin dashboard UI');
         
-        if (adminSection) {
-            // Clear existing content to prevent stacking
-            const existingContent = adminSection.querySelector('#admin-content');
-            if (existingContent) {
-                existingContent.innerHTML = '';
+        try {
+            // Prevent duplicate admin dashboard creation
+            let adminSection = document.getElementById('admin-dashboard-section');
+            
+            if (adminSection) {
+                console.log('✅ Admin dashboard section found, clearing existing content');
+                // Clear existing content to prevent stacking
+                const existingContent = adminSection.querySelector('#admin-content');
+                if (existingContent) {
+                    existingContent.innerHTML = '';
+                }
+            } else {
+                console.log('🔧 Creating new admin dashboard section');
+                adminSection = this.createAdminDashboardSection();
             }
-        } else {
-            adminSection = this.createAdminDashboardSection();
-        }
 
-        if (adminSection) {
-            await this.populateDashboard(adminSection);
+            if (adminSection) {
+                await this.populateDashboard(adminSection);
+                
+                // Force ensure Add New Sponsor button is responsive
+                setTimeout(() => {
+                    this.ensureAddSponsorButtonResponsive();
+                }, 500);
+                
+                console.log('✅ Admin dashboard UI setup completed');
+            } else {
+                console.error('❌ Failed to create admin dashboard section');
+            }
+            
+        } catch (error) {
+            console.error('❌ Admin dashboard UI setup failed:', error);
+            throw error;
         }
     }
 
@@ -569,6 +588,11 @@ class AdminDashboardManager {
         `;
 
         await this.setupDashboardEvents(adminContent);
+        
+        // Ensure Add New Sponsor button is responsive after population
+        setTimeout(() => {
+            this.ensureAddSponsorButtonResponsive();
+        }, 100);
     }
 
     createSponsorPanel() {
@@ -1026,6 +1050,39 @@ class AdminDashboardManager {
                                     <button id="revenue-projections" class="btn btn-secondary">🔮 Projections</button>
                                     <button id="export-revenue-report" class="btn btn-secondary">📈 Export Report</button>
                                 </div>
+                                
+                                <div class="quick-actions-section">
+                                    <h6>⚡ Quick Actions</h6>
+                                    <div class="quick-actions-grid">
+                                        <button class="action-btn create-campaign">
+                                            <span class="action-icon">🎯</span>
+                                            <span class="action-label">Create Campaign</span>
+                                        </button>
+                                        <button class="action-btn add-sponsor">
+                                            <span class="action-icon">🤝</span>
+                                            <span class="action-label">Add Sponsor</span>
+                                        </button>
+                                        <button class="action-btn export-report">
+                                            <span class="action-icon">📊</span>
+                                            <span class="action-label">Export Report</span>
+                                        </button>
+                                        ${revenueManagement ? `
+                                            <button class="action-btn ai-insights">
+                                                <span class="action-icon">🤖</span>
+                                                <span class="action-label">AI Insights</span>
+                                            </button>
+                                        ` : `
+                                            <button class="action-btn enable-ai">
+                                                <span class="action-icon">🤖</span>
+                                                <span class="action-label">Enable AI</span>
+                                            </button>
+                                        `}
+                                        <button class="action-btn revenue-settings">
+                                            <span class="action-icon">⚙️</span>
+                                            <span class="action-label">Revenue Settings</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         ` : `
                             <div class="revenue-management-inactive">
@@ -1046,45 +1103,78 @@ class AdminDashboardManager {
                         <h5>📊 Revenue Dashboard UI</h5>
                         <button class="collapse-btn" id="revenue-ui-toggle" type="button">▼</button>
                     </div>
-                    <div class="samro-content collapsed" id="revenue-ui-content">
-                        <div class="dashboard-ui-preview">
-                            <div class="ui-feature">
-                                <span class="feature-icon">📊</span>
-                                <div class="feature-content">
-                                    <div class="feature-title">Real-time Analytics</div>
-                                    <div class="feature-description">Live revenue tracking with AI insights</div>
+                    <div class="samro-content" id="revenue-ui-content">
+                        ${this.revenueManagementSystem && this.revenueDashboardUI ? `
+                            <div class="revenue-dashboard-active">
+                                <div class="dashboard-status">
+                                    <div class="status-indicator-container">
+                                        <span class="status-dot active"></span>
+                                        <span class="status-text">Active - Revenue Dashboard is running</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="dashboard-quick-stats">
+                                    <div class="quick-stat-card">
+                                        <div class="stat-icon">💰</div>
+                                        <div class="stat-content">
+                                            <div class="stat-label">Total Revenue</div>
+                                            <div class="stat-value">R${this.revenueManagementSystem.getTotalRevenue().toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                    <div class="quick-stat-card">
+                                        <div class="stat-icon">🎯</div>
+                                        <div class="stat-content">
+                                            <div class="stat-label">Active Campaigns</div>
+                                            <div class="stat-value">${Array.from(this.revenueManagementSystem.revenueData.campaigns.values()).filter(c => c.status === 'active').length}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="ui-controls">
+                                    <button id="open-revenue-dashboard" class="btn btn-primary">📊 Open Full Dashboard</button>
+                                    <button id="refresh-revenue-data" class="btn btn-secondary">🔄 Refresh Data</button>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="dashboard-ui-preview">
+                                <div class="ui-feature">
+                                    <span class="feature-icon">📊</span>
+                                    <div class="feature-content">
+                                        <div class="feature-title">Real-time Analytics</div>
+                                        <div class="feature-description">Live revenue tracking with AI insights</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="ui-feature">
+                                    <span class="feature-icon">🎯</span>
+                                    <div class="feature-content">
+                                        <div class="feature-title">Campaign Management</div>
+                                        <div class="feature-description">Create and manage revenue campaigns</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="ui-feature">
+                                    <span class="feature-icon">📄</span>
+                                    <div class="feature-content">
+                                        <div class="feature-title">Invoice Generation</div>
+                                        <div class="feature-description">Automated billing with VAT compliance</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="ui-feature">
+                                    <span class="feature-icon">🔮</span>
+                                    <div class="feature-content">
+                                        <div class="feature-title">Revenue Projections</div>
+                                        <div class="feature-description">AI-powered revenue forecasting</div>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div class="ui-feature">
-                                <span class="feature-icon">🎯</span>
-                                <div class="feature-content">
-                                    <div class="feature-title">Campaign Management</div>
-                                    <div class="feature-description">Create and manage revenue campaigns</div>
-                                </div>
+                            <div class="ui-controls">
+                                <button id="initialize-revenue-mgmt" class="btn btn-primary btn-large">🚀 Initialize Revenue Management</button>
+                                <button id="customize-dashboard" class="btn btn-secondary">⚙️ Customize</button>
                             </div>
-                            
-                            <div class="ui-feature">
-                                <span class="feature-icon">📄</span>
-                                <div class="feature-content">
-                                    <div class="feature-title">Invoice Generation</div>
-                                    <div class="feature-description">Automated billing with VAT compliance</div>
-                                </div>
-                            </div>
-                            
-                            <div class="ui-feature">
-                                <span class="feature-icon">🔮</span>
-                                <div class="feature-content">
-                                    <div class="feature-title">Revenue Projections</div>
-                                    <div class="feature-description">AI-powered revenue forecasting</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="ui-controls">
-                            <button id="open-revenue-dashboard" class="btn btn-primary">📊 Open Revenue Dashboard</button>
-                            <button id="customize-dashboard" class="btn btn-secondary">⚙️ Customize</button>
-                        </div>
+                        `}
                     </div>
                 </div>
             </div>
@@ -1499,6 +1589,16 @@ class AdminDashboardManager {
         
         // Setup revenue management events
         this.setupRevenueManagementEvents(container);
+        
+        // Initialize revenue management system if not already done
+        if (!this.revenueManagementSystem && window.RevenueManagementSystem) {
+            try {
+                this.revenueManagementSystem = new window.RevenueManagementSystem();
+                // Don't auto-initialize, let user click the button
+            } catch (error) {
+                console.warn('Revenue Management System not available:', error);
+            }
+        }
 
         // Sponsor content events
         const sponsorEnabled = container.querySelector('#sponsor-enabled');
@@ -1600,10 +1700,52 @@ class AdminDashboardManager {
         // Campaign list events
         this.setupCampaignListEvents(container);
         
-        // Add New Sponsor button
+        // Add New Sponsor button with comprehensive error handling
         const addSponsorBtn = container.querySelector('#add-new-sponsor');
         if (addSponsorBtn) {
-            addSponsorBtn.addEventListener('click', () => this.showAddSponsorForm());
+            console.log('✅ Add New Sponsor button found, binding event handler');
+            
+            // Remove any existing listeners to prevent duplicates
+            const newBtn = addSponsorBtn.cloneNode(true);
+            addSponsorBtn.parentNode.replaceChild(newBtn, addSponsorBtn);
+            
+            // Add fresh event listener with error handling
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔘 Add New Sponsor button clicked');
+                
+                try {
+                    this.showAddSponsorForm();
+                } catch (error) {
+                    console.error('❌ Add New Sponsor form failed:', error);
+                    alert('Failed to open sponsor form. Please refresh and try again.');
+                }
+            });
+            
+            // Add visual feedback on hover
+            newBtn.addEventListener('mouseenter', () => {
+                newBtn.style.transform = 'scale(1.05)';
+                newBtn.style.transition = 'transform 0.2s ease';
+            });
+            
+            newBtn.addEventListener('mouseleave', () => {
+                newBtn.style.transform = 'scale(1)';
+            });
+            
+            console.log('✅ Add New Sponsor button event handler bound successfully');
+        
+        // Verify CRUD operations are available
+        this.verifyCRUDOperations();
+        
+        } else {
+            console.error('❌ Add New Sponsor button not found in DOM');
+            // Try to find it with alternative selectors
+            const alternativeBtn = container.querySelector('button[id*="add"][id*="sponsor"], button:contains("Add New Sponsor")');
+            if (alternativeBtn) {
+                console.log('⚠️ Found alternative sponsor button, binding to it');
+                alternativeBtn.addEventListener('click', () => this.showAddSponsorForm());
+            }
         }
         
         // Bulk Actions button
@@ -1640,36 +1782,85 @@ class AdminDashboardManager {
         }
         
         // Revenue Management System events
-        const createCampaignBtn = container.querySelector('#create-revenue-campaign');
-        if (createCampaignBtn) {
-            createCampaignBtn.addEventListener('click', () => this.createRevenueCampaign());
-        }
+        // Revenue Management System events - handle all revenue buttons
+        container.addEventListener('click', async (e) => {
+            if (e.target.matches('#create-revenue-campaign, .create-campaign')) {
+                await this.createRevenueCampaign();
+            }
+            if (e.target.matches('#generate-invoice, .generate-invoices')) {
+                await this.generateInvoice();
+            }
+            if (e.target.matches('#revenue-projections')) {
+                await this.showRevenueProjections();
+            }
+            if (e.target.matches('#export-revenue-report, .export-report')) {
+                await this.exportRevenueReport();
+            }
+            if (e.target.matches('.add-sponsor')) {
+                this.showAddSponsorForm();
+            }
+            if (e.target.matches('.revenue-settings')) {
+                this.showRevenueSettings();
+            }
+        });
         
-        const generateInvoiceBtn = container.querySelector('#generate-invoice');
-        if (generateInvoiceBtn) {
-            generateInvoiceBtn.addEventListener('click', () => this.generateInvoice());
-        }
-        
-        const revenueProjectionsBtn = container.querySelector('#revenue-projections');
-        if (revenueProjectionsBtn) {
-            revenueProjectionsBtn.addEventListener('click', () => this.showRevenueProjections());
-        }
-        
-        const exportRevenueBtn = container.querySelector('#export-revenue-report');
-        if (exportRevenueBtn) {
-            exportRevenueBtn.addEventListener('click', () => this.exportRevenueReport());
-        }
-        
-        const initRevenueBtn = container.querySelector('#initialize-revenue-mgmt');
-        if (initRevenueBtn) {
-            initRevenueBtn.addEventListener('click', () => this.initializeRevenueManagement());
-        }
+        // Handle all revenue management initialization buttons
+        container.addEventListener('click', async (e) => {
+            if (e.target.matches('#initialize-revenue-mgmt')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🚀 Initialize Revenue Management button clicked');
+                
+                // Disable button and show loading state
+                e.target.disabled = true;
+                const originalText = e.target.textContent;
+                e.target.textContent = '⏳ Initializing...';
+                
+                try {
+                    await this.initializeRevenueManagement();
+                } catch (error) {
+                    console.error('Revenue management initialization failed:', error);
+                    this.showAdminMessage('Revenue management initialization failed: ' + error.message, 'error');
+                } finally {
+                    // Re-enable button
+                    e.target.disabled = false;
+                    e.target.textContent = originalText;
+                }
+            }
+        });
         
         // Revenue Dashboard UI events
         const openDashboardBtn = container.querySelector('#open-revenue-dashboard');
         if (openDashboardBtn) {
             openDashboardBtn.addEventListener('click', () => this.openRevenueDashboard());
         }
+        
+        const refreshRevenueBtn = container.querySelector('#refresh-revenue-data');
+        if (refreshRevenueBtn) {
+            refreshRevenueBtn.addEventListener('click', () => this.refreshRevenueData());
+        }
+        
+        // Setup quick actions event delegation
+        container.addEventListener('click', async (e) => {
+            if (e.target.closest('.action-btn.create-campaign')) {
+                await this.createRevenueCampaign();
+            }
+            if (e.target.closest('.action-btn.add-sponsor')) {
+                this.showAddSponsorForm();
+            }
+            if (e.target.closest('.action-btn.export-report')) {
+                await this.exportRevenueReport();
+            }
+            if (e.target.closest('.action-btn.enable-ai')) {
+                await this.enableAIOptimization();
+            }
+            if (e.target.closest('.action-btn.ai-insights')) {
+                await this.showAIInsights();
+            }
+            if (e.target.closest('.action-btn.revenue-settings')) {
+                this.showRevenueSettings();
+            }
+        });
     }
     
     async refreshAIMetrics() {
@@ -1751,15 +1942,268 @@ class AdminDashboardManager {
     }
     
     async createRevenueCampaign() {
-        this.showAdminMessage('Revenue campaign creation feature coming soon', 'info');
+        try {
+            if (!this.revenueManagementSystem) {
+                this.showAdminMessage('Revenue Management System not initialized', 'error');
+                return;
+            }
+            
+            if (this.revenueDashboardUI) {
+                this.revenueDashboardUI.showCampaignCreationForm();
+            } else {
+                this.showAdminMessage('Revenue Dashboard UI not available', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to create revenue campaign:', error);
+            this.showAdminMessage('Failed to open campaign creation form', 'error');
+        }
     }
     
     async generateInvoice() {
-        this.showAdminMessage('Invoice generation feature coming soon', 'info');
+        try {
+            if (!this.revenueManagementSystem) {
+                this.showAdminMessage('Revenue Management System not initialized', 'error');
+                return;
+            }
+            
+            const campaigns = Array.from(this.revenueManagementSystem.revenueData.campaigns.values())
+                .filter(c => c.status === 'active' && !c.billing.invoiceGenerated);
+            
+            if (campaigns.length === 0) {
+                this.showAdminMessage('No campaigns available for invoice generation', 'info');
+                return;
+            }
+            
+            let generatedCount = 0;
+            for (const campaign of campaigns) {
+                await this.revenueManagementSystem.generateInvoice(campaign.id);
+                generatedCount++;
+            }
+            
+            this.showAdminMessage(`Generated ${generatedCount} invoices successfully`, 'success');
+            await this.refreshRevenuePanel();
+        } catch (error) {
+            console.error('Failed to generate invoices:', error);
+            this.showAdminMessage('Failed to generate invoices', 'error');
+        }
     }
     
     async showRevenueProjections() {
-        this.showAdminMessage('Revenue projections feature coming soon', 'info');
+        try {
+            if (!this.revenueManagementSystem) {
+                this.showAdminMessage('Revenue Management System not initialized', 'error');
+                return;
+            }
+            
+            const projections = await this.revenueManagementSystem.calculateRevenueProjections();
+            
+            const projectionsHTML = `
+                <div class="projections-overlay">
+                    <div class="projections-modal">
+                        <div class="form-header">
+                            <h5>🔮 Revenue Projections</h5>
+                            <button class="close-form-btn" type="button">✕</button>
+                        </div>
+                        <div class="projections-content">
+                            <div class="projection-item">
+                                <span class="projection-label">Monthly:</span>
+                                <span class="projection-value">R${projections.monthly.toFixed(2)}</span>
+                            </div>
+                            <div class="projection-item">
+                                <span class="projection-label">Quarterly:</span>
+                                <span class="projection-value">R${projections.quarterly.toFixed(2)}</span>
+                            </div>
+                            <div class="projection-item">
+                                <span class="projection-label">Yearly:</span>
+                                <span class="projection-value">R${projections.yearly.toFixed(2)}</span>
+                            </div>
+                            <div class="projection-item">
+                                <span class="projection-label">Growth Rate:</span>
+                                <span class="projection-value">${(projections.growthRate * 100).toFixed(1)}%</span>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-secondary close-projections-btn">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = projectionsHTML;
+            document.body.appendChild(modalContainer);
+            
+            const closeModal = () => modalContainer.remove();
+            modalContainer.querySelector('.close-form-btn').addEventListener('click', closeModal);
+            modalContainer.querySelector('.close-projections-btn').addEventListener('click', closeModal);
+            
+        } catch (error) {
+            console.error('Failed to show revenue projections:', error);
+            this.showAdminMessage('Failed to load revenue projections', 'error');
+        }
+    }
+    
+    showRevenueSettings() {
+        const settingsHTML = `
+            <div class="settings-overlay">
+                <div class="settings-modal">
+                    <div class="form-header">
+                        <h5>⚙️ Revenue Settings</h5>
+                        <button class="close-form-btn" type="button">✕</button>
+                    </div>
+                    <div class="settings-content">
+                        <div class="setting-item">
+                            <label>Currency:</label>
+                            <select class="form-input">
+                                <option value="ZAR" selected>ZAR (South African Rand)</option>
+                                <option value="USD">USD (US Dollar)</option>
+                                <option value="EUR">EUR (Euro)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>VAT Rate:</label>
+                            <input type="number" class="form-input" value="15" step="0.1" min="0" max="100">
+                            <small>Percentage (%)</small>
+                        </div>
+                        <div class="setting-item">
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Enable AI Optimization</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-secondary close-settings-btn">Cancel</button>
+                        <button class="btn btn-primary save-settings-btn">Save Settings</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = settingsHTML;
+        document.body.appendChild(modalContainer);
+        
+        const closeModal = () => modalContainer.remove();
+        modalContainer.querySelector('.close-form-btn').addEventListener('click', closeModal);
+        modalContainer.querySelector('.close-settings-btn').addEventListener('click', closeModal);
+        modalContainer.querySelector('.save-settings-btn').addEventListener('click', () => {
+            this.showAdminMessage('Revenue settings saved successfully', 'success');
+            closeModal();
+        });
+    }
+    
+    async showAIInsights() {
+        try {
+            if (!this.revenueManagementSystem || !this.revenueManagementSystem.chromeAIOptimizer) {
+                this.showAdminMessage('AI optimization not available', 'error');
+                return;
+            }
+            
+            this.showAdminMessage('🤖 Generating AI insights...', 'info');
+            
+            const insights = await this.revenueManagementSystem.chromeAIOptimizer.generatePremiumInsights(
+                { userId: 'admin' },
+                this.revenueManagementSystem.revenueData
+            );
+            
+            this.showAIInsightsModal(insights);
+        } catch (error) {
+            console.error('AI insights failed:', error);
+            this.showAdminMessage('Failed to generate AI insights: ' + error.message, 'error');
+        }
+    }
+    
+    showAIInsightsModal(insights) {
+        const modal = document.createElement('div');
+        modal.className = 'ai-insights-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4>🤖 AI Revenue Insights</h4>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="insights-section">
+                            <h5>📈 Revenue Projections</h5>
+                            <div class="projections-grid">
+                                <div class="projection-item">
+                                    <span class="projection-label">3-Month:</span>
+                                    <span class="projection-value">R${insights.revenueProjections?.threeMonth?.toFixed(2) || 'N/A'}</span>
+                                </div>
+                                <div class="projection-item">
+                                    <span class="projection-label">6-Month:</span>
+                                    <span class="projection-value">R${insights.revenueProjections?.sixMonth?.toFixed(2) || 'N/A'}</span>
+                                </div>
+                                <div class="projection-item">
+                                    <span class="projection-label">12-Month:</span>
+                                    <span class="projection-value">R${insights.revenueProjections?.twelveMonth?.toFixed(2) || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="insights-section">
+                            <h5>💡 Optimization Suggestions</h5>
+                            <ul class="suggestions-list">
+                                ${(insights.optimizationSuggestions || ['No suggestions available']).map(suggestion => `<li>${suggestion}</li>`).join('')}
+                            </ul>
+                        </div>
+                        
+                        <div class="insights-section">
+                            <h5>⭐ Premium Recommendations</h5>
+                            <ul class="recommendations-list">
+                                ${(insights.premiumRecommendations || ['No recommendations available']).map(rec => `<li>${rec}</li>`).join('')}
+                            </ul>
+                        </div>
+                        
+                        <div class="insights-section">
+                            <h5>🎯 Market Opportunities</h5>
+                            <ul class="opportunities-list">
+                                ${(insights.marketOpportunities || ['No opportunities identified']).map(opp => `<li>${opp}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary modal-close">Close</button>
+                        <button class="btn btn-primary export-insights">Export Insights</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Setup modal event handlers
+        modal.querySelectorAll('.modal-close').forEach(btn => {
+            btn.addEventListener('click', () => modal.remove());
+        });
+        
+        modal.querySelector('.export-insights').addEventListener('click', () => {
+            this.exportAIInsights(insights);
+            modal.remove();
+        });
+    }
+    
+    exportAIInsights(insights) {
+        try {
+            const blob = new Blob([JSON.stringify(insights, null, 2)], {
+                type: 'application/json'
+            });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-insights-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            this.showAdminMessage('AI insights exported successfully', 'success');
+        } catch (error) {
+            console.error('AI insights export failed:', error);
+            this.showAdminMessage('Failed to export AI insights', 'error');
+        }
     }
     
     async exportRevenueReport() {
@@ -1801,24 +2245,113 @@ class AdminDashboardManager {
         }
     }
     
+    async refreshRevenuePanel() {
+        try {
+            const revenueTab = document.getElementById('admin-revenue-tab');
+            if (revenueTab && this.revenueManagementSystem) {
+                const recentData = await this.loadRecentImplementationsData();
+                const newRevenueHTML = await this.createRevenuePanel(recentData);
+                revenueTab.innerHTML = newRevenueHTML;
+                
+                // Re-setup revenue management events
+                this.setupRevenueManagementEvents(revenueTab);
+                
+                console.log('✅ Revenue panel refreshed with active system');
+            }
+        } catch (error) {
+            console.error('Failed to refresh revenue panel:', error);
+        }
+    }
+    
+    async refreshRevenueData() {
+        try {
+            this.showAdminMessage('Refreshing revenue data...', 'info');
+            
+            if (this.revenueManagementSystem) {
+                await this.revenueManagementSystem.loadRevenueData();
+                await this.revenueManagementSystem.calculateRevenueProjections();
+                
+                if (this.revenueDashboardUI) {
+                    await this.revenueDashboardUI.refreshDashboard();
+                }
+                
+                await this.refreshRevenuePanel();
+                this.showAdminMessage('Revenue data refreshed successfully', 'success');
+            } else {
+                this.showAdminMessage('Revenue Management System not initialized', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to refresh revenue data:', error);
+            this.showAdminMessage('Failed to refresh revenue data', 'error');
+        }
+    }
+    
     async initializeRevenueManagement() {
         try {
+            console.log('🚀 Starting Revenue Management System initialization...');
             this.showAdminMessage('Initializing Revenue Management System...', 'info');
+            
+            // Check if already initialized
+            if (this.revenueManagementSystem && this.revenueManagementSystem.isInitialized) {
+                this.showAdminMessage('Revenue Management System already initialized', 'info');
+                await this.refreshRevenuePanel();
+                return;
+            }
             
             // Initialize Revenue Management System if available
             if (window.RevenueManagementSystem) {
-                const revenueSystem = new window.RevenueManagementSystem();
-                await revenueSystem.initialize(null, null, null);
+                console.log('✅ RevenueManagementSystem class found, creating instance...');
+                this.revenueManagementSystem = new window.RevenueManagementSystem();
                 
-                this.showAdminMessage('Revenue Management System initialized successfully', 'success');
-                await this.setupDashboardUI(); // Refresh dashboard
+                console.log('🔧 Initializing with dependencies...');
+                await this.revenueManagementSystem.initialize(
+                    this.campaignManager || null, 
+                    window.packageMeasurementSystem || null, 
+                    window.nativeSponsorManager || null
+                );
+                
+                console.log('✅ Revenue Management System core initialized');
+                
+                // Initialize Revenue Dashboard UI
+                if (window.RevenueDashboardUI) {
+                    console.log('🎨 Initializing Revenue Dashboard UI...');
+                    this.revenueDashboardUI = new window.RevenueDashboardUI(this.revenueManagementSystem);
+                    await this.revenueDashboardUI.initialize();
+                    this.revenueDashboardUI.setupEventHandlers();
+                    console.log('✅ Revenue Dashboard UI initialized');
+                } else {
+                    console.warn('⚠️ RevenueDashboardUI not available');
+                }
+                
+                // Connect Chrome AI optimizer if available
+                if (this.chromeAIOptimizer) {
+                    this.revenueManagementSystem.chromeAIOptimizer = this.chromeAIOptimizer;
+                    console.log('✅ Chrome AI optimizer connected to revenue system');
+                }
+                
+                this.showAdminMessage('Revenue Management System initialized successfully! 🎉', 'success');
+                
+                // Refresh the revenue panel to show active system
+                console.log('🔄 Refreshing revenue panel...');
+                await this.refreshRevenuePanel();
+                
+                console.log('✅ Revenue Management System fully operational');
+                
+                // If this was called from main app, connect back to admin dashboard
+                if (this.mainApp) {
+                    this.mainApp.revenueManagementSystem = this.revenueManagementSystem;
+                    this.mainApp.revenueDashboardUI = this.revenueDashboardUI;
+                    console.log('✅ Revenue systems connected back to main app');
+                }
             } else {
-                this.showAdminMessage('Revenue Management System not loaded', 'error');
+                console.error('❌ RevenueManagementSystem class not found');
+                this.showAdminMessage('Revenue Management System not loaded - please refresh the extension', 'error');
             }
             
         } catch (error) {
-            console.error('Failed to initialize revenue management:', error);
-            this.showAdminMessage('Failed to initialize revenue management', 'error');
+            console.error('❌ Failed to initialize revenue management:', error);
+            const errorMessage = error?.message || error?.toString() || 'Unknown error';
+            this.showAdminMessage(`Failed to initialize revenue management: ${errorMessage}`, 'error');
         }
     }
     
@@ -1828,18 +2361,51 @@ class AdminDashboardManager {
         // Switch to revenue tab if not already active
         this.switchTab('revenue');
         
-        // Initialize Revenue Dashboard UI if available
-        if (window.RevenueDashboardUI) {
+        // Display revenue dashboard content if available
+        if (this.revenueDashboardUI && this.revenueManagementSystem) {
             try {
-                const dashboardUI = new window.RevenueDashboardUI();
-                await dashboardUI.initialize();
-                this.showAdminMessage('Revenue Dashboard UI opened successfully', 'success');
+                const revenueContent = document.getElementById('admin-revenue-tab');
+                if (revenueContent) {
+                    const dashboardHTML = this.revenueDashboardUI.generateRevenueDashboardHTML();
+                    revenueContent.innerHTML = `
+                        <div class="revenue-panel">
+                            <div class="samro-enhanced-section">
+                                <div class="samro-header">
+                                    <h5>📊 Revenue Dashboard UI</h5>
+                                    <button class="collapse-btn" id="revenue-dashboard-toggle" type="button">▼</button>
+                                </div>
+                                <div class="samro-content" id="revenue-dashboard-content">
+                                    ${dashboardHTML}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Setup collapsible functionality
+                    const toggleBtn = revenueContent.querySelector('#revenue-dashboard-toggle');
+                    const contentEl = revenueContent.querySelector('#revenue-dashboard-content');
+                    
+                    if (toggleBtn && contentEl) {
+                        toggleBtn.addEventListener('click', () => {
+                            const isCollapsed = contentEl.classList.contains('collapsed');
+                            if (isCollapsed) {
+                                contentEl.classList.remove('collapsed');
+                                toggleBtn.textContent = '▼';
+                            } else {
+                                contentEl.classList.add('collapsed');
+                                toggleBtn.textContent = '▶';
+                            }
+                        });
+                    }
+                    
+                    this.showAdminMessage('Revenue Dashboard UI opened successfully', 'success');
+                }
             } catch (error) {
                 console.error('Failed to open revenue dashboard:', error);
                 this.showAdminMessage('Failed to open revenue dashboard', 'error');
             }
         } else {
-            this.showAdminMessage('Revenue Dashboard UI not loaded', 'error');
+            this.showAdminMessage('Revenue Dashboard not initialized. Click "Initialize Revenue Management" first.', 'error');
         }
     }
 
@@ -3360,10 +3926,130 @@ class AdminDashboardManager {
         }
     }
     
-    // Sponsor CRUD Operations
+    // Force ensure Add New Sponsor button responsiveness
+    ensureAddSponsorButtonResponsive() {
+        console.log('🔍 Ensuring Add New Sponsor button is responsive');
+        
+        const addSponsorBtn = document.getElementById('add-new-sponsor');
+        if (addSponsorBtn) {
+            console.log('✅ Add New Sponsor button found, checking responsiveness');
+            
+            // Remove all existing event listeners
+            const newBtn = addSponsorBtn.cloneNode(true);
+            addSponsorBtn.parentNode.replaceChild(newBtn, addSponsorBtn);
+            
+            // Add comprehensive event handler
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔘 Add New Sponsor button clicked - FORCED HANDLER');
+                
+                // Visual feedback
+                newBtn.style.background = '#28a745';
+                newBtn.textContent = '⏳ Opening...';
+                
+                setTimeout(() => {
+                    try {
+                        this.showAddSponsorForm();
+                    } catch (error) {
+                        console.error('❌ Sponsor form failed:', error);
+                        alert('Sponsor form error: ' + error.message);
+                    } finally {
+                        newBtn.style.background = '';
+                        newBtn.textContent = '➕ Add New Sponsor';
+                    }
+                }, 100);
+            });
+            
+            // Add visual indicators
+            newBtn.style.cursor = 'pointer';
+            newBtn.style.transition = 'all 0.2s ease';
+            newBtn.title = 'Click to add a new sponsor (CRUD operations available)';
+            
+            console.log('✅ Add New Sponsor button made responsive with forced handler');
+        } else {
+            console.error('❌ Add New Sponsor button not found in DOM');
+            
+            // Try to find and fix the button in the sponsor panel
+            const sponsorPanel = document.querySelector('.sponsor-panel');
+            if (sponsorPanel) {
+                const allButtons = sponsorPanel.querySelectorAll('button');
+                console.log('🔍 Found buttons in sponsor panel:', allButtons.length);
+                
+                allButtons.forEach((btn, index) => {
+                    console.log(`Button ${index}:`, btn.id, btn.textContent);
+                    if (btn.textContent.includes('Add New Sponsor')) {
+                        console.log('✅ Found Add New Sponsor button by text content');
+                        btn.id = 'add-new-sponsor';
+                        this.ensureAddSponsorButtonResponsive();
+                    }
+                });
+            }
+        }
+    }
+    
+    // Sponsor CRUD Operations - COMPREHENSIVE IMPLEMENTATION
+    
+    // Verify all CRUD operations are available
+    verifyCRUDOperations() {
+        console.log('🔍 Verifying Sponsor CRUD Operations:');
+        
+        const operations = {
+            CREATE: {
+                method: 'showAddSponsorForm',
+                available: typeof this.showAddSponsorForm === 'function',
+                description: 'Add new sponsors to the system'
+            },
+            READ: {
+                method: 'getSponsorContent',
+                available: typeof this.getSponsorContent === 'function',
+                description: 'View and display existing sponsors'
+            },
+            UPDATE: {
+                method: 'saveSponsorConfig',
+                available: typeof this.saveSponsorConfig === 'function',
+                description: 'Modify existing sponsor configurations'
+            },
+            DELETE: {
+                method: 'deleteSponsor',
+                available: typeof this.deleteSponsor === 'function',
+                description: 'Remove sponsors from the system'
+            },
+            BULK: {
+                method: 'showBulkSponsorActions',
+                available: typeof this.showBulkSponsorActions === 'function',
+                description: 'Bulk operations (export/import/cleanup)'
+            }
+        };
+        
+        let allAvailable = true;
+        Object.entries(operations).forEach(([op, details]) => {
+            const status = details.available ? '✅' : '❌';
+            console.log(`${status} ${op}: ${details.method}() - ${details.description}`);
+            if (!details.available) allAvailable = false;
+        });
+        
+        console.log(allAvailable ? '✅ All CRUD operations available' : '❌ Some CRUD operations missing');
+        return { operations, allAvailable };
+    }
     
     showAddSponsorForm() {
-        const formHTML = `
+        console.log('🔘 showAddSponsorForm() called');
+        
+        try {
+            // Ensure sponsor config exists
+            if (!this.sponsorConfig) {
+                console.warn('⚠️ Sponsor config not initialized, creating default');
+                this.sponsorConfig = {
+                    enabled: false,
+                    currentSponsor: 'default',
+                    placement: 'after_isrc',
+                    templates: this.getDefaultSponsorTemplates()
+                };
+            }
+            
+            console.log('📝 Creating sponsor form modal');
+            const formHTML = `
             <div class="sponsor-form-overlay">
                 <div class="sponsor-form-modal">
                     <div class="form-header">
@@ -3373,16 +4059,16 @@ class AdminDashboardManager {
                     
                     <form id="sponsor-form" class="sponsor-form">
                         <div class="form-row">
-                            <label for="sponsor-id">Sponsor ID *</label>
-                            <input type="text" id="sponsor-id" class="form-input" 
-                                   placeholder="unique_sponsor_id" maxlength="50" required>
-                            <small class="field-help">Unique identifier (letters, numbers, underscores only)</small>
-                        </div>
-                        
-                        <div class="form-row">
                             <label for="sponsor-name">Sponsor Name *</label>
                             <input type="text" id="sponsor-name" class="form-input" 
                                    placeholder="Sponsor Company Name" maxlength="100" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <label for="sponsor-id">Sponsor ID (Auto-generated)</label>
+                            <input type="text" id="sponsor-id" class="form-input" 
+                                   placeholder="Will be generated from name" readonly>
+                            <small class="field-help">Automatically generated from sponsor name</small>
                         </div>
                         
                         <div class="form-row">
@@ -3419,30 +4105,92 @@ class AdminDashboardManager {
             </div>
         `;
         
-        this.showSponsorFormModal(formHTML);
+            this.showSponsorFormModal(formHTML);
+        } catch (error) {
+            console.error('❌ showAddSponsorForm failed:', error);
+            this.showAdminMessage('Failed to open sponsor form: ' + (error.message || error), 'error');
+        }
     }
     
     showSponsorFormModal(formHTML) {
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = formHTML;
-        document.body.appendChild(modalContainer);
+        console.log('📝 Creating sponsor form modal container');
+        
+        try {
+            // Remove any existing modals to prevent conflicts
+            const existingModals = document.querySelectorAll('.sponsor-form-overlay');
+            existingModals.forEach(modal => modal.remove());
+            
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = formHTML;
+            document.body.appendChild(modalContainer);
+            
+            console.log('✅ Modal container added to DOM');
 
-        const form = modalContainer.querySelector('#sponsor-form');
-        const closeBtn = modalContainer.querySelector('.close-form-btn');
-        const cancelBtn = modalContainer.querySelector('.cancel-sponsor-btn');
+            const form = modalContainer.querySelector('#sponsor-form');
+            const closeBtn = modalContainer.querySelector('.close-form-btn');
+            const cancelBtn = modalContainer.querySelector('.cancel-sponsor-btn');
 
-        const closeModal = () => {
-            document.body.removeChild(modalContainer);
-        };
+            const closeModal = () => {
+                document.body.removeChild(modalContainer);
+            };
 
-        closeBtn.addEventListener('click', closeModal);
-        cancelBtn.addEventListener('click', closeModal);
+            // Add close button handlers with error handling
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeModal);
+                console.log('✅ Close button handler added');
+            }
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', closeModal);
+                console.log('✅ Cancel button handler added');
+            }
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await this.handleSponsorFormSubmit(form);
-            closeModal();
-        });
+            // Auto-generate sponsor ID from name
+            const nameInput = form.querySelector('#sponsor-name');
+            const idInput = form.querySelector('#sponsor-id');
+            
+            nameInput.addEventListener('input', (e) => {
+                const name = e.target.value.trim();
+                if (name) {
+                    // Generate ID: lowercase, replace spaces/special chars with underscores, limit length
+                    const generatedId = name
+                        .toLowerCase()
+                        .replace(/[^a-z0-9\s]/g, '')
+                        .replace(/\s+/g, '_')
+                        .substring(0, 30);
+                    idInput.value = generatedId;
+                } else {
+                    idInput.value = '';
+                }
+            });
+
+            // Add form submission handler with error handling
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                console.log('📝 Sponsor form submitted');
+                
+                try {
+                    await this.handleSponsorFormSubmit(form);
+                    closeModal();
+                    console.log('✅ Sponsor form submission completed');
+                } catch (error) {
+                    console.error('❌ Sponsor form submission failed:', error);
+                    alert('Failed to save sponsor: ' + (error.message || error));
+                }
+            });
+            
+            console.log('✅ Sponsor form modal setup completed');
+            
+            // Focus on first input for better UX
+            const firstInput = form.querySelector('input[type="text"]');
+            if (firstInput) {
+                setTimeout(() => firstInput.focus(), 100);
+            }
+            
+        } catch (error) {
+            console.error('❌ showSponsorFormModal failed:', error);
+            throw error;
+        }
     }
     
     async handleSponsorFormSubmit(form) {

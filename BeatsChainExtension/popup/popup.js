@@ -301,15 +301,19 @@ class BeatsChainApp {
                     // Connect all systems to admin dashboard BEFORE initialization
                     if (this.revenueManagementSystem) {
                         this.adminDashboard.revenueManagementSystem = this.revenueManagementSystem;
+                        console.log('✅ Revenue system connected to admin dashboard');
                     }
                     if (this.chromeAIOptimizer) {
                         this.adminDashboard.chromeAIOptimizer = this.chromeAIOptimizer;
+                        console.log('✅ AI optimizer connected to admin dashboard');
                     }
                     if (this.campaignManager) {
                         this.adminDashboard.campaignManager = this.campaignManager;
+                        console.log('✅ Campaign manager connected to admin dashboard');
                     }
                     if (this.analyticsManager) {
                         this.adminDashboard.analyticsManager = this.analyticsManager;
+                        console.log('✅ Analytics manager connected to admin dashboard');
                     }
                     
                     await this.adminDashboard.initialize(authManager);
@@ -367,23 +371,28 @@ class BeatsChainApp {
                 }
             }
             
-            // Initialize Revenue Management System FIRST
-            await this.initializeRevenueManagement();
-            
-            // Initialize Chrome AI Revenue Optimizer
-            await this.initializeChromeAIOptimizer();
-            
-            // Initialize Analytics Manager
+            // Initialize Analytics Manager FIRST (needed by revenue system)
             await this.initializeAnalytics();
             
             // Initialize Package Measurement System
             await this.initializePackageMeasurementSystem();
             
-            // Initialize Sponsor Integration (after revenue systems)
+            // Initialize Sponsor Integration
             await this.initializeSponsorIntegration();
             
             // Initialize Minting Sponsor Integration
             await this.initializeMintingSponsorIntegration();
+            
+            // Initialize Chrome AI Revenue Optimizer
+            await this.initializeChromeAIOptimizer();
+            
+            // Initialize Revenue Management System (after dependencies)
+            await this.initializeRevenueManagement();
+            
+            // Connect systems to admin dashboard if available
+            if (this.adminDashboard && this.adminDashboard.isInitialized) {
+                this.connectSystemsToAdminDashboard();
+            }
             
             // Initialize production systems
             if (window.productionMonitor) {
@@ -2726,15 +2735,27 @@ Verification: Check Chrome extension storage for transaction details`;
         try {
             if (window.RevenueManagementSystem) {
                 this.revenueManagementSystem = new RevenueManagementSystem();
+                
+                // Initialize with proper error handling and fallbacks
                 await this.revenueManagementSystem.initialize(
-                    this.campaignManager,
-                    this.packageMeasurementSystem,
-                    this.nativeSponsorManager
+                    this.campaignManager || null,
+                    this.packageMeasurementSystem || null,
+                    this.nativeSponsorManager || null
                 );
-                console.log('✅ Revenue Management System initialized');
+                
+                // Setup revenue management UI if admin dashboard is available
+                if (this.adminDashboard && this.adminDashboard.isInitialized) {
+                    this.setupRevenueManagementUI();
+                }
+                
+                console.log('✅ Revenue Management System initialized successfully');
+            } else {
+                console.warn('⚠️ RevenueManagementSystem not available');
             }
         } catch (error) {
-            console.log('Revenue management initialization failed:', error);
+            console.error('❌ Revenue management initialization failed:', error);
+            // Create fallback revenue system
+            this.createFallbackRevenueSystem();
         }
     }
 
@@ -2745,12 +2766,18 @@ Verification: Check Chrome extension storage for transaction details`;
                 const enabled = await this.chromeAIOptimizer.initialize();
                 if (enabled) {
                     console.log('✅ Chrome AI Revenue Optimizer enabled');
+                    // Connect to revenue management system if available
+                    if (this.revenueManagementSystem) {
+                        this.revenueManagementSystem.chromeAIOptimizer = this.chromeAIOptimizer;
+                    }
                 } else {
                     console.log('📊 Chrome AI not available, using standard processing');
                 }
+            } else {
+                console.warn('⚠️ ChromeAIRevenueOptimizer not available');
             }
         } catch (error) {
-            console.log('Chrome AI optimizer initialization failed:', error);
+            console.error('❌ Chrome AI optimizer initialization failed:', error);
         }
     }
 
@@ -3911,6 +3938,100 @@ Verification: Check Chrome extension storage for transaction details`;
     recordISRCInPackage(isrcCode) {
         if (this.analyticsManager) {
             this.analyticsManager.recordISRCInPackage();
+        }
+    }
+    
+    setupRevenueManagementUI() {
+        try {
+            if (!this.revenueManagementSystem || !this.adminDashboard) {
+                console.log('Revenue management UI setup skipped - dependencies not available');
+                return;
+            }
+            
+            // Initialize Revenue Dashboard UI
+            if (window.RevenueDashboardUI) {
+                this.revenueDashboardUI = new RevenueDashboardUI(this.revenueManagementSystem);
+                this.revenueDashboardUI.initialize();
+                this.revenueDashboardUI.setupEventHandlers();
+                
+                // Connect to admin dashboard
+                if (this.adminDashboard) {
+                    this.adminDashboard.revenueManagementSystem = this.revenueManagementSystem;
+                    this.adminDashboard.revenueDashboardUI = this.revenueDashboardUI;
+                }
+                
+                console.log('✅ Revenue Management UI setup complete');
+            }
+        } catch (error) {
+            console.error('❌ Revenue Management UI setup failed:', error);
+        }
+    }
+    
+    createFallbackRevenueSystem() {
+        try {
+            // Create minimal revenue system for basic functionality
+            this.revenueManagementSystem = {
+                isInitialized: false,
+                generateRevenueDashboard: () => ({
+                    overview: {
+                        totalRevenue: 0,
+                        monthlyRevenue: 0,
+                        projectedMonthly: 0,
+                        projectedYearly: 0,
+                        currency: 'ZAR',
+                        currencySymbol: 'R',
+                        aiOptimizationEnabled: false
+                    },
+                    streams: {
+                        sponsorPlacements: { revenue: 0, percentage: '0' },
+                        premiumFeatures: { revenue: 0, percentage: '0' },
+                        transactionFees: { revenue: 0, percentage: '0' },
+                        nftRoyalties: { revenue: 0, percentage: '0' }
+                    },
+                    campaigns: { active: 0, totalRevenue: 0, topPerforming: [] },
+                    billing: { pendingInvoices: 0, pendingAmount: 0, processedThisMonth: 0 }
+                }),
+                createRevenueCampaign: async () => ({ id: 'fallback', name: 'Fallback Campaign' }),
+                recordSponsorImpression: async () => {},
+                recordSponsorClick: async () => {},
+                exportRevenueReport: async () => ({ message: 'Fallback revenue report' })
+            };
+            
+            console.log('✅ Fallback revenue system created');
+        } catch (error) {
+            console.error('❌ Fallback revenue system creation failed:', error);
+        }
+    }
+    
+    connectSystemsToAdminDashboard() {
+        try {
+            if (this.adminDashboard && this.adminDashboard.isInitialized) {
+                // Connect all systems after initialization
+                if (this.revenueManagementSystem) {
+                    this.adminDashboard.revenueManagementSystem = this.revenueManagementSystem;
+                    console.log('✅ Revenue system connected to admin dashboard');
+                }
+                if (this.revenueDashboardUI) {
+                    this.adminDashboard.revenueDashboardUI = this.revenueDashboardUI;
+                    console.log('✅ Revenue UI connected to admin dashboard');
+                }
+                if (this.chromeAIOptimizer) {
+                    this.adminDashboard.chromeAIOptimizer = this.chromeAIOptimizer;
+                    console.log('✅ AI optimizer connected to admin dashboard');
+                }
+                if (this.campaignManager) {
+                    this.adminDashboard.campaignManager = this.campaignManager;
+                    console.log('✅ Campaign manager connected to admin dashboard');
+                }
+                if (this.analyticsManager) {
+                    this.adminDashboard.analyticsManager = this.analyticsManager;
+                    console.log('✅ Analytics manager connected to admin dashboard');
+                }
+                
+                console.log('✅ All systems connected to admin dashboard');
+            }
+        } catch (error) {
+            console.error('❌ Failed to connect systems to admin dashboard:', error);
         }
     }
     

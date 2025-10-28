@@ -1047,6 +1047,294 @@
     }
 }
 
+/* Revenue Dashboard Active Status Styles */
+.revenue-dashboard-active {
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-border);
+    border-radius: var(--bc-radius);
+    padding: 16px;
+}
+
+.status-indicator-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.active {
+    background: #28a745;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.dashboard-quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.quick-stat-card {
+    background: var(--bc-primary);
+    border: 1px solid var(--bc-border);
+    border-radius: var(--bc-radius);
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quick-stat-card .stat-icon {
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 214, 122, 0.1);
+    border-radius: 50%;
+}
+
+.quick-stat-card .stat-content {
+    flex: 1;
+}
+
+.quick-stat-card .stat-label {
+    font-size: 11px;
+    color: var(--bc-text-secondary);
+    margin-bottom: 2px;
+}
+
+.quick-stat-card .stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--bc-accent-green);
+}
+
+.ui-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Quick Actions Section */
+.quick-actions-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--bc-border);
+}
+
+.quick-actions-section h6 {
+    color: var(--bc-text-primary);
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+}
+
+/* Modal Styles */
+.projections-overlay,
+.settings-overlay,
+.full-dashboard-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+
+.projections-modal,
+.settings-modal,
+.full-dashboard-modal {
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-border);
+    border-radius: var(--bc-radius-lg);
+    max-width: 600px;
+    width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.full-dashboard-modal {
+    max-width: 95vw;
+    max-height: 95vh;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--bc-border);
+    background: var(--bc-surface-light);
+    border-radius: var(--bc-radius-lg) var(--bc-radius-lg) 0 0;
+}
+
+.dashboard-header h4 {
+    margin: 0;
+    color: var(--bc-text-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-dashboard-btn {
+    background: none;
+    border: none;
+    color: var(--bc-text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.close-dashboard-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--bc-text-primary);
+}
+
+.dashboard-content {
+    padding: 24px;
+    max-height: calc(95vh - 120px);
+    overflow-y: auto;
+}
+
+.projections-content,
+.settings-content {
+    padding: 20px 24px;
+}
+
+.setting-item {
+    margin-bottom: 16px;
+}
+
+.setting-item label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--bc-text-primary);
+}
+
+.setting-item small {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--bc-text-secondary);
+}
+
+/* Button Enhancements */
+.btn-large {
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.inactive-message {
+    text-align: center;
+    padding: 40px 20px;
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-border);
+    border-radius: var(--bc-radius);
+}
+
+.inactive-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+
+.inactive-message h6 {
+    color: var(--bc-text-primary);
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.inactive-message p {
+    color: var(--bc-text-secondary);
+    margin: 0 0 24px 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* UI Feature Styling */
+.ui-feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bc-primary);
+    border: 1px solid var(--bc-border);
+    border-radius: var(--bc-radius);
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+
+.ui-feature:hover {
+    background: var(--bc-surface-light);
+    transform: translateY(-1px);
+}
+
+.ui-feature .feature-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 214, 122, 0.1);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.ui-feature .feature-content {
+    flex: 1;
+}
+
+.ui-feature .feature-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--bc-text-primary);
+    margin-bottom: 4px;
+}
+
+.ui-feature .feature-description {
+    font-size: 12px;
+    color: var(--bc-text-secondary);
+    line-height: 1.4;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
     .revenue-stat-card,
@@ -1058,7 +1346,9 @@
     .progress-fill,
     .chart-bar,
     .ai-enhancement-note,
-    .ai-metric {
+    .ai-metric,
+    .status-dot,
+    .ui-feature {
         transition: none;
         animation: none;
     }
