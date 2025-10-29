@@ -7,6 +7,16 @@
 
 ## 📋 **CORE DEVELOPMENT PRINCIPLES**
 
+### **0. MANDATORY SCRIPT VERIFICATION** ⚠️ **CRITICAL RULE - UPDATED**
+- **Rule**: ALWAYS verify existing scripts before making changes
+- **Implementation**: Read and analyze current file contents before any modifications
+- **Purpose**: Prevent duplicates, conflicts, and breaking existing functionality
+- **Method**: Use fsRead to check current implementation, then make targeted changes only
+- **Validation**: Confirm changes don't duplicate existing code or create conflicts
+- **Exception**: None - verification is mandatory for ALL changes
+- **Updated**: Must verify scripts exist and their current state before implementing fixes
+- **Process**: 1) Read existing files 2) Analyze current implementation 3) Identify actual gaps 4) Make minimal targeted fixes
+
 ### **1. NO DOWNGRADES ALLOWED**
 - **Rule**: Only comprehensive enhancements permitted
 - **Implementation**: Every change must ADD value, never remove functionality

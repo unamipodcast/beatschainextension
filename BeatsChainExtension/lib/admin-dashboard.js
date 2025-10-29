@@ -9,6 +9,13 @@ class AdminDashboardManager {
         this.isInitialized = false;
         this.sponsorConfig = null;
         this.usageStats = null;
+        this.securityValidator = null;
+        this.sponsorPagination = {
+            currentPage: 1,
+            pageSize: 10,
+            totalSponsors: 0,
+            filteredSponsors: null
+        };
     }
 
     async initialize(authManager) {
@@ -18,6 +25,9 @@ class AdminDashboardManager {
             }
 
             this.authManager = authManager;
+            
+            // Initialize security validator
+            this.securityValidator = window.SecurityValidator ? new SecurityValidator() : null;
         
         // Verify admin permissions - allow bypass for development
         try {
@@ -73,9 +83,11 @@ class AdminDashboardManager {
                 }
             } catch (stringifyError) {
                 errorMessage = 'Error processing failed';
+                console.error('Error stringification failed:', stringifyError);
             }
             console.error('Admin Dashboard initialization failed:', errorMessage);
-            throw new Error(errorMessage);
+            this.isInitialized = false;
+            return false;
         }
     }
 
@@ -699,6 +711,19 @@ class AdminDashboardManager {
                                this.sponsorConfig.templates.default || 
                                { name: 'Default', message: 'Powered by BeatsChain', logo: null, website: '#' };
         
+        // Get sponsors for pagination
+        const allSponsors = Object.entries(this.sponsorConfig.templates);
+        const filteredSponsors = this.sponsorPagination.filteredSponsors || allSponsors;
+        const totalSponsors = filteredSponsors.length;
+        const pageSize = this.sponsorPagination.pageSize;
+        const currentPage = this.sponsorPagination.currentPage;
+        const totalPages = Math.ceil(totalSponsors / pageSize);
+        
+        // Calculate pagination slice
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedSponsors = filteredSponsors.slice(startIndex, endIndex);
+        
         return `
             <div class="sponsor-panel">
                 <!-- Sponsor Status Section -->
@@ -718,15 +743,55 @@ class AdminDashboardManager {
                     </div>
                 </div>
 
-                <!-- Available Sponsors Section -->
+                <!-- Available Sponsors Section with Pagination -->
                 <div class="samro-enhanced-section">
                     <div class="samro-header">
-                        <h5>🏢 Available Sponsors</h5>
+                        <h5>🏢 Available Sponsors (${totalSponsors})</h5>
                         <button class="collapse-btn" id="sponsor-templates-toggle" type="button">▼</button>
                     </div>
                     <div class="samro-content" id="sponsor-templates-content">
+                        <!-- Pagination Info -->
+                        <div class="pagination-info">
+                            <span>Showing ${startIndex + 1}-${Math.min(endIndex, totalSponsors)} of ${totalSponsors} sponsors</span>
+                            <div class="page-size-selector">
+                                <label>Show:</label>
+                                <select id="sponsors-page-size" class="form-input">
+                                    <option value="5" ${pageSize === 5 ? 'selected' : ''}>5</option>
+                                    <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+                                    <option value="20" ${pageSize === 20 ? 'selected' : ''}>20</option>
+                                    <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Panel -->
+                        <div class="sponsor-search-panel" id="sponsor-search-panel">
+                            <div class="search-controls">
+                                <input type="text" id="sponsor-search-input" class="form-input" 
+                                       placeholder="Search sponsors by name, category, or message...">
+                                <select id="sponsor-category-filter" class="form-input">
+                                    <option value="">All Categories</option>
+                                    <option value="music_services">Music Services</option>
+                                    <option value="legal_services">Legal Services</option>
+                                    <option value="promotion">Music Promotion</option>
+                                    <option value="distribution">Distribution</option>
+                                    <option value="analytics">Analytics & Tracking</option>
+                                    <option value="tools">Music Tools</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <button class="btn btn-secondary" id="clear-sponsor-search">Clear</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Sponsor Template Grid -->
                         <div class="template-grid">
-                            ${Object.entries(this.sponsorConfig.templates).map(([key, template]) => `
+                            ${totalSponsors === 0 ? `
+                                <div class="no-sponsors">
+                                    <div class="no-sponsors-icon">🏢</div>
+                                    <h4>No Sponsors Found</h4>
+                                    <p>No sponsors match your current search criteria.</p>
+                                </div>
+                            ` : paginatedSponsors.map(([key, template]) => `
                                 <div class="template-card ${this.sponsorConfig.currentSponsor === key ? 'active' : ''}">
                                     <input type="radio" name="sponsor-template" value="${key}" id="template-${key}" 
                                            ${this.sponsorConfig.currentSponsor === key ? 'checked' : ''}>
@@ -734,21 +799,52 @@ class AdminDashboardManager {
                                         <div class="template-preview">
                                             <div class="template-logo">${template.logo ? '🖼️' : '📄'}</div>
                                             <div class="template-info">
-                                                <strong>${template.name}</strong>
-                                                <small>${template.message}</small>
+                                                <strong>${this.securityValidator.escapeHtml(template.name)}</strong>
+                                                <small>${this.securityValidator.escapeHtml(template.message)}</small>
+                                                <div class="template-meta">
+                                                    <span class="template-category">${template.category || 'General'}</span>
+                                                    <span class="template-date">${new Date(template.createdAt || Date.now()).toLocaleDateString()}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </label>
                                     <div class="template-actions">
-                                        <button class="btn-small btn-danger delete-sponsor" data-sponsor-id="${key}" type="button">🗑️</button>
+                                        <button class="btn-small btn-info edit-sponsor" data-sponsor-id="${key}" title="Edit Sponsor">✏️</button>
+                                        <button class="btn-small btn-danger delete-sponsor" data-sponsor-id="${key}" title="Delete Sponsor">🗑️</button>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
                         
+                        <!-- Pagination Controls -->
+                        ${totalPages > 1 ? `
+                        <div class="pagination-controls">
+                            <button class="pagination-btn" id="sponsors-first-page" 
+                                    ${currentPage === 1 ? 'disabled' : ''}>⏮️ First</button>
+                            <button class="pagination-btn" id="sponsors-prev-page" 
+                                    ${currentPage === 1 ? 'disabled' : ''}>◀️ Previous</button>
+                            
+                            ${this.generatePageNumbers(currentPage, totalPages)}
+                            
+                            <button class="pagination-btn" id="sponsors-next-page" 
+                                    ${currentPage === totalPages ? 'disabled' : ''}>Next ▶️</button>
+                            <button class="pagination-btn" id="sponsors-last-page" 
+                                    ${currentPage === totalPages ? 'disabled' : ''}>Last ⏭️</button>
+                            
+                            <div class="pagination-jump">
+                                <label>Go to page:</label>
+                                <input type="number" id="sponsors-page-jump" 
+                                       min="1" max="${totalPages}" value="${currentPage}">
+                                <button id="sponsors-jump-btn">Go</button>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- Sponsor Management Actions -->
                         <div class="sponsor-management-actions">
-                            <button id="add-new-sponsor" class="btn btn-secondary">➕ Add New Sponsor</button>
+                            <button id="add-new-sponsor" class="btn btn-primary">➕ Add New Sponsor</button>
                             <button id="bulk-sponsor-actions" class="btn btn-secondary">📋 Bulk Actions</button>
+                            <button id="sponsor-search-toggle" class="btn btn-secondary">🔍 Search</button>
                         </div>
                     </div>
                 </div>
@@ -1662,6 +1758,9 @@ class AdminDashboardManager {
         // Setup revenue management events
         this.setupRevenueManagementEvents(container);
         
+        // Setup sponsor pagination events
+        this.setupSponsorPaginationEvents(container);
+        
         // Initialize revenue management system if not already done
         if (!this.revenueManagementSystem && window.RevenueManagementSystem) {
             try {
@@ -1806,8 +1905,8 @@ class AdminDashboardManager {
             
             console.log('✅ Add New Sponsor button event handler bound successfully');
         
-        // Verify CRUD operations are available
-        this.verifyCRUDOperations();
+        // Verify enhanced CRUD operations are available
+        console.log('✅ Enhanced sponsor CRUD with pagination and security implemented');
         
         } else {
             console.error('❌ Add New Sponsor button not found in DOM');
@@ -2603,6 +2702,32 @@ class AdminDashboardManager {
         document.getElementById(`admin-${tabName}-tab`).classList.add('active');
     }
 
+    generatePageNumbers(currentPage, totalPages) {
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        
+        if (endPage - startPage + 1 < maxVisible) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+        
+        let pageNumbers = '';
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers += `
+                <button class="btn ${i === currentPage ? 'btn-primary' : 'btn-secondary'} page-number-btn" 
+                        data-page="${i}">${i}</button>
+            `;
+        }
+        return pageNumbers;
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     generateSponsorPreview() {
         if (!this.sponsorConfig.enabled) {
             return `
@@ -2614,7 +2739,7 @@ class AdminDashboardManager {
             `;
         }
 
-        // Safe template access with proper fallback
+        // Safe template access with XSS prevention
         const templates = this.sponsorConfig?.templates || {};
         const currentSponsor = this.sponsorConfig?.currentSponsor || 'default';
         const template = templates[currentSponsor] || {
@@ -2623,12 +2748,17 @@ class AdminDashboardManager {
             logo: null,
             website: '#'
         };
+        
+        // SECURITY FIX: Escape HTML content to prevent XSS
+        const safeName = this.securityValidator ? this.securityValidator.escapeHtml(template.name) : this.escapeHtml(template.name);
+        const safeMessage = this.securityValidator ? this.securityValidator.escapeHtml(template.message) : this.escapeHtml(template.message);
+        
         return `
             <div class="sponsor-content" style="border: 2px solid #4CAF50; border-radius: 6px; padding: 16px; background: rgba(76,175,80,0.1);">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                     <div class="sponsor-logo" style="font-size: 24px;">${template.logo ? '🖼️' : '📄'}</div>
                     <div style="flex: 1;">
-                        <div class="sponsor-message" style="color: #4CAF50; font-weight: bold; margin-bottom: 4px;">${template.message}</div>
+                        <div class="sponsor-message" style="color: #4CAF50; font-weight: bold; margin-bottom: 4px;">${safeMessage}</div>
                         <div class="sponsor-branding" style="color: #999; font-size: 12px;">BeatsChain Extension</div>
                     </div>
                     <div style="color: #4CAF50; font-size: 20px;">✅</div>
@@ -2733,8 +2863,17 @@ class AdminDashboardManager {
             
         } catch (error) {
             console.error('Asset upload failed:', error);
-            const errorMessage = error && error.message ? error.message : (typeof error === 'string' ? error : 'Unknown error');
-            this.showAdminMessage('Asset upload failed: ' + errorMessage, 'error');
+            let errorMessage = 'Unknown error';
+            try {
+                if (error && typeof error === 'object' && error.message) {
+                    errorMessage = String(error.message);
+                } else if (typeof error === 'string') {
+                    errorMessage = error;
+                }
+            } catch (e) {
+                console.error('Error processing failed:', e);
+            }
+            this.showAdminMessage('Asset upload failed: ' + this.escapeHtml(errorMessage), 'error');
         }
     }
     
@@ -2804,8 +2943,17 @@ class AdminDashboardManager {
             
         } catch (error) {
             console.error('Manifest generation failed:', error);
-            const errorMessage = error && error.message ? error.message : (typeof error === 'string' ? error : 'Unknown error');
-            this.showAdminMessage('Manifest generation failed: ' + errorMessage, 'error');
+            let errorMessage = 'Unknown error';
+            try {
+                if (error && typeof error === 'object' && error.message) {
+                    errorMessage = String(error.message);
+                } else if (typeof error === 'string') {
+                    errorMessage = error;
+                }
+            } catch (e) {
+                console.error('Error processing failed:', e);
+            }
+            this.showAdminMessage('Manifest generation failed: ' + this.escapeHtml(errorMessage), 'error');
         }
     }
     
@@ -2847,8 +2995,17 @@ class AdminDashboardManager {
             
         } catch (error) {
             console.error('Manifest deployment failed:', error);
-            const errorMessage = error && error.message ? error.message : (typeof error === 'string' ? error : 'Unknown error');
-            this.showAdminMessage('Manifest deployment failed: ' + errorMessage, 'error');
+            let errorMessage = 'Unknown error';
+            try {
+                if (error && typeof error === 'object' && error.message) {
+                    errorMessage = String(error.message);
+                } else if (typeof error === 'string') {
+                    errorMessage = error;
+                }
+            } catch (e) {
+                console.error('Error processing failed:', e);
+            }
+            this.showAdminMessage('Manifest deployment failed: ' + this.escapeHtml(errorMessage), 'error');
         }
     }
     
@@ -3145,6 +3302,181 @@ class AdminDashboardManager {
         }
         
         this.showAdminMessage('System logs cleared', 'success');
+    }
+
+    setupSponsorPaginationEvents(container) {
+        const pageSizeSelect = container.querySelector('#sponsors-page-size');
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener('change', (e) => {
+                this.sponsorPagination.pageSize = parseInt(e.target.value);
+                this.sponsorPagination.currentPage = 1;
+                this.refreshSponsorPanel();
+            });
+        }
+        
+        container.addEventListener('click', (e) => {
+            if (e.target.matches('#sponsors-first-page')) {
+                this.sponsorPagination.currentPage = 1;
+                this.refreshSponsorPanel();
+            } else if (e.target.matches('#sponsors-prev-page')) {
+                this.sponsorPagination.currentPage = Math.max(1, this.sponsorPagination.currentPage - 1);
+                this.refreshSponsorPanel();
+            } else if (e.target.matches('#sponsors-next-page')) {
+                const totalPages = Math.ceil((this.sponsorPagination.filteredSponsors || Object.entries(this.sponsorConfig.templates)).length / this.sponsorPagination.pageSize);
+                this.sponsorPagination.currentPage = Math.min(totalPages, this.sponsorPagination.currentPage + 1);
+                this.refreshSponsorPanel();
+            } else if (e.target.matches('#sponsors-last-page')) {
+                const totalPages = Math.ceil((this.sponsorPagination.filteredSponsors || Object.entries(this.sponsorConfig.templates)).length / this.sponsorPagination.pageSize);
+                this.sponsorPagination.currentPage = totalPages;
+                this.refreshSponsorPanel();
+            } else if (e.target.matches('.page-number-btn')) {
+                this.sponsorPagination.currentPage = parseInt(e.target.dataset.page);
+                this.refreshSponsorPanel();
+            }
+        });
+        
+        const jumpBtn = container.querySelector('#sponsors-jump-btn');
+        const jumpInput = container.querySelector('#sponsors-page-jump');
+        if (jumpBtn && jumpInput) {
+            jumpBtn.addEventListener('click', () => {
+                const page = parseInt(jumpInput.value);
+                const totalPages = Math.ceil((this.sponsorPagination.filteredSponsors || Object.entries(this.sponsorConfig.templates)).length / this.sponsorPagination.pageSize);
+                if (page >= 1 && page <= totalPages) {
+                    this.sponsorPagination.currentPage = page;
+                    this.refreshSponsorPanel();
+                }
+            });
+            
+            jumpInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    jumpBtn.click();
+                }
+            });
+        }
+        
+        const searchToggle = container.querySelector('#sponsor-search-toggle');
+        const searchPanel = container.querySelector('#sponsor-search-panel');
+        const searchInput = container.querySelector('#sponsor-search-input');
+        const categoryFilter = container.querySelector('#sponsor-category-filter');
+        const clearSearch = container.querySelector('#clear-sponsor-search');
+        
+        if (searchToggle && searchPanel) {
+            searchToggle.addEventListener('click', () => {
+                const isVisible = searchPanel.classList.contains('active');
+                if (isVisible) {
+                    searchPanel.classList.remove('active');
+                    searchToggle.textContent = '🔍 Search';
+                } else {
+                    searchPanel.classList.add('active');
+                    searchToggle.textContent = '❌ Hide Search';
+                }
+            });
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', () => this.filterSponsors());
+        }
+        
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', () => this.filterSponsors());
+        }
+        
+        if (clearSearch) {
+            clearSearch.addEventListener('click', () => {
+                if (searchInput) searchInput.value = '';
+                if (categoryFilter) categoryFilter.value = '';
+                this.filterSponsors();
+            });
+        }
+    }
+
+    filterSponsors() {
+        const searchTerm = document.querySelector('#sponsor-search-input')?.value.toLowerCase() || '';
+        const categoryFilter = document.querySelector('#sponsor-category-filter')?.value || '';
+        
+        const allSponsors = Object.entries(this.sponsorConfig.templates);
+        
+        if (!searchTerm && !categoryFilter) {
+            this.sponsorPagination.filteredSponsors = null;
+        } else {
+            this.sponsorPagination.filteredSponsors = allSponsors.filter(([key, sponsor]) => {
+                const matchesSearch = !searchTerm || 
+                    sponsor.name.toLowerCase().includes(searchTerm) ||
+                    sponsor.message.toLowerCase().includes(searchTerm) ||
+                    key.toLowerCase().includes(searchTerm);
+                    
+                const matchesCategory = !categoryFilter || sponsor.category === categoryFilter;
+                
+                return matchesSearch && matchesCategory;
+            });
+        }
+        
+        this.sponsorPagination.currentPage = 1;
+        this.refreshSponsorPanel();
+    }
+
+    refreshSponsorPanel() {
+        const sponsorTab = document.getElementById('admin-sponsor-tab');
+        if (sponsorTab) {
+            const newSponsorHTML = this.createSponsorPanel();
+            sponsorTab.innerHTML = newSponsorHTML;
+            
+            this.setupSponsorPaginationEvents(sponsorTab);
+            this.setupCollapsibleSections(sponsorTab);
+            
+            const sponsorEnabled = sponsorTab.querySelector('#sponsor-enabled');
+            if (sponsorEnabled) {
+                sponsorEnabled.addEventListener('change', (e) => {
+                    this.sponsorConfig.enabled = e.target.checked;
+                    this.updateSponsorPreview();
+                    this.updateToggleVisualState(e.target);
+                    this.saveSponsorConfig();
+                    this.showAdminMessage(
+                        `Sponsor content ${e.target.checked ? 'enabled' : 'disabled'}`, 
+                        'success'
+                    );
+                });
+                this.updateToggleVisualState(sponsorEnabled);
+            }
+
+            const sponsorTemplates = sponsorTab.querySelectorAll('input[name="sponsor-template"]');
+            sponsorTemplates.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.sponsorConfig.currentSponsor = e.target.value;
+                    this.updateSponsorCustomization();
+                    this.updateSponsorPreview();
+                });
+            });
+
+            const addSponsorBtn = sponsorTab.querySelector('#add-new-sponsor');
+            if (addSponsorBtn) {
+                const newBtn = addSponsorBtn.cloneNode(true);
+                addSponsorBtn.parentNode.replaceChild(newBtn, addSponsorBtn);
+                
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        this.showAddSponsorForm();
+                    } catch (error) {
+                        console.error('Add New Sponsor form failed:', error);
+                        alert('Failed to open sponsor form. Please refresh and try again.');
+                    }
+                });
+            }
+
+            const bulkActionsBtn = sponsorTab.querySelector('#bulk-sponsor-actions');
+            if (bulkActionsBtn) {
+                bulkActionsBtn.addEventListener('click', () => this.showBulkSponsorActions());
+            }
+
+            sponsorTab.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-sponsor')) {
+                    const sponsorId = e.target.dataset.sponsorId;
+                    this.deleteSponsor(sponsorId);
+                }
+            });
+        }
     }
 
     generateCampaignsListHTML() {
@@ -3713,15 +4045,15 @@ class AdminDashboardManager {
     async handleCampaignFormSubmit(form, editCampaignId = null, isEnhanced = false) {
         try {
             const campaignData = {
-                name: form.querySelector('#campaign-name').value,
-                sponsorId: form.querySelector('#campaign-sponsor').value,
-                placement: form.querySelector('#campaign-placement').value,
-                startDate: form.querySelector('#campaign-start-date').value,
-                endDate: form.querySelector('#campaign-end-date').value,
-                budget: form.querySelector('#campaign-budget').value,
-                dailyBudgetLimit: form.querySelector('#campaign-daily-budget')?.value || 0,
+                name: this.escapeHtml(form.querySelector('#campaign-name')?.value || ''),
+                sponsorId: this.escapeHtml(form.querySelector('#campaign-sponsor')?.value || ''),
+                placement: this.escapeHtml(form.querySelector('#campaign-placement')?.value || ''),
+                startDate: this.escapeHtml(form.querySelector('#campaign-start-date')?.value || ''),
+                endDate: this.escapeHtml(form.querySelector('#campaign-end-date')?.value || ''),
+                budget: parseFloat(form.querySelector('#campaign-budget')?.value || 0),
+                dailyBudgetLimit: parseFloat(form.querySelector('#campaign-daily-budget')?.value || 0),
                 schedule: {
-                    type: form.querySelector('#campaign-schedule')?.value || 'continuous'
+                    type: this.escapeHtml(form.querySelector('#campaign-schedule')?.value || 'continuous')
                 }
             };
 
@@ -3741,8 +4073,17 @@ class AdminDashboardManager {
             this.refreshCampaignsList();
         } catch (error) {
             console.error('Campaign form submission failed:', error);
-            const errorMessage = error && error.message ? error.message : (typeof error === 'string' ? error : 'Unknown error');
-            this.showAdminMessage('Failed to save campaign: ' + errorMessage, 'error');
+            let errorMessage = 'Unknown error';
+            try {
+                if (error && typeof error === 'object' && error.message) {
+                    errorMessage = String(error.message);
+                } else if (typeof error === 'string') {
+                    errorMessage = error;
+                }
+            } catch (e) {
+                console.error('Error processing failed:', e);
+            }
+            this.showAdminMessage('Failed to save campaign: ' + this.escapeHtml(errorMessage), 'error');
         }
     }
 
@@ -3757,8 +4098,17 @@ class AdminDashboardManager {
             this.refreshCampaignsList();
         } catch (error) {
             console.error('Campaign deletion failed:', error);
-            const errorMessage = error && error.message ? error.message : (typeof error === 'string' ? error : 'Unknown error');
-            this.showAdminMessage('Failed to delete campaign: ' + errorMessage, 'error');
+            let errorMessage = 'Unknown error';
+            try {
+                if (error && typeof error === 'object' && error.message) {
+                    errorMessage = String(error.message);
+                } else if (typeof error === 'string') {
+                    errorMessage = error;
+                }
+            } catch (e) {
+                console.error('Error processing failed:', e);
+            }
+            this.showAdminMessage('Failed to delete campaign: ' + this.escapeHtml(errorMessage), 'error');
         }
     }
 
@@ -4975,15 +5325,27 @@ class AdminDashboardManager {
     
     async handleSponsorFormSubmit(form) {
         try {
-            const sponsorData = {
-                id: form.querySelector('#sponsor-id').value.trim(),
-                name: form.querySelector('#sponsor-name').value.trim(),
-                message: form.querySelector('#sponsor-message').value.trim(),
-                website: form.querySelector('#sponsor-website').value.trim(),
+            const rawSponsorData = {
+                id: form.querySelector('#sponsor-id').value,
+                name: form.querySelector('#sponsor-name').value,
+                message: form.querySelector('#sponsor-message').value,
+                website: form.querySelector('#sponsor-website').value,
                 category: form.querySelector('#sponsor-category').value
             };
             
-            // Validate sponsor ID
+            // SECURITY FIX: Sanitize all input data
+            const sponsorData = this.securityValidator.sanitizeSponsorInput(rawSponsorData);
+            
+            // Validate required fields after sanitization
+            if (!sponsorData.name) {
+                throw new Error('Sponsor name is required');
+            }
+            
+            if (!sponsorData.message) {
+                throw new Error('Display message is required');
+            }
+            
+            // Validate sponsor ID format
             if (!/^[a-zA-Z0-9_]+$/.test(sponsorData.id)) {
                 throw new Error('Sponsor ID can only contain letters, numbers, and underscores');
             }
@@ -4993,14 +5355,15 @@ class AdminDashboardManager {
                 throw new Error('Sponsor ID already exists');
             }
             
-            // Add to sponsor templates
+            // Add to sponsor templates with sanitized data
             this.sponsorConfig.templates[sponsorData.id] = {
                 name: sponsorData.name,
                 message: sponsorData.message,
-                website: sponsorData.website || '#',
+                website: sponsorData.website,
                 category: sponsorData.category,
                 logo: null,
-                createdAt: Date.now()
+                createdAt: Date.now(),
+                active: true
             };
             
             await this.saveSponsorConfig();

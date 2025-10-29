@@ -62,13 +62,33 @@ class UnifiedAuthenticationManager {
         return new Promise((resolve, reject) => {
             try {
                 if (!chrome.identity) {
-                    reject(new Error('Google OAuth2 not available'));
+                    console.warn('⚠️ Chrome identity API not available - enabling guest mode');
+                    this.enableGuestMode();
+                    resolve({
+                        success: false,
+                        guestMode: true,
+                        message: 'Authentication not available. Using guest mode.'
+                    });
                     return;
                 }
 
                 chrome.identity.getAuthToken({ interactive: true }, async (token) => {
                     if (chrome.runtime.lastError) {
-                        reject(new Error('Google OAuth2 authentication failed: ' + chrome.runtime.lastError.message));
+                        const errorMsg = chrome.runtime.lastError.message;
+                        
+                        // Handle specific OAuth errors gracefully
+                        if (errorMsg.includes('bad client id') || errorMsg.includes('invalid_client')) {
+                            console.warn('⚠️ OAuth client ID invalid - enabling guest mode');
+                            this.enableGuestMode();
+                            resolve({
+                                success: false,
+                                guestMode: true,
+                                message: 'Authentication temporarily unavailable. Using guest mode.'
+                            });
+                            return;
+                        }
+                        
+                        reject(new Error('Google OAuth2 authentication failed: ' + errorMsg));
                         return;
                     }
 
@@ -251,6 +271,22 @@ class UnifiedAuthenticationManager {
         
         const userPermissions = permissions[this.role] || permissions['user'];
         return userPermissions.includes('*') || userPermissions.includes(action);
+    }
+
+    enableGuestMode() {
+        this.isAuthenticated = false;
+        this.userProfile = {
+            id: 'guest_' + Date.now(),
+            email: 'guest@beatschain.local',
+            name: 'Guest User',
+            picture: null,
+            verified_email: false,
+            guestMode: true
+        };
+        this.role = 'user';
+        this.securityLevel = 'basic';
+        
+        console.log('👤 Guest mode enabled - limited functionality available');
     }
 
     // Backward compatibility methods

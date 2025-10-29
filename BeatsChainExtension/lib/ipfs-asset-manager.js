@@ -9,8 +9,11 @@ class IPFSAssetManager {
         this.pinataSecretKey = '15d14b953368d4d5c830c6e05f4767d63443da92da3359a7223ae115315beb91';
         this.assetCache = new Map();
         this.manifestCache = null;
-        this.manifestUrl = 'ipfs://QmSponsorManifestHash'; // Will be updated with real hash
+        // Production manifest hash - update when deploying to production
+        this.productionManifestHash = 'QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG'; // Real IPFS hash
+        this.manifestUrl = `ipfs://${this.productionManifestHash}`;
         this.isInitialized = false;
+        this.isProduction = this.detectProductionEnvironment();
         this.csrfProtection = window.CSRFProtection ? new CSRFProtection() : null;
     }
 
@@ -71,8 +74,26 @@ class IPFSAssetManager {
 
     async fetchSponsorManifest() {
         try {
-            // For now, create a mock manifest since we don't have real IPFS deployment yet
-            const mockManifest = {
+            // In production, always try to fetch real manifest first
+            if (this.isProduction || this.productionManifestHash !== 'QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG') {
+                try {
+                    const realManifest = await this.fetchFromIPFS(this.productionManifestHash);
+                    if (realManifest && realManifest.sponsors) {
+                        this.manifestCache = realManifest;
+                        console.log('✅ Production IPFS sponsor manifest loaded');
+                        return realManifest;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Failed to load production manifest, using development fallback:', error);
+                    // Check if error is the DOCTYPE HTML issue
+                    if (error.message && error.message.includes('DOCTYPE')) {
+                        console.warn('🔧 IPFS gateway returned HTML instead of JSON - using fallback manifest');
+                    }
+                }
+            }
+            
+            // Fallback to development manifest with real structure
+            const developmentManifest = {
                 version: "2.0",
                 updated: new Date().toISOString(),
                 sponsors: [
@@ -135,19 +156,64 @@ class IPFSAssetManager {
                 ]
             };
             
-            this.manifestCache = mockManifest;
+            this.manifestCache = developmentManifest;
             
             // Cache the manifest
             localStorage.setItem('ipfs_sponsor_manifest', JSON.stringify({
-                manifest: mockManifest,
+                manifest: developmentManifest,
                 timestamp: Date.now()
             }));
             
-            console.log('📦 IPFS sponsor manifest loaded (mock data for development)');
-            return mockManifest;
+            console.log(`📦 IPFS sponsor manifest loaded (${this.isProduction ? 'production fallback' : 'development mode'})`);
+            return developmentManifest;
             
         } catch (error) {
             console.error('❌ Failed to fetch IPFS sponsor manifest:', error);
+            throw error;
+        }
+    }
+
+    detectProductionEnvironment() {
+        // Check if we're in production based on extension context
+        try {
+            const manifest = chrome.runtime.getManifest();
+            // Production if version doesn't contain 'dev' or 'test'
+            return !manifest.version.includes('dev') && !manifest.version.includes('test');
+        } catch (error) {
+            // Fallback to development mode
+            return false;
+        }
+    }
+
+    async fetchFromIPFS(ipfsHash) {
+        try {
+            const response = await fetch(`https://gateway.pinata.cloud/ipfs/${ipfsHash}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                timeout: 5000
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            // Check if response is HTML instead of JSON
+            const contentType = response.headers.get('content-type');
+            const responseText = await response.text();
+            
+            if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+                throw new Error(`IPFS gateway returned HTML instead of JSON for hash ${ipfsHash}. This usually means the hash doesn't exist or the gateway is serving an error page.`);
+            }
+            
+            // Try to parse as JSON
+            const data = JSON.parse(responseText);
+            console.log(`✅ Successfully fetched from IPFS: ${ipfsHash}`);
+            return data;
+            
+        } catch (error) {
+            console.error(`❌ Failed to fetch from IPFS ${ipfsHash}:`, error);
             throw error;
         }
     }

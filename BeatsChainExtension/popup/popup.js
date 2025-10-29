@@ -132,6 +132,20 @@ class BeatsChainApp {
 
     async initialize() {
         try {
+            // PRODUCTION FIX: Initialize production systems first
+            if (window.productionFix) {
+                console.log('🚀 Running production initialization fix...');
+                const productionStatus = await window.productionFix.initializeProductionSystems();
+                console.log('📊 Production status:', productionStatus);
+                
+                // Display production status to user
+                if (window.productionStatusDisplay) {
+                    window.productionStatusDisplay.showStatus(productionStatus);
+                } else if (!productionStatus.success) {
+                    this.displayProductionStatus(productionStatus);
+                }
+            }
+            
             // CRITICAL: Show partner consent FIRST before any other initialization
             await this.showPartnerConsentModal();
             
@@ -154,8 +168,12 @@ class BeatsChainApp {
                     console.log('✅ Migration check completed');
                 }
                 
-                // PHASE 1: Use unified authentication system
-                if (window.UnifiedAuthenticationManager) {
+                // PHASE 1: Use unified authentication system (production fix integration)
+                if (window.unifiedAuth) {
+                    // Use the production-fixed unified auth
+                    unifiedAuth = window.unifiedAuth;
+                    console.log('✅ Using production-fixed unified authentication');
+                } else if (window.UnifiedAuthenticationManager) {
                     unifiedAuth = new UnifiedAuthenticationManager();
                     console.log('🔄 Initializing unified authentication...');
                 } else {
@@ -402,9 +420,27 @@ class BeatsChainApp {
                 await window.productionMonitor.initialize();
             }
             
+            // Initialize shared ISRC manager for both minting and radio
+            if (window.ISRCManager && !this.isrcManager) {
+                try {
+                    this.isrcManager = new ISRCManager();
+                    await this.isrcManager.initialize();
+                    console.log('✅ Shared ISRC Manager initialized at app level');
+                    
+                    // Make globally available for both systems
+                    window.sharedISRCManager = this.isrcManager;
+                } catch (error) {
+                    console.error('ISRC Manager initialization failed:', ErrorHandler.safeErrorMessage(error));
+                }
+            }
+            
             // Initialize SAMRO split manager
             if (window.SAMROSplitManager && this.isrcManager) {
-                SAMROSplitManager.enhanceApp(this);
+                try {
+                    SAMROSplitManager.enhanceApp(this);
+                } catch (error) {
+                    console.error('SAMRO Split Manager initialization failed:', ErrorHandler.safeErrorMessage(error));
+                }
             }
             
             await this.loadWalletData();
@@ -419,6 +455,71 @@ class BeatsChainApp {
             console.log('BeatsChain initialized successfully');
         } catch (error) {
             console.error('Initialization failed:', error);
+            
+            // Show production error status if available
+            if (window.productionFix) {
+                const status = window.productionFix.getSystemStatus();
+                const errorStatus = {
+                    success: false,
+                    error: error.message,
+                    systems: status.systems,
+                    recommendations: ['Check browser console for detailed error information', 'Refresh the extension to retry initialization']
+                };
+                
+                if (window.productionStatusDisplay) {
+                    window.productionStatusDisplay.showStatus(errorStatus);
+                } else {
+                    this.displayProductionStatus(errorStatus);
+                }
+            }
+        }
+    }
+    
+    displayProductionStatus(status) {
+        // Create production status display
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'production-status';
+        statusDiv.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0;
+            background: ${status.success ? '#d4edda' : '#f8d7da'};
+            border-bottom: 1px solid ${status.success ? '#c3e6cb' : '#f5c6cb'};
+            color: ${status.success ? '#155724' : '#721c24'};
+            padding: 12px 16px; z-index: 10000;
+            font-size: 14px; text-align: center;
+        `;
+        
+        const systemsStatus = Object.entries(status.systems || {})
+            .map(([system, state]) => `${system}: ${state}`)
+            .join(', ');
+        
+        statusDiv.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 4px;">
+                ${status.success ? '✅ Production Mode Active' : '⚠️ Production Mode Issues Detected'}
+            </div>
+            <div style="font-size: 12px;">
+                Systems: ${systemsStatus}
+            </div>
+            ${status.recommendations ? `
+                <div style="font-size: 11px; margin-top: 4px; opacity: 0.8;">
+                    ${status.recommendations.join(' • ')}
+                </div>
+            ` : ''}
+            <button onclick="this.parentNode.remove()" style="
+                position: absolute; top: 8px; right: 12px;
+                background: none; border: none; font-size: 16px;
+                cursor: pointer; opacity: 0.7;
+            ">×</button>
+        `;
+        
+        document.body.insertBefore(statusDiv, document.body.firstChild);
+        
+        // Auto-hide success messages after 10 seconds
+        if (status.success) {
+            setTimeout(() => {
+                if (statusDiv.parentNode) {
+                    statusDiv.remove();
+                }
+            }, 10000);
         }
     }
 
@@ -454,6 +555,16 @@ class BeatsChainApp {
         const exportWalletBtn = document.getElementById('export-wallet');
         if (exportWalletBtn) {
             exportWalletBtn.addEventListener('click', this.handleExportWallet.bind(this));
+        }
+        
+        // ISRC copy button
+        const copyISRCBtn = document.getElementById('copy-isrc');
+        if (copyISRCBtn) {
+            try {
+                copyISRCBtn.addEventListener('click', this.handleCopyISRC.bind(this));
+            } catch (error) {
+                console.error('Failed to setup ISRC copy button:', ErrorHandler.safeErrorMessage(error));
+            }
         }
         
         // Wallet panel toggle
@@ -880,11 +991,11 @@ Verification: Check Chrome extension storage for transaction details`;
 
     async initializeISRCMinting() {
         try {
-            // GRACEFUL: Initialize ISRC manager with error handling
+            // CRITICAL: Use shared ISRC manager to avoid duplicates
             if (!this.isrcManager && window.ISRCManager) {
                 this.isrcManager = new ISRCManager();
                 await this.isrcManager.initialize();
-                console.log('✅ ISRC Manager initialized for minting');
+                console.log('✅ Shared ISRC Manager initialized for minting');
             }
             
             // Setup ISRC generation button (prevent duplicate listeners)
@@ -938,11 +1049,19 @@ Verification: Check Chrome extension storage for transaction details`;
         statusBadge.textContent = 'Generating';
         
         try {
-            // GRACEFUL: Initialize ISRC manager if not available
-            if (!this.isrcManager && window.ISRCManager) {
-                this.isrcManager = new ISRCManager();
-                await this.isrcManager.initialize();
-                console.log('🔧 ISRC Manager initialized on demand');
+            // CRITICAL: Use shared ISRC manager to avoid duplicates
+            if (!this.isrcManager) {
+                try {
+                    this.isrcManager = window.sharedISRCManager || (window.ISRCManager ? new ISRCManager() : null);
+                    if (this.isrcManager && !window.sharedISRCManager) {
+                        await this.isrcManager.initialize();
+                        window.sharedISRCManager = this.isrcManager;
+                        console.log('🔧 Shared ISRC Manager initialized for minting');
+                    }
+                } catch (initError) {
+                    console.error('ISRC Manager initialization failed:', ErrorHandler.safeErrorMessage(initError));
+                    this.isrcManager = null;
+                }
             }
             
             if (!this.isrcManager) {
@@ -958,10 +1077,11 @@ Verification: Check Chrome extension storage for transaction details`;
             const artistInputs = this.getArtistInputs();
             const isrc = await this.isrcManager.generateISRC(artistInputs.beatTitle, artistInputs.artistName);
             
-            // Update display
+            // Update display - CRITICAL: Make ISRC visible and persistent
             const isrcDisplay = document.getElementById('generated-isrc');
             if (isrcDisplay) {
                 isrcDisplay.textContent = isrc;
+                isrcDisplay.style.cssText = 'display: block; font-weight: bold; color: #4CAF50; font-size: 16px; padding: 8px; background: rgba(76, 175, 80, 0.1); border-radius: 4px; border: 1px solid #4CAF50;';
             }
             
             // Update breakdown
@@ -980,7 +1100,11 @@ Verification: Check Chrome extension storage for transaction details`;
             this.beatMetadata.isrc = isrc;
             
             statusBadge.textContent = 'Generated';
+            statusBadge.style.background = '#4CAF50';
+            statusBadge.style.color = 'white';
             generateBtn.textContent = '✅ Generated';
+            generateBtn.style.background = '#4CAF50';
+            generateBtn.style.color = 'white';
             
             // Enable validation button and update first checklist item
             if (validateBtn) {
@@ -1659,6 +1783,92 @@ Verification: Check Chrome extension storage for transaction details`;
         });
     }
 
+    displayISRCGenerationSponsored() {
+        if (!this.partnerConsentGiven || document.querySelector('.isrc-generation-sponsor')) return;
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'isrc-generation-sponsor';
+        modalOverlay.style.cssText = `position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;`;
+
+        const modal = document.createElement('div');
+        modal.style.cssText = `background: white; border-radius: 12px; padding: 32px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);`;
+
+        modal.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+            <h2 style="color: #333; margin: 0 0 16px 0;">Professional Package Services</h2>
+            <p style="color: #666; line-height: 1.5; margin: 0 0 16px 0;">While your radio package is being generated, consider professional services to enhance your submission.</p>
+            <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">Our verified partners offer mastering, distribution, and promotion services for radio-ready tracks.</p>
+            <div style="background: rgba(0, 214, 122, 0.05); border-radius: 8px; border-left: 4px solid #00d67a; border: 1px solid rgba(0, 214, 122, 0.2); padding: 16px; margin: 20px 0; text-align: left;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 24px;">📢</div>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 4px 0; color: #333; font-size: 14px; font-weight: 600;">📦 Professional Package Services</h4>
+                        <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; line-height: 1.4;">Professional mastering, ISRC registration, and radio plugging services to maximize your submission success.</p>
+                        <div style="margin: 8px 0; padding: 8px; background: rgba(0, 214, 122, 0.1); border-radius: 4px;">
+                            <h5 style="margin: 0 0 4px 0; color: #333; font-size: 12px; font-weight: 600;">Radio Package Enhancement</h5>
+                            <p style="margin: 0; color: #666; font-size: 11px;">Enhance your radio submission with professional services</p>
+                        </div>
+                        <a href="#" class="sponsor-link" style="color: #00d67a; font-size: 12px; text-decoration: none; font-weight: 500;">Learn More →</a>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+                <button id="continue-isrc" disabled style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: not-allowed; font-size: 14px; font-weight: 500; opacity: 0.6;">Continue (<span id="countdown-isrc-gen">5</span>s)</button>
+            </div>
+            <p style="color: #999; font-size: 12px; margin: 16px 0 0 0;"><span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span> Professional partner content</p>
+        `;
+
+        try {
+            modalOverlay.appendChild(modal);
+            document.body.appendChild(modalOverlay);
+        } catch (error) {
+            console.error('Failed to display ISRC generation sponsor modal:', ErrorHandler.safeErrorMessage(error));
+            return;
+        }
+
+        let countdown = 5;
+        const countdownElement = modal.querySelector('#countdown-isrc-gen');
+        const continueButton = modal.querySelector('#continue-isrc');
+        
+        if (!countdownElement || !continueButton) {
+            console.error('Required modal elements not found');
+            return;
+        }
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                continueButton.disabled = false;
+                continueButton.style.cursor = 'pointer';
+                continueButton.style.opacity = '1';
+                continueButton.innerHTML = 'Continue';
+            } else {
+                countdownElement.textContent = countdown;
+            }
+        }, 1000);
+
+        continueButton.addEventListener('click', () => {
+            if (countdown <= 0) {
+                document.body.removeChild(modalOverlay);
+                this.trackSponsorInteraction('continue', 'isrc_generation');
+            }
+        });
+
+        const sponsorLink = modal.querySelector('.sponsor-link');
+        if (sponsorLink) {
+            sponsorLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.trackSponsorInteraction('clicked', 'isrc_generation');
+            });
+        }
+
+        this.trackSponsorDisplay('isrc_generation');
+        
+        // Keep ISRC sponsor visible until user manually closes or navigates away
+        // No auto-dismiss - stays until user leaves screen
+    }
+
     showProgress(show) {
         const progressBar = document.getElementById('progress-bar');
         if (progressBar) {
@@ -2314,6 +2524,76 @@ Verification: Check Chrome extension storage for transaction details`;
         } catch (error) {
             console.error('Logout failed:', error);
         }
+    }
+    
+    async handleCopyISRC() {
+        const isrcElement = document.getElementById('generated-isrc');
+        if (!isrcElement) return;
+        
+        const isrcCode = isrcElement.textContent.trim();
+        if (!isrcCode || isrcCode === 'ZA-80G-25-00000') {
+            this.showISRCCopyMessage('No ISRC generated yet', 'warning');
+            return;
+        }
+        
+        try {
+            await navigator.clipboard.writeText(isrcCode);
+            this.showISRCCopyMessage(`ISRC copied: ${isrcCode}`, 'success');
+            
+            // Visual feedback on button
+            const copyBtn = document.getElementById('copy-isrc');
+            if (copyBtn) {
+                const originalText = copyBtn.innerHTML;
+                const SUCCESS_COLOR = '#4CAF50';
+                const FEEDBACK_DURATION = 2000;
+                
+                copyBtn.innerHTML = '✅ Copied!';
+                copyBtn.style.background = SUCCESS_COLOR;
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                    copyBtn.style.background = SUCCESS_COLOR;
+                }, FEEDBACK_DURATION);
+            }
+        } catch (error) {
+            console.error('Failed to copy ISRC:', error);
+            this.showISRCCopyMessage('Copy failed - please select and copy manually', 'error');
+        }
+    }
+    
+    showISRCCopyMessage(message, type = 'info') {
+        // Remove existing message
+        const existing = document.querySelector('.isrc-copy-message');
+        if (existing) existing.remove();
+        
+        // Create message element
+        const messageEl = document.createElement('div');
+        messageEl.className = 'isrc-copy-message';
+        
+        const colors = {
+            success: '#4CAF50',
+            warning: '#FF9800',
+            error: '#f44336',
+            info: '#2196F3'
+        };
+        
+        messageEl.style.cssText = `
+            position: fixed; top: 20px; right: 20px;
+            background: ${colors[type] || colors.info};
+            color: white; padding: 12px 16px;
+            border-radius: 6px; font-size: 14px;
+            z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        messageEl.textContent = message;
+        
+        document.body.appendChild(messageEl);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (messageEl.parentNode) {
+                messageEl.remove();
+            }
+        }, 3000);
     }
     
     updateRoleBasedUI(role) {
@@ -3665,11 +3945,19 @@ Verification: Check Chrome extension storage for transaction details`;
         generateBtn.textContent = 'Generating...';
         
         try {
-            // Ensure ISRC manager is initialized
-            if (!this.isrcManager && window.ISRCManager) {
-                this.isrcManager = new ISRCManager();
-                await this.isrcManager.initialize();
-                console.log('✅ ISRC Manager initialized on demand');
+            // CRITICAL: Use shared ISRC manager to avoid duplicates
+            if (!this.isrcManager) {
+                try {
+                    this.isrcManager = window.sharedISRCManager || (window.ISRCManager ? new ISRCManager() : null);
+                    if (this.isrcManager && !window.sharedISRCManager) {
+                        await this.isrcManager.initialize();
+                        window.sharedISRCManager = this.isrcManager;
+                        console.log('✅ Shared ISRC Manager initialized for radio');
+                    }
+                } catch (initError) {
+                    console.error('ISRC Manager initialization failed:', ErrorHandler.safeErrorMessage(initError));
+                    this.isrcManager = null;
+                }
             }
             
             if (this.isrcManager) {
@@ -3678,13 +3966,42 @@ Verification: Check Chrome extension storage for transaction details`;
                     await this.isrcManager.initialize();
                 }
                 
-                const newISRC = await this.isrcManager.generateISRC();
+                // Get track info for duplicate checking
+                const trackTitle = document.getElementById('radio-track-title')?.value || '';
+                const artistName = document.getElementById('radio-artist-name')?.value || '';
+                
+                // Check for existing ISRC first to prevent duplicates
+                let newISRC;
+                try {
+                    newISRC = this.isrcManager.getISRCForTrack(trackTitle, artistName);
+                } catch (getError) {
+                    console.warn('Failed to get existing ISRC:', ErrorHandler.safeErrorMessage(getError));
+                    newISRC = null;
+                }
+                
+                if (!newISRC) {
+                    try {
+                        // Generate new ISRC only if none exists
+                        newISRC = await this.isrcManager.generateISRC(trackTitle, artistName);
+                        console.log('✅ New ISRC generated for radio:', newISRC);
+                    } catch (generateError) {
+                        console.error('Failed to generate ISRC:', ErrorHandler.safeErrorMessage(generateError));
+                        newISRC = null;
+                    }
+                } else {
+                    console.log('✅ Using existing ISRC for radio:', newISRC);
+                }
                 if (newISRC) {
                     isrcInput.value = newISRC;
                     // Mark as user input since they clicked generate
                     this.userInputManager.setUserInput('radio-isrc', newISRC, true);
                     generateBtn.textContent = '✓ Generated';
                     console.log('✅ ISRC generated:', newISRC);
+                    
+                    // Show sponsored content after ISRC generation in radio - keep visible until user navigates
+                    setTimeout(() => {
+                        this.displayISRCGenerationSponsored();
+                    }, 1000);
                 } else {
                     generateBtn.textContent = 'Failed';
                     console.error('❌ ISRC generation returned null');
@@ -3890,10 +4207,13 @@ Verification: Check Chrome extension storage for transaction details`;
     }
     
     displayPostPackageSponsor(fileCount, title) {
-        // Check if already displayed to prevent duplicates
-        if (document.querySelector('.post-package-sponsor')) {
-            console.log('⚠️ Post-package sponsor already displayed, skipping duplicate');
-            return;
+        // FIXED: Remove all existing floating sponsors to prevent duplicates
+        try {
+            const existingSponsors = document.querySelectorAll('.post-package-sponsor, .floating-sponsor-container');
+            existingSponsors.forEach(sponsor => sponsor.remove());
+            console.log('🧹 Cleared existing floating sponsors to prevent duplicates');
+        } catch (error) {
+            console.warn('Failed to clear existing sponsors:', ErrorHandler.safeErrorMessage(error));
         }
 
         // Check if user has consented to sponsor content
@@ -4013,130 +4333,84 @@ Verification: Check Chrome extension storage for transaction details`;
     }
     
     displayPackageGenerationSponsored() {
-        // Check if user has consented to sponsor content
-        if (!this.partnerConsentGiven) {
-            return;
-        }
+        if (!this.partnerConsentGiven) return;
 
-        // Create modal overlay for package generation sponsor content
         const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'package-generation-sponsor-modal';
-        modalOverlay.style.cssText = `
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.9); z-index: 20000;
-            display: flex; align-items: center; justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        `;
+        modalOverlay.style.cssText = `position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;`;
 
         const modal = document.createElement('div');
-        modal.style.cssText = `
-            background: white; border-radius: 12px; padding: 32px;
-            max-width: 500px; width: 90%; text-align: center;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            position: relative;
-        `;
+        modal.style.cssText = `background: white; border-radius: 12px; padding: 32px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);`;
 
         modal.innerHTML = `
             <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
             <h2 style="color: #333; margin: 0 0 16px 0;">Professional Package Services</h2>
-            <p style="color: #333; line-height: 1.5; margin: 0 0 16px 0; font-weight: 500;">
-                While your radio package is being generated, consider professional services to enhance your submission.
-            </p>
-            <p style="color: #333; line-height: 1.5; margin: 0 0 24px 0;">
-                Our verified partners offer mastering, distribution, and promotion services for radio-ready tracks.
-            </p>
-            
-            <div class="sponsor-content" style="
-                background: rgba(0, 214, 122, 0.05);
-                border-radius: 8px;
-                border-left: 4px solid #00d67a;
-                border: 1px solid rgba(0, 214, 122, 0.2);
-                padding: 16px;
-                margin: 20px 0;
-                text-align: left;
-            ">
+            <p style="color: #666; line-height: 1.5; margin: 0 0 16px 0;">While your radio package is being generated, consider professional services to enhance your submission.</p>
+            <p style="color: #666; line-height: 1.5; margin: 0 0 24px 0;">Our verified partners offer mastering, distribution, and promotion services for radio-ready tracks.</p>
+            <div style="background: rgba(0, 214, 122, 0.05); border-radius: 8px; border-left: 4px solid #00d67a; border: 1px solid rgba(0, 214, 122, 0.2); padding: 16px; margin: 20px 0; text-align: left;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div style="font-size: 24px;">📢</div>
                     <div style="flex: 1;">
-                        <h4 style="margin: 0 0 4px 0; color: #333; font-size: 14px; font-weight: 600;">
-                            Radio Package Enhancement
-                        </h4>
-                        <p style="margin: 0 0 8px 0; color: #333; font-size: 13px; line-height: 1.4; font-weight: 500;">
-                            Professional mastering, ISRC registration, and radio plugging services to maximize your submission success.
-                        </p>
-                        <a href="#" class="sponsor-link" style="color: #00d67a; font-size: 12px; text-decoration: none; font-weight: 500;">
-                            Learn More →
-                        </a>
+                        <h4 style="margin: 0 0 4px 0; color: #333; font-size: 14px; font-weight: 600;">Radio Package Enhancement</h4>
+                        <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; line-height: 1.4;">Professional mastering, ISRC registration, and radio plugging services to maximize your submission success.</p>
+                        <a href="#" class="sponsor-link" style="color: #00d67a; font-size: 12px; text-decoration: none; font-weight: 500;">Learn More →</a>
                     </div>
                 </div>
             </div>
-            
             <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
-                <button id="continue-package" class="btn btn-primary" disabled style="
-                    background: #007bff; color: white; border: none;
-                    padding: 12px 24px; border-radius: 6px; cursor: not-allowed;
-                    font-size: 14px; font-weight: 500; opacity: 0.6;
-                ">Continue (<span id="countdown-package">12</span>s)</button>
+                <button id="continue-package" disabled style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: not-allowed; font-size: 14px; font-weight: 500; opacity: 0.6;">Continue (<span id="countdown-package">15</span>s)</button>
             </div>
-            
-            <p style="color: #999; font-size: 12px; margin: 16px 0 0 0;">
-                <span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span>
-                Professional partner content
-            </p>
+            <p style="color: #999; font-size: 12px; margin: 16px 0 0 0;"><span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span> Professional partner content</p>
         `;
 
         modalOverlay.appendChild(modal);
         document.body.appendChild(modalOverlay);
 
-        // Start 12-second countdown for sponsored content
-        let countdown = 12;
+        let countdown = 15;
         const countdownElement = modal.querySelector('#countdown-package');
         const continueButton = modal.querySelector('#continue-package');
         
         const countdownInterval = setInterval(() => {
             countdown--;
-            countdownElement.textContent = countdown;
-            
             if (countdown <= 0) {
                 clearInterval(countdownInterval);
                 continueButton.disabled = false;
                 continueButton.style.cursor = 'pointer';
                 continueButton.style.opacity = '1';
                 continueButton.innerHTML = 'Continue';
+            } else {
+                countdownElement.textContent = countdown;
             }
         }, 1000);
 
-        // Handle continue button click
         continueButton.addEventListener('click', () => {
             if (countdown <= 0) {
                 document.body.removeChild(modalOverlay);
-                
-                // Track sponsor interaction
                 this.trackSponsorInteraction('continue', 'package_generation');
-                
-                // Timer will automatically continue package generation
             }
         });
 
-        // Handle sponsor link click
         const sponsorLink = modal.querySelector('.sponsor-link');
         if (sponsorLink) {
             sponsorLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.trackSponsorInteraction('clicked', 'package_generation');
-                console.log('Package generation sponsor link clicked');
             });
         }
 
-        // Track sponsor impression
         this.trackSponsorDisplay('package_generation');
         
-        // Auto-close after countdown
-        setTimeout(() => {
+        const autoCloseTimeout = setTimeout(() => {
             if (modalOverlay.parentNode) {
                 document.body.removeChild(modalOverlay);
             }
-        }, 13000);
+        }, 16000);
+        
+        // Clear timeout if modal is closed early
+        const originalClick = continueButton.onclick;
+        continueButton.onclick = () => {
+            clearTimeout(autoCloseTimeout);
+            if (originalClick) originalClick();
+        };
     }
     
     recordPackageSuccess(packageData) {
@@ -4239,11 +4513,6 @@ Verification: Check Chrome extension storage for transaction details`;
             a.download = `${sanitizedTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Radio_Submission.zip`;
             a.click();
             URL.revokeObjectURL(url);
-            
-            // Show floating sponsored content after download (like mint system)
-            setTimeout(() => {
-                this.displayPostPackageSponsor(packageInfo.fileCount, sanitizedTitle);
-            }, 1000);
             
         } catch (error) {
             console.error('Download failed:', error);
@@ -5349,13 +5618,14 @@ Verification: Check Chrome extension storage for transaction details`;
         generateBtn.disabled = true;
         generateBtn.textContent = 'Generating...';
         
-        // Show 12-second sponsored content timer first
+        // Show 15-second sponsored content timer to delay download
         this.displayPackageGenerationSponsored();
         
-        // Continue with package generation after timer
+        // Continue with package generation after 15-second timer
+        const SPONSOR_DELAY_MS = 16000; // 15s timer + 1s buffer
         setTimeout(async () => {
             await this.continueRadioPackageGeneration();
-        }, 13000); // Wait for 12s timer + 1s buffer
+        }, SPONSOR_DELAY_MS);
         
         try {
             const files = [];
@@ -6723,209 +6993,3 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// CONSOLIDATED SPONSOR DISPLAY METHODS - PREVENT DUPLICATES
-class SponsorDisplayManager {
-    displayISRCGenerationSponsored() {
-        // Check if already displayed to prevent duplicates
-        if (document.querySelector('.isrc-generation-sponsor')) {
-            console.log('⚠️ ISRC generation sponsor already displayed, skipping duplicate');
-            return;
-        }
-
-        // Use consistent styling from the example provided
-        this.displayConsistentSponsor('isrc-generation', {
-            title: 'BeatsChain Premium',
-            message: 'Unlock advanced features with BeatsChain Premium - Enhanced ISRC management, priority support, and exclusive tools for professional music creators.',
-            cta: 'Learn More',
-            icon: '📢',
-            placement: 'after',
-            targetSelector: '.isrc-input-group'
-        });
-    }
-
-    displayValidationSponsored() {
-        // Check if already displayed to prevent duplicates
-        if (document.querySelector('.validation-sponsor')) {
-            console.log('⚠️ Validation sponsor already displayed, skipping duplicate');
-            return;
-        }
-
-        this.displayConsistentSponsor('validation', {
-            title: 'Music Promotion Hub',
-            message: 'Get your music heard by industry professionals and radio programmers',
-            cta: 'Learn More',
-            icon: '📢',
-            placement: 'after',
-            targetSelector: '#radio-validation-results'
-        });
-    }
-
-    async displayPackageGenerationSponsored() {
-        // Check if already displayed to prevent duplicates
-        if (document.querySelector('.package-generation-sponsor')) {
-            console.log('⚠️ Package generation sponsor already displayed, skipping duplicate');
-            return;
-        }
-
-        this.displayConsistentSponsor('package-generation', {
-            title: 'Digital Distribution',
-            message: 'Distribute your music to Spotify, Apple Music, and 150+ platforms',
-            cta: 'Learn More',
-            icon: '🏆',
-            placement: 'before',
-            targetSelector: '#generate-radio-package'
-        });
-    }
-
-    displayConsistentSponsor(type, config) {
-        // Check if native sponsor manager is handling this
-        if (this.nativeSponsorManager && this.nativeSponsorManager.isInitialized) {
-            console.log(`📱 Native sponsor manager handling ${type}, skipping popup method`);
-            return;
-        }
-        
-        const targetElement = document.querySelector(config.targetSelector);
-        if (!targetElement) {
-            console.warn(`⚠️ Target element not found for ${type} sponsor: ${config.targetSelector}`);
-            return;
-        }
-        
-        // Check for existing sponsor in DOM
-        const existingSponsor = document.querySelector(`.${type}-sponsor`);
-        if (existingSponsor) {
-            console.log(`⚠️ ${type} sponsor already exists, skipping duplicate`);
-            return;
-        }
-
-        // Create sponsor container with consistent styling
-        const sponsorContainer = document.createElement('div');
-        sponsorContainer.className = `sponsor-container ${type}-sponsor`;
-        sponsorContainer.style.cssText = `
-            background: rgba(0, 214, 122, 0.05);
-            border-radius: 8px;
-            border-left: 4px solid #00d67a;
-            border: 1px solid rgba(0, 214, 122, 0.2);
-            padding: 16px;
-            margin: 20px 0;
-            position: relative;
-        `;
-
-        sponsorContainer.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="font-size: 24px;">${config.icon}</div>
-                <div style="flex: 1;">
-                    <h4 style="margin: 0 0 4px 0; color: #333; font-size: 14px; font-weight: 600;">
-                        ${this.sanitizeInput(config.title)}
-                    </h4>
-                    <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; line-height: 1.4;">
-                        ${this.sanitizeInput(config.message)}
-                    </p>
-                    <a href="#" class="sponsor-link" style="color: #00d67a; font-size: 12px; text-decoration: none; font-weight: 500;">
-                        ${config.cta} →
-                    </a>
-                </div>
-                <button class="sponsor-dismiss" style="
-                    position: absolute; top: 8px; right: 8px; 
-                    background: none; border: none; font-size: 16px; 
-                    cursor: pointer; color: #666; padding: 4px;
-                " aria-label="Dismiss">×</button>
-            </div>
-            <div style="margin-top: 12px;">
-                <span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span>
-                <span style="color: #999; font-size: 12px; margin-left: 8px;">Professional partner content</span>
-            </div>
-        `;
-
-        // Insert based on placement
-        if (config.placement === 'after') {
-            targetElement.parentNode.insertBefore(sponsorContainer, targetElement.nextSibling);
-        } else if (config.placement === 'before') {
-            targetElement.parentNode.insertBefore(sponsorContainer, targetElement);
-        }
-
-        // Add event handlers
-        const dismissBtn = sponsorContainer.querySelector('.sponsor-dismiss');
-        const sponsorLink = sponsorContainer.querySelector('.sponsor-link');
-
-        dismissBtn.addEventListener('click', () => {
-            sponsorContainer.remove();
-            this.trackSponsorInteraction('dismissed', type);
-        });
-
-        sponsorLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.trackSponsorInteraction('clicked', type);
-            console.log(`${config.title} sponsor link clicked`);
-        });
-
-        // Track display
-        this.trackSponsorDisplay(type);
-
-        // Auto-dismiss after 10 seconds if not interacted with
-        setTimeout(() => {
-            if (sponsorContainer.parentNode && !sponsorContainer.dataset.interacted) {
-                sponsorContainer.remove();
-            }
-        }, 10000);
-
-        // Mark interaction on hover
-        sponsorContainer.addEventListener('mouseenter', () => {
-            sponsorContainer.dataset.interacted = 'true';
-        });
-
-        console.log(`✅ Consistent ${type} sponsor displayed`);
-    }
-    displayConsistentPostPackageSponsor(fileCount, title) {
-        const sponsorDiv = document.createElement('div');
-        sponsorDiv.className = 'post-package-sponsor';
-        sponsorDiv.style.cssText = `
-            position: fixed; bottom: 20px; right: 20px;
-            background: rgba(0, 214, 122, 0.05);
-            border-radius: 8px;
-            border-left: 4px solid #00d67a;
-            border: 1px solid rgba(0, 214, 122, 0.2);
-            padding: 16px; max-width: 320px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10001;
-            font-size: 13px;
-        `;
-        
-        sponsorDiv.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                <span>🎵</span>
-                <strong>Next Steps for Your Music</strong>
-                <span style="font-size: 10px; background: #ffc107; padding: 2px 6px; border-radius: 3px; color: #000;">SPONSORED</span>
-            </div>
-            <p style="margin: 0 0 12px 0; color: #666;">
-                Your ${fileCount}-file radio package is ready! Consider these next steps:
-            </p>
-            <div style="font-size: 12px; line-height: 1.4;">
-                <div>📻 Radio submission services</div>
-                <div>📈 Airplay tracking tools</div>
-                <div>🎯 Music promotion platforms</div>
-            </div>
-            <button id="dismiss-sponsor" style="position: absolute; top: 4px; right: 8px; border: none; background: none; cursor: pointer; font-size: 16px;">×</button>
-        `;
-        
-        // Track display
-        this.trackSponsorDisplay('post-package');
-        
-        // Dismiss functionality
-        sponsorDiv.querySelector('#dismiss-sponsor').addEventListener('click', () => {
-            this.trackSponsorInteraction('dismissed', 'post-package');
-            sponsorDiv.remove();
-        });
-        
-        // Auto-dismiss after 8 seconds
-        setTimeout(() => {
-            if (sponsorDiv.parentNode) {
-                sponsorDiv.remove();
-            }
-        }, 8000);
-        
-        document.body.appendChild(sponsorDiv);
-        console.log('✅ Consistent post-package sponsor displayed');
-    }
-}
-
-// Initialize sponsor display manager
-window.sponsorDisplayManager = new SponsorDisplayManager();

@@ -20,18 +20,18 @@ class EnvConfigLoader {
                 SOLANA_PROGRAM_ID: 'BeatsChainSolanaProgram11111111111111111111',
                 METAPLEX_PROGRAM_ID: 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s',
 
-                // Google OAuth2 Configuration
+                // Google OAuth2 Configuration - Updated for production
                 GOOGLE_CLIENT_ID: '239753403483-58n7vlbvs1nsu9qnf1qmoenh2cjjimbc.apps.googleusercontent.com',
 
                 // IPFS Configuration
                 NEXT_PUBLIC_IPFS_GATEWAY: 'https://ipfs.io/ipfs/',
-                PINATA_API_KEY: '039a88d61f538316a611',
-                PINATA_SECRET_KEY: '15d14b953368d4d5c830c6e05f4767d63443da92da3359a7223ae115315beb91',
+                PINATA_API_KEY: '', // SECURITY FIX: Removed hardcoded credentials
+                PINATA_SECRET_KEY: '', // SECURITY FIX: Removed hardcoded credentials
 
-                // Security Configuration
-                WALLET_ENCRYPTION_KEY: 'BeatsChain2024SecureKey!@#$%^&*()',
-                TEST_WALLET_PRIVATE_KEY: 'c0c71ecd72b802ba8f19cbe188b7e191f62889bf6adf3bb18265a626a5829171',
-                ADMIN_WALLET_ADDRESS: '0xc84799A904EeB5C57aBBBc40176E7dB8be202C10'
+                // Security Configuration - SECURITY FIX: Generate secure keys dynamically
+                WALLET_ENCRYPTION_KEY: this.generateSecureKey(),
+                TEST_WALLET_PRIVATE_KEY: '', // SECURITY FIX: Removed hardcoded private key
+                ADMIN_WALLET_ADDRESS: '' // SECURITY FIX: Removed hardcoded address
             };
 
             // Make config globally available
@@ -44,10 +44,10 @@ class EnvConfigLoader {
         } catch (error) {
             console.error('❌ Failed to load environment configuration:', error);
             
-            // Fallback configuration
+            // Fallback configuration - SECURITY FIX: No hardcoded credentials
             this.config = {
-                TEST_WALLET_PRIVATE_KEY: 'c0c71ecd72b802ba8f19cbe188b7e191f62889bf6adf3bb18265a626a5829171',
-                ADMIN_WALLET_ADDRESS: '0xc84799A904EeB5C57aBBBc40176E7dB8be202C10'
+                TEST_WALLET_PRIVATE_KEY: '',
+                ADMIN_WALLET_ADDRESS: ''
             };
             
             window.envConfig = this.config;
@@ -65,8 +65,14 @@ class EnvConfigLoader {
         return this.config[key];
     }
 
+    generateSecureKey() {
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+
     isProduction() {
-        return this.config && this.config.TEST_WALLET_PRIVATE_KEY === 'c0c71ecd72b802ba8f19cbe188b7e191f62889bf6adf3bb18265a626a5829171';
+        return this.config && this.loaded;
     }
 }
 

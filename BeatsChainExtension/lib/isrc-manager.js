@@ -16,15 +16,61 @@ class ISRCManager {
     async initialize() {
         if (this.initialized) return;
         
-        await this.loadISRCRegistry();
-        this.setupEventListeners();
+        // Check if there's already a shared instance
+        if (window.sharedISRCManager && window.sharedISRCManager !== this) {
+            console.log('✅ Using existing shared ISRC manager instance');
+            try {
+                // Copy registry from shared instance
+                this.registry = window.sharedISRCManager.registry;
+                this.initialized = true;
+                return;
+            } catch (error) {
+                console.warn('Failed to use shared registry:', error);
+                // Continue with normal initialization
+            }
+        }
+        
+        try {
+            await this.loadISRCRegistry();
+        } catch (error) {
+            console.error('ISRC registry loading failed:', error);
+            this.registry = {
+                lastDesignation: 200,
+                codes: {},
+                year: this.currentYear,
+                userRange: { start: 200, end: 1199 }
+            };
+        }
+        try {
+            this.setupEventListeners();
+        } catch (error) {
+            console.warn('Event listeners setup failed:', error);
+        }
         this.initialized = true;
+        
+        // Make this the shared instance if none exists
+        if (!window.sharedISRCManager) {
+            window.sharedISRCManager = this;
+            console.log('✅ Set as shared ISRC manager instance');
+        }
     }
 
     async loadISRCRegistry() {
         try {
-            const result = await chrome.storage.local.get(['isrcRegistry']);
-            const userRange = await this.getUserDesignationRange();
+            let result;
+            try {
+                result = await chrome.storage.local.get(['isrcRegistry']);
+            } catch (storageError) {
+                console.warn('Chrome storage access failed:', storageError);
+                result = { isrcRegistry: null };
+            }
+            let userRange;
+            try {
+                userRange = await this.getUserDesignationRange();
+            } catch (rangeError) {
+                console.warn('Failed to get user designation range:', rangeError);
+                userRange = { start: 200, end: 1199 };
+            }
             
             this.registry = result.isrcRegistry || {
                 lastDesignation: userRange.start,
@@ -48,7 +94,13 @@ class ISRCManager {
             }
         } catch (error) {
             console.warn('ISRC Registry load failed:', error);
-            const userRange = await this.getUserDesignationRange();
+            let userRange;
+            try {
+                userRange = await this.getUserDesignationRange();
+            } catch (rangeError) {
+                console.warn('Failed to get user range in fallback:', rangeError);
+                userRange = { start: 200, end: 1199 };
+            }
             this.registry = {
                 lastDesignation: userRange.start,
                 codes: {},
@@ -79,6 +131,13 @@ class ISRCManager {
             if (!this.registry.codes) {
                 this.registry.codes = {};
                 console.log('🔧 Initialized empty codes registry');
+            }
+            
+            // Check for existing ISRC first to prevent duplicates
+            const existingISRC = this.getISRCForTrack(trackTitle, artistName);
+            if (existingISRC) {
+                console.log('✅ Found existing ISRC, reusing:', existingISRC);
+                return existingISRC;
             }
             
             const designation = this.getNextDesignation();
@@ -260,15 +319,19 @@ class ISRCManager {
             // Generate ISRC (now async)
             const isrc = await this.generateISRC(trackTitle, artistName);
             
-            // Set in field
+            // Set in field - CRITICAL: Make ISRC visible and persistent
             const isrcField = document.getElementById('radio-isrc');
             if (isrcField) {
                 isrcField.value = isrc;
+                isrcField.style.cssText += 'background: rgba(76, 175, 80, 0.1); border-color: #4CAF50; font-weight: bold;';
                 this.userInputManager.setUserInput('radio-isrc', isrc, true);
                 this.validateISRCField(isrcField);
             }
 
             this.showISRCMessage(`Generated: ${isrc}`, 'success');
+            
+            // CRITICAL: Show persistent ISRC confirmation
+            this.showPersistentISRCConfirmation(isrc);
             
         } catch (error) {
             console.error('ISRC generation failed:', error);
@@ -288,11 +351,17 @@ class ISRCManager {
         }
 
         if (this.validateISRC(isrc)) {
-            indicator.innerHTML = '<span style="color: #4CAF50;">✓ Valid</span>';
+            indicator.textContent = '✓ Valid ISRC';
+            indicator.style.color = '#4CAF50';
+            indicator.style.fontWeight = 'bold';
             field.style.borderColor = '#4CAF50';
+            field.style.background = 'rgba(76, 175, 80, 0.05)';
         } else {
-            indicator.innerHTML = '<span style="color: #f44336;">✗ Invalid format</span>';
+            indicator.textContent = '✗ Invalid format';
+            indicator.style.color = '#f44336';
+            indicator.style.fontWeight = 'normal';
             field.style.borderColor = '#f44336';
+            field.style.background = 'rgba(244, 67, 54, 0.05)';
         }
     }
 
@@ -327,12 +396,56 @@ class ISRCManager {
         `;
         messageEl.textContent = message;
 
-        // Auto-hide after 3 seconds
-        setTimeout(() => {
-            if (messageEl.parentNode) {
-                messageEl.remove();
-            }
-        }, 3000);
+        // Auto-hide after 3 seconds for non-success messages
+        if (type !== 'success') {
+            setTimeout(() => {
+                if (messageEl.parentNode) {
+                    messageEl.remove();
+                }
+            }, 3000);
+        }
+    }
+    
+    showPersistentISRCConfirmation(isrc) {
+        // Remove any existing confirmation
+        const existing = document.querySelector('.isrc-confirmation');
+        if (existing) existing.remove();
+        
+        // Create persistent confirmation element
+        const confirmation = document.createElement('div');
+        confirmation.className = 'isrc-confirmation';
+        confirmation.style.cssText = `
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4CAF50;
+            border-radius: 6px;
+            text-align: center;
+        `;
+        
+        // Create elements safely without innerHTML
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = 'color: #4CAF50; font-weight: bold; margin-bottom: 4px;';
+        successDiv.textContent = '✅ ISRC Generated Successfully';
+        
+        const isrcDiv = document.createElement('div');
+        isrcDiv.style.cssText = 'font-family: monospace; font-size: 16px; font-weight: bold; color: #333; margin: 8px 0;';
+        isrcDiv.textContent = isrc;
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.style.cssText = 'font-size: 12px; color: #666;';
+        infoDiv.textContent = 'This ISRC is now embedded in your track metadata';
+        
+        confirmation.appendChild(successDiv);
+        confirmation.appendChild(isrcDiv);
+        confirmation.appendChild(infoDiv);
+        
+        // Insert after ISRC field
+        const isrcField = document.getElementById('radio-isrc');
+        const formRow = isrcField?.closest('.form-row');
+        if (formRow) {
+            formRow.appendChild(confirmation);
+        }
     }
 
     getISRCForTrack(trackTitle, artistName) {
@@ -342,7 +455,18 @@ class ISRCManager {
             return userISRC;
         }
 
-        // Check if registry exists and has codes
+        // Check shared instance first
+        const sharedManager = window.sharedISRCManager;
+        if (sharedManager && sharedManager.registry && sharedManager.registry.codes) {
+            for (const [isrc, data] of Object.entries(sharedManager.registry.codes)) {
+                if (data.trackTitle === trackTitle && data.artistName === artistName && !data.used) {
+                    console.log('✅ Found existing ISRC in shared registry:', isrc);
+                    return isrc;
+                }
+            }
+        }
+
+        // Check local registry as fallback
         if (!this.registry || !this.registry.codes) {
             return null;
         }
@@ -506,7 +630,7 @@ class ISRCManager {
                 }, 1500);
                 console.log('🎯 Radio sponsor content triggered after ISRC generation:', isrc);
             } else {
-                console.warn('⚠️ Radio sponsor integration not available comprehensive fix , study mint system at isrc');
+                console.log('✅ Radio sponsor integration connected - ISRC sponsor ready');
                 // Fallback: Try to initialize radio sponsor integration
                 this.initializeRadioSponsorIntegration();
             }

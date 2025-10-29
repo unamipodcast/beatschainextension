@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "BeatsChain Music NFT Minter",
-  "version": "2.7.1",
-  "description": "Professional music NFT minting for Solana blockchain. Create music NFTs with ISRC codes, generate radio submission packages, AI licensing, and comprehensive analytics. Perfect for music producers and artists.",
+  "name": "BeatsChain - Music NFT Minter",
+  "version": "2.2",
+  "description": "Professional music NFT creation platform for Solana blockchain. Mint music NFTs with ISRC codes, generate radio-ready packages, AI-powered metadata, split sheet management, and revenue analytics. Complete solution for independent artists, producers, and music professionals to monetize and distribute their work.",
   "permissions": [
     "storage",
     "identity",

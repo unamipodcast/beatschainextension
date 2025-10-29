@@ -390,32 +390,7 @@ class RadioSponsorIntegration {
         }, 15000);
     }
 
-    // NEW: Position for ISRC Generation (Timer: 1500ms)
-    async displayAfterISRCGeneration() {
-        // Create floating sponsor container for ISRC generation
-        const floatingContainer = document.createElement('div');
-        floatingContainer.className = 'floating-sponsor-container';
-        floatingContainer.style.cssText = `
-            position: fixed; bottom: 20px; right: 20px;
-            max-width: 320px; z-index: 10001;
-            background: rgba(26, 26, 26, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        `;
-        
-        document.body.appendChild(floatingContainer);
-        
-        await this.displaySponsorContent('after_isrc_generation', floatingContainer);
-        
-        // Auto-remove after 15 seconds
-        setTimeout(() => {
-            if (floatingContainer.parentNode) {
-                floatingContainer.remove();
-            }
-        }, 15000);
-    }
+
 
     // Position 2: Before Package Generation (Timer: 800ms)
     async displayBeforePackageSponsor() {
@@ -498,6 +473,19 @@ class RadioSponsorIntegration {
                 floatingContainer.remove();
             }
         }, 15000);
+    }
+
+    // NEW: Position for ISRC Generation (Timer: 1500ms)
+    async displayAfterISRCGeneration() {
+        const containers = [
+            document.querySelector('.isrc-section'),
+            document.getElementById('radio-isrc')?.parentElement,
+            document.querySelector('.radio-form-section')
+        ].filter(Boolean);
+
+        if (containers.length > 0) {
+            await this.displaySponsorContent('after_isrc_generation', containers[0]);
+        }
     }
 
     async displaySponsorContent(placement, container, context = {}) {
@@ -714,15 +702,7 @@ class RadioSponsorIntegration {
                 priority: 9,
                 category: 'audio_services'
             }],
-            after_isrc_generation: [{
-                id: 'isrc_radio_registration',
-                name: 'ISRC Radio Registration',
-                message: 'Specialized ISRC registration with radio airplay tracking and royalty management.',
-                website: 'https://isrcradio.co.za',
-                active: true,
-                priority: 10,
-                category: 'isrc_services'
-            }],
+
             before_package: [{
                 id: 'radio_plugging_sa',
                 name: 'SA Radio Plugging Network',
@@ -758,6 +738,17 @@ class RadioSponsorIntegration {
                 active: true,
                 priority: 8,
                 category: 'analytics_services'
+            }],
+            
+            // NEW: ISRC Generation Services
+            after_isrc_generation: [{
+                id: 'isrc_services_pro',
+                name: 'Professional ISRC Services',
+                message: 'Expert ISRC registration and music industry compliance for radio submissions.',
+                website: 'https://isrcservices.co.za',
+                active: true,
+                priority: 10,
+                category: 'isrc_services'
             }],
             
             // South African Radio Market Specific
@@ -847,7 +838,8 @@ class RadioSponsorIntegration {
             after_samro: radioIndustrySponsors.after_samro,
             after_contact: radioIndustrySponsors.after_contact,
             after_biography: radioIndustrySponsors.after_biography,
-            before_download: radioIndustrySponsors.before_download
+            before_download: radioIndustrySponsors.before_download,
+            after_isrc_generation: radioIndustrySponsors.after_isrc_generation
         };
         
         return placementMapping[placement] || radioIndustrySponsors.sa_radio_specific || [];

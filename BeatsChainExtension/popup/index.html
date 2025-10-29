@@ -445,9 +445,10 @@
                         </div>
                         
                         <div class="isrc-preview">
-                            <div class="isrc-display">
-                                <span class="isrc-code" id="generated-isrc">ZA-80G-25-00000</span>
-                                <button class="copy-btn" id="copy-isrc">📋</button>
+                            <div class="isrc-display" style="margin: 12px 0; padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Generated ISRC Code:</div>
+                                <span class="isrc-code" id="generated-isrc" style="font-family: monospace; font-size: 18px; font-weight: bold; color: #333; display: block; margin: 8px 0;">ZA-80G-25-00000</span>
+                                <button class="copy-btn" id="copy-isrc" style="background: #4CAF50; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">📋 Copy</button>
                             </div>
                             <div class="isrc-breakdown">
                                 <span class="isrc-part">ZA <small>Country</small></span>
@@ -1126,6 +1127,15 @@
         </aside>
     </div>
 
+    <!-- OAuth Fix (Load Early) -->
+    <script src="oauth-fix.js"></script>
+    
+    <!-- Graceful Enhancement Scripts (Load First) -->
+    <script src="../lib/graceful-error-handler.js"></script>
+    <script src="../lib/oauth-graceful-fallback.js"></script>
+    <script src="../lib/production-status-enhancer.js"></script>
+    <script src="../lib/production-initialization-fix.js"></script>
+    
     <!-- Core Libraries -->
     <script src="../lib/env-config.js"></script>
     <script src="../lib/config.js"></script>

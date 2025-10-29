@@ -13,12 +13,17 @@ class ConfigManager {
         if (this.initialized) return;
         
         try {
+            // SECURITY FIX: Load from secure storage instead of hardcoded values
+            const storedConfig = await chrome.storage.local.get([
+                'PINATA_API_KEY', 'PINATA_SECRET_KEY', 'SOLANA_RPC_URL', 'SOLANA_PROGRAM_ID', 'RPC_URL'
+            ]);
+            
             const hardcodedConfig = {
-                'PINATA_API_KEY': '039a88d61f538316a611',
-                'PINATA_SECRET_KEY': '15d14b953368d4d5c830c6e05f4767d63443da92da3359a7223ae115315beb91',
-                'SOLANA_RPC_URL': 'https://api.devnet.solana.com',
-                'SOLANA_PROGRAM_ID': 'BeatsChainSolanaProgram11111111111111111111',
-                'RPC_URL': 'https://rpc.sepolia.org'
+                'PINATA_API_KEY': storedConfig.PINATA_API_KEY || '',
+                'PINATA_SECRET_KEY': storedConfig.PINATA_SECRET_KEY || '',
+                'SOLANA_RPC_URL': storedConfig.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+                'SOLANA_PROGRAM_ID': storedConfig.SOLANA_PROGRAM_ID || 'BeatsChainSolanaProgram11111111111111111111',
+                'RPC_URL': storedConfig.RPC_URL || 'https://rpc.sepolia.org'
             };
             
             this.cache = new Map(Object.entries(hardcodedConfig));
