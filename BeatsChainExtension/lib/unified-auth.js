@@ -58,7 +58,7 @@ class UnifiedAuthenticationManager {
         return adminEmails.includes(email) ? 'admin' : 'user';
     }
 
-    async signInWithGoogle() {
+    async signInWithGoogle(forceAccountSelection = false) {
         return new Promise((resolve, reject) => {
             try {
                 if (!chrome.identity) {
@@ -72,7 +72,8 @@ class UnifiedAuthenticationManager {
                     return;
                 }
 
-                chrome.identity.getAuthToken({ interactive: true }, async (token) => {
+                const performAuth = () => {
+                    chrome.identity.getAuthToken({ interactive: true }, async (token) => {
                     if (chrome.runtime.lastError) {
                         const errorMsg = chrome.runtime.lastError.message;
                         
@@ -131,7 +132,19 @@ class UnifiedAuthenticationManager {
                     } catch (profileError) {
                         reject(profileError);
                     }
-                });
+                    });
+                };
+
+                // Enable account selection if requested or if switching accounts
+                if (forceAccountSelection && chrome.identity.clearAllCachedAuthTokens) {
+                    chrome.identity.clearAllCachedAuthTokens(() => {
+                        console.log('🔄 Cleared cached tokens for account selection');
+                        performAuth();
+                    });
+                } else {
+                    // Standard flow - use cached tokens for faster sign-in
+                    performAuth();
+                }
             } catch (error) {
                 reject(error);
             }
@@ -226,6 +239,27 @@ class UnifiedAuthenticationManager {
         }
     }
 
+    async switchGoogleAccount() {
+        try {
+            console.log('🔄 Switching Google account...');
+            
+            // Sign out current user
+            await this.signOut();
+            
+            // Force account selection on next sign-in
+            return await this.signInWithGoogle(true);
+        } catch (error) {
+            console.error('Account switching failed:', error);
+            // Graceful fallback to guest mode
+            this.enableGuestMode();
+            return {
+                success: false,
+                guestMode: true,
+                message: 'Account switching unavailable. Continuing in guest mode with full functionality.'
+            };
+        }
+    }
+
     async getWalletAddress() {
         try {
             // Use admin wallet if available and in admin mode
@@ -287,6 +321,15 @@ class UnifiedAuthenticationManager {
         this.securityLevel = 'basic';
         
         console.log('👤 Guest mode enabled - full functionality available! All features work without sign-in.');
+    }
+
+    // Enhanced authentication methods for better user control
+    async signInWithAccountSelection() {
+        return await this.signInWithGoogle(true);
+    }
+
+    canSwitchAccounts() {
+        return chrome.identity && chrome.identity.clearAllCachedAuthTokens;
     }
 
     // Backward compatibility methods

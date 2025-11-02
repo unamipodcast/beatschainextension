@@ -2216,6 +2216,7 @@ Verification: Check Chrome extension storage for transaction details`;
                 await new Promise(resolve => {
                     chrome.identity.clearAllCachedAuthTokens(resolve);
                 });
+                console.log('🔄 Cleared cached tokens for account selection');
             }
             
             const result = await unifiedAuth.signInWithGoogle();
