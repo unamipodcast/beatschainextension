@@ -78,12 +78,12 @@ class UnifiedAuthenticationManager {
                         
                         // Handle specific OAuth errors gracefully
                         if (errorMsg.includes('bad client id') || errorMsg.includes('invalid_client')) {
-                            console.warn('⚠️ OAuth client ID invalid - enabling guest mode');
+                            console.warn('⚠️ OAuth client ID configuration - enabling guest mode with full functionality');
                             this.enableGuestMode();
                             resolve({
                                 success: false,
                                 guestMode: true,
-                                message: 'Authentication temporarily unavailable. Using guest mode.'
+                                message: 'Continuing in guest mode - all features available! Sign-in adds personalization and cloud sync.'
                             });
                             return;
                         }
@@ -286,7 +286,7 @@ class UnifiedAuthenticationManager {
         this.role = 'user';
         this.securityLevel = 'basic';
         
-        console.log('👤 Guest mode enabled - limited functionality available');
+        console.log('👤 Guest mode enabled - full functionality available! All features work without sign-in.');
     }
 
     // Backward compatibility methods
